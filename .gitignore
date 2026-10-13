@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.env.*
+
+# FastAPI / pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+.expo-shared/
+web-build/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# project runtime
+moto_unc_backend/.pytest_cache/
+moto_unc_backend/venv/
+moto_unc_backend/*.db
+moto_unc_mobile/.expo/
+moto_unc_mobile/node_modules/

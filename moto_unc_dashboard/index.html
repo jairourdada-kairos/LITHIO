@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de administración - LITHIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+
+    <div class="dashboard-container">
+        <aside class="sidebar glass-panel">
+            <div class="logo-container">
+                <span class="logo-icon">◈</span>
+                <h1 class="logo-text">LITHIO</h1>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-section="dashboard">📊 Resumen</button>
+                <button class="nav-item" data-section="drivers">🛵 Conductores</button>
+                <button class="nav-item" data-section="routes">🛣️ Rutas</button>
+                <button class="nav-item" data-section="rewards">🌟 Recompensas</button>
+                <button class="nav-item" data-section="profile">👤 Perfil</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header glass-panel">
+                <div>
+                    <p class="eyebrow">Panel de administración</p>
+                    <h2 class="page-title">Centro de movilidad</h2>
+                </div>
+                <div class="header-actions">
+                    <div class="status-indicator">
+                        <span class="pulse-dot online"></span>
+                        <span id="api-status">Sistema online</span>
+                    </div>
+                </div>
+            </header>
+
+            <section class="stats-grid" id="dashboard">
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">👤</div>
+                    <div class="stat-info">
+                        <h3>Admin</h3>
+                        <p class="stat-value" id="stat-admin-name">Jairo</p>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">🛵</div>
+                    <div class="stat-info">
+                        <h3>Conductores</h3>
+                        <p class="stat-value" id="stat-drivers-count">0</p>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">🌟</div>
+                    <div class="stat-info">
+                        <h3>Hierro (Fe)</h3>
+                        <p class="stat-value" id="stat-star-coins">0</p>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">🛣️</div>
+                    <div class="stat-info">
+                        <h3>Rutas</h3>
+                        <p class="stat-value" id="stat-routes-count">0</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="content-stack">
+                <section class="content-card glass-panel section-panel" id="drivers">
+                    <div class="card-header">
+                        <h3>Conductores registrados</h3>
+                        <button class="primary-btn" id="add-driver-btn">+ Nuevo conductor</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Conductor</th>
+                                    <th>Vehículo</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="drivers-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="content-card glass-panel section-panel" id="routes">
+                    <div class="card-header">
+                        <h3>Rutas y destinos</h3>
+                        <button class="primary-btn" id="add-route-btn">+ Nueva ruta</button>
+                    </div>
+                    <div id="routes-list" class="mini-grid"></div>
+                </section>
+
+                <section class="content-card glass-panel section-panel" id="rewards">
+                    <div class="card-header">
+                        <h3>Recompensas y cupones</h3>
+                        <button class="primary-btn" id="add-reward-btn">+ Nueva recompensa</button>
+                    </div>
+                    <div id="rewards-list" class="mini-grid"></div>
+                </section>
+
+                <section class="content-card glass-panel section-panel" id="profile">
+                    <div class="card-header">
+                        <h3>Perfil del administrador</h3>
+                    </div>
+
+                    <div class="profile-grid">
+                        <div class="profile-card">
+                            <div class="avatar-large">J</div>
+                            <h4>Jairo Eduardo Urdaneta González</h4>
+                            <p>jairourdada@gmail.com</p>
+                            <p>04124091527</p>
+                        </div>
+
+                        <form id="profile-form" class="admin-form">
+                            <label>
+                                Nombre completo
+                                <input type="text" name="name" value="Jairo Eduardo Urdaneta González">
+                            </label>
+                            <label>
+                                Email
+                                <input type="email" name="email" value="jairourdada@gmail.com">
+                            </label>
+                            <label>
+                                Teléfono
+                                <input type="text" name="phone" value="04124091527">
+                            </label>
+                            <label>
+                                Ciudad principal
+                                <input type="text" name="city" value="Caracas">
+                            </label>
+                            <button type="submit" class="primary-btn">Guardar perfil</button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3 id="modal-title">Formulario</h3>
+                <button id="close-modal" class="close-btn">✕</button>
+            </div>
+            <form id="entity-form" class="admin-form"></form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "LITHIO",
+    "slug": "moto_unc_mobile",
+    "description": "Linked Intelligent Transport for Higher Innovative Opportunities (Transporte Inteligente Vinculado para Oportunidades Innovadoras).",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.motounc.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1ff398e2-9e9c-4e68-8eaa-5a4e9879475c"
+      }
+    }
+  }
+}
