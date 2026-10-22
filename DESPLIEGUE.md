@@ -7,6 +7,22 @@ encendida, y podrás instalarla como APK sin Expo Go.
 Tiempo estimado: 30–45 minutos. Costo: Railway da un crédito de prueba;
 después, el plan Hobby (5 USD/mes) cubre servidor + base de datos.
 
+## Opción rápida (recomendada): dos dobles clics
+
+1. **`desplegar_nube.bat`**: inicia sesión en Railway en el navegador cuando lo pida
+   (la cuenta se crea con GitHub). El script crea la base de datos, el disco
+   para fotos y la dirección `https`, copia tus datos actuales (opcional),
+   sube las claves sin mostrarlas, despliega y apunta la app a la nube.
+2. **`generar_apk.bat`**: inicia sesión en Expo la primera vez; al terminar
+   te da el enlace del `.apk` para compartir.
+
+Se pueden volver a ejecutar: reutilizan lo que ya existe y despliegan de nuevo.
+Para que el servidor siga activo después del crédito de prueba, activa el
+plan **Hobby** (5 USD/mes) en Railway → *Account → Plans*. Ese plan no
+"duerme" el servidor: queda encendido las 24 horas.
+
+Los pasos de abajo son la versión manual de lo mismo.
+
 > **Antes de empezar:** ten a mano tu archivo `moto_unc_backend/.env`.
 > Las claves `LITHIO_ENCRYPTION_KEYS` y `LITHIO_HASH_KEY` deben ser
 > **exactamente las mismas** en la nube. Si las cambias o las pierdes, las
