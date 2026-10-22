@@ -17,10 +17,12 @@ import { validateEmail } from '../utils/validation';
 interface Props {
   onSuccess: (user: AuthUser) => void;
   onGoToSignUp: () => void;
+  /** Lleva al inicio de sesión del otro rol. */
+  onSwitchRole?: () => void;
   onBack: () => void;
 }
 
-export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onBack }) => {
+export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitchRole, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -115,6 +117,12 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onBack 
           ¿No tienes cuenta? <Text style={styles.linkAccent}>Crear cuenta de conductor</Text>
         </Text>
       </Pressable>
+
+      {onSwitchRole ? (
+        <Pressable style={styles.linkRow} onPress={onSwitchRole} accessibilityRole="button" hitSlop={8}>
+          <Text style={[styles.linkText, { color: theme.colors.primary }]}>¿Viajas como pasajero? Entra por aquí</Text>
+        </Pressable>
+      ) : null}
     </AuthLayout>
   );
 };

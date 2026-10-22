@@ -14,7 +14,7 @@ import os
 import re
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from . import crypto
 from .database import engine, get_db, Base, SessionLocal
@@ -41,6 +41,8 @@ from .schemas import (
 from .seed import seed_database
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
+# Venezuela no cambia de horario: UTC-4 todo el año.
+VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")
 # Estados en los que el conductor ya está ocupado con un pasajero.
 BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
 
@@ -996,6 +998,14 @@ async def request_ride(
             status_code=400,
             detail="El pago con Fe o Diamantes aún no está habilitado. Usa efectivo o Pago Móvil.",
         )
+    if ride_data.is_scheduled:
+        try:
+            scheduled_at = datetime.strptime(ride_data.scheduled_time or "", "%Y-%m-%d %H:%M")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="La hora programada debe tener el formato AAAA-MM-DD HH:MM.")
+        now_in_venezuela = datetime.now(VENEZUELA_TZ).replace(tzinfo=None)
+        if scheduled_at <= now_in_venezuela:
+            raise HTTPException(status_code=400, detail="La hora programada ya pasó. Elige una fecha y hora futuras.")
     if get_active_ride(db, passenger.id):
         raise HTTPException(status_code=409, detail="Ya tienes un viaje activo. Finalízalo o cancélalo primero.")
     if not driver.driver_profile.is_available or driver_is_busy(db, driver.id):
@@ -1075,15 +1085,16 @@ def get_pending_rides_for_driver(
 @app.get("/api/rides/active/{user_id}", response_model=RideResponse)
 def get_active_ride_for_user(
     user_id: int,
+    role: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Obtiene el viaje activo de un usuario (sea pasajero o conductor)"""
+    """Obtiene el viaje activo de un usuario (como pasajero, conductor o ambos)."""
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Solo puedes consultar tus propios viajes.")
     ride = db.query(Ride).filter(
-        ((Ride.passenger_id == user_id) | (Ride.driver_id == user_id)),
-        Ride.status.in_(["solicitado", "aceptado", "en_camino", "en_curso"])
+        participant_filter(user_id, role),
+        Ride.status.in_(BUSY_RIDE_STATUSES if role == "conductor" else ACTIVE_RIDE_STATUSES)
     ).order_by(Ride.id.desc()).first()
 
     if not ride:
@@ -1101,6 +1112,75 @@ def get_active_ride_for_user(
             res.driver_bank_account_number = profile.bank_account_number
             res.driver_binance_address = profile.binance_address
     return res
+
+def participant_filter(user_id: int, role: str | None):
+    if role == "pasajero":
+        return Ride.passenger_id == user_id
+    if role == "conductor":
+        return Ride.driver_id == user_id
+    if role is None:
+        return (Ride.passenger_id == user_id) | (Ride.driver_id == user_id)
+    raise HTTPException(status_code=400, detail="role debe ser 'pasajero' o 'conductor'.")
+
+
+@app.get("/api/rides/mine", response_model=List[RideResponse])
+def list_my_rides(
+    scope: str = "history",
+    role: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Viajes del usuario autenticado, como pasajero o conductor.
+    scope=history: completados, cancelados y rechazados (más recientes primero).
+    scope=scheduled: programados que siguen pendientes.
+    role=pasajero|conductor limita a los viajes de la sesión actual.
+    """
+    query = db.query(Ride).filter(participant_filter(current_user.id, role))
+    if scope == "history":
+        query = query.filter(Ride.status.in_(["completado", "cancelado", "rechazado"]))
+    elif scope == "scheduled":
+        query = query.filter(Ride.is_scheduled.is_(True), Ride.status.in_(ACTIVE_RIDE_STATUSES))
+    else:
+        raise HTTPException(status_code=400, detail="scope debe ser 'history' o 'scheduled'.")
+
+    results = []
+    for ride in query.order_by(Ride.id.desc()).limit(50).all():
+        item = RideResponse.model_validate(ride)
+        item.passenger_name = ride.passenger.name
+        item.driver_name = ride.driver.name
+        # La referencia de pago solo la necesitan los participantes en el viaje activo.
+        item.payment_reference = None
+        results.append(item)
+    return results
+
+
+@app.get("/api/users/me/summary")
+def get_my_summary(
+    role: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Números de la pantalla de cuenta: viajes completados, calificación y agendados."""
+    completed = db.query(Ride.id).filter(
+        participant_filter(current_user.id, role),
+        Ride.status == "completado",
+    ).count()
+    scheduled = db.query(Ride.id).filter(
+        participant_filter(current_user.id, role),
+        Ride.is_scheduled.is_(True),
+        Ride.status.in_(ACTIVE_RIDE_STATUSES),
+    ).count()
+    profile = current_user.driver_profile
+    return {
+        "trips_completed": completed,
+        "scheduled_count": scheduled,
+        "points": current_user.points,
+        "rating_avg": profile.rating_avg if profile else None,
+        "is_available": profile.is_available if profile else None,
+        "has_driver_profile": profile is not None,
+    }
+
 
 @app.put("/api/rides/{ride_id}/status")
 async def update_ride_status(

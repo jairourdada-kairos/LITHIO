@@ -1,12 +1,25 @@
 import { Driver, Ride, RideStatus, Reward, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
 import { authenticatedFetch } from './firebase';
+import type { SessionRole } from './session';
+
+export interface AccountSummary {
+  trips_completed: number;
+  scheduled_count: number;
+  points: number;
+  rating_avg: number | null;
+  is_available: boolean | null;
+  has_driver_profile: boolean;
+}
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
 
 async function assertOk(response: Response): Promise<void> {
   if (response.ok) return;
   const body = await response.json().catch(() => ({}));
-  throw new Error(body.detail || `La solicitud falló (${response.status}).`);
+  const detail = Array.isArray(body.detail)
+    ? body.detail.map((item: { msg?: string }) => (item.msg || '').replace(/^Value error, /, '')).join('\n')
+    : body.detail;
+  throw new Error(detail || `La solicitud falló (${response.status}).`);
 }
 
 export const apiService = {
@@ -57,9 +70,28 @@ export const apiService = {
     return response.json();
   },
 
-  async getActiveRide(userId: number): Promise<Ride | null> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/active/${userId}`);
+  async getActiveRide(userId: number, role?: SessionRole): Promise<Ride | null> {
+    const query = role ? `?role=${role}` : '';
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/active/${userId}${query}`);
     if (response.status === 404) return null;
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getPendingRequests(driverId: number): Promise<Ride[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/driver/${driverId}/pending`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getMyRides(scope: 'history' | 'scheduled', role: SessionRole): Promise<Ride[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/mine?scope=${scope}&role=${role}`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getSummary(role: SessionRole): Promise<AccountSummary> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/summary?role=${role}`);
     await assertOk(response);
     return response.json();
   },

@@ -866,3 +866,75 @@ def test_legacy_profile_links_only_after_email_verification(client):
     with client.session_factory() as db:
         uid = db.execute(text("SELECT firebase_uid FROM users WHERE id = 2")).scalar_one()
     assert uid == "uid-legacy"
+
+
+def test_my_rides_history_scheduled_and_summary(client):
+    scheduled = client.post(
+        "/api/rides?passenger_id=4",
+        json={
+            "driver_id": 1,
+            "origin": "UNC",
+            "destination": "CARACAS",
+            "is_scheduled": True,
+            "scheduled_time": "2030-01-10 08:00",
+            "payment_method": "pago_movil",
+            "payment_reference": "REF-999",
+            "fare_amount": 6.0,
+        },
+        headers=auth_headers(4),
+    ).json()
+
+    agenda = client.get("/api/rides/mine?scope=scheduled&role=pasajero", headers=auth_headers(4))
+    assert agenda.status_code == 200
+    assert [ride["id"] for ride in agenda.json()] == [scheduled["id"]]
+    assert agenda.json()[0]["payment_reference"] is None
+    # Desde la sesión de conductor, el mismo viaje aparece en la agenda del conductor.
+    assert len(client.get("/api/rides/mine?scope=scheduled&role=conductor", headers=auth_headers(1)).json()) == 1
+    assert client.get("/api/rides/mine?scope=scheduled&role=conductor", headers=auth_headers(4)).json() == []
+
+    for status in ("aceptado", "en_curso", "completado"):
+        set_ride_status(client, scheduled["id"], status)
+    history = client.get("/api/rides/mine?scope=history", headers=auth_headers(4)).json()
+    assert history[0]["status"] == "completado"
+    assert history[0]["driver_name"] == "Jairo"
+
+    summary = client.get("/api/users/me/summary?role=pasajero", headers=auth_headers(4)).json()
+    assert summary["trips_completed"] == 1
+    assert summary["scheduled_count"] == 0
+    assert summary["has_driver_profile"] is False
+    driver_summary = client.get("/api/users/me/summary?role=conductor", headers=auth_headers(1)).json()
+    assert driver_summary["trips_completed"] == 1
+    assert driver_summary["has_driver_profile"] is True
+
+    assert client.get("/api/rides/mine?scope=todo", headers=auth_headers(4)).status_code == 400
+    assert client.get("/api/rides/mine", headers={}).status_code == 401
+
+
+@pytest.mark.parametrize("scheduled_time", ["2020-01-01 08:00", "mañana", None])
+def test_scheduled_ride_must_be_in_the_future(client, scheduled_time):
+    response = client.post(
+        "/api/rides?passenger_id=4",
+        json={
+            "driver_id": 1,
+            "origin": "UNC",
+            "destination": "IVIC",
+            "is_scheduled": True,
+            "scheduled_time": scheduled_time,
+            "payment_method": "efectivo",
+            "fare_amount": 2.0,
+        },
+        headers=auth_headers(4),
+    )
+    assert response.status_code == 400
+
+
+def test_active_ride_respects_session_role(client):
+    ride_id = request_ride(client).json()["id"]
+    # El pasajero ve su solicitud pendiente; para el conductor aún es una solicitud, no un viaje activo.
+    assert client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()["id"] == ride_id
+    assert client.get("/api/rides/active/1?role=conductor", headers=auth_headers(1)).status_code == 404
+    assert client.get("/api/rides/driver/1/pending", headers=auth_headers(1)).json()[0]["id"] == ride_id
+
+    set_ride_status(client, ride_id, "aceptado")
+    assert client.get("/api/rides/active/1?role=conductor", headers=auth_headers(1)).json()["id"] == ride_id
+    assert client.get("/api/rides/active/1?role=pasajero", headers=auth_headers(1)).status_code == 404
