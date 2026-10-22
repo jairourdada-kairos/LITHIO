@@ -104,6 +104,44 @@ export interface WalletInfo {
   fund: { donated: number; donors: number };
 }
 
+export type BondType = 'nuevo' | 'iónico' | 'covalente';
+
+export interface LinkPerson {
+  link_id: number;
+  user_id: number;
+  name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+  friend_code: string | null;
+  element: { z: number; symbol: string; name: string };
+  fe_lifetime: number;
+  rides_together: number;
+  bond: BondType;
+}
+
+export interface LinksInfo {
+  my_code: string | null;
+  links: LinkPerson[];
+  incoming: LinkPerson[];
+  outgoing: LinkPerson[];
+}
+
+export interface WorkshopItem {
+  id: number;
+  title: string;
+  description: string | null;
+  cost: number;
+  icon: string;
+}
+
+export interface QuizResult {
+  correct: boolean;
+  correct_index: number;
+  fact: string;
+  fe_awarded: number;
+  points: number;
+}
+
 export interface QuizToday {
   date: string;
   question: string;
@@ -117,6 +155,16 @@ export interface QuizToday {
 }
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
+
+async function postJson<T = unknown>(path: string, body: unknown): Promise<T> {
+  const response = await authenticatedFetch(`${BACKEND_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  await assertOk(response);
+  return response.json();
+}
 
 async function assertOk(response: Response): Promise<void> {
   if (response.ok) return;
@@ -306,6 +354,55 @@ export const apiService = {
     const response = await authenticatedFetch(`${BACKEND_URL}/api/quiz/today`);
     await assertOk(response);
     return response.json();
+  },
+
+  async getLinks(): Promise<LinksInfo> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/links`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async requestLink(code: string): Promise<void> {
+    await postJson('/api/links', { code });
+  },
+
+  async acceptLink(linkId: number): Promise<void> {
+    await postJson(`/api/links/${linkId}/accept`, {});
+  },
+
+  async removeLink(linkId: number): Promise<void> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/links/${linkId}`, { method: 'DELETE' });
+    await assertOk(response);
+  },
+
+  async answerQuiz(option: number): Promise<QuizResult> {
+    return postJson('/api/quiz/today', { option });
+  },
+
+  async requestTopup(amount: number, reference: string): Promise<void> {
+    await postJson('/api/wallet/topups', { amount, reference });
+  },
+
+  async sendDiamonds(toCode: string, amount: number, note?: string): Promise<void> {
+    await postJson('/api/wallet/transfers', { to_code: toCode, amount, note: note || undefined });
+  },
+
+  async donate(amount: number): Promise<void> {
+    await postJson('/api/wallet/donations', { amount });
+  },
+
+  async requestWithdrawal(amount: number, destination: string): Promise<void> {
+    await postJson('/api/wallet/withdrawals', { amount, destination });
+  },
+
+  async getWorkshop(): Promise<WorkshopItem[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/wallet/workshop`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async redeemWorkshop(rewardId: number): Promise<void> {
+    await postJson(`/api/wallet/workshop/${rewardId}/redeem`, {});
   },
 
   async getLinksCount(): Promise<number> {

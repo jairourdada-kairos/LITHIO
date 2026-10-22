@@ -12,6 +12,7 @@ import { theme, themed } from '../../constants/theme';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService, WalletInfo, WalletTransaction } from '../../services/api';
+import { WalletActionSheet } from '../../components/WalletActionSheet';
 import type { SessionRole } from '../../services/session';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -21,7 +22,6 @@ export type WalletAction = 'recargar' | 'enviar' | 'donar' | 'retirar' | 'taller
 interface Props {
   role: SessionRole;
   reloadKey: number;
-  onAction: (action: WalletAction) => void;
 }
 
 const KIND_ICONS: Record<string, IconName> = {
@@ -37,7 +37,8 @@ const KIND_ICONS: Record<string, IconName> = {
 
 const STATUS_TEXT: Record<string, string> = { pendiente: 'En revisión', aprobado: '', rechazado: 'Rechazado' };
 
-export const WalletScreen: React.FC<Props> = ({ role, reloadKey, onAction }) => {
+export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
+  const [action, setAction] = useState<WalletAction | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, onAction }) => 
         ];
 
   return (
+    <>
     <ScrollView
       contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 56 }]}
       showsVerticalScrollIndicator={false}
@@ -89,7 +91,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, onAction }) => 
               key={action.key}
               containerStyle={styles.flex}
               style={styles.action}
-              onPress={() => onAction(action.key)}
+              onPress={() => setAction(action.key)}
               accessibilityLabel={action.label}
             >
               <View style={[styles.actionIcon, action.primary ? { backgroundColor: theme.colors.diamond } : null]}>
@@ -133,6 +135,8 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, onAction }) => 
         )}
       </View>
     </ScrollView>
+    <WalletActionSheet action={action} balance={wallet?.balance ?? 0} onClose={() => setAction(null)} onDone={load} />
+    </>
   );
 };
 

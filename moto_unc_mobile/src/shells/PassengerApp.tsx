@@ -26,12 +26,14 @@ import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { PassengerHome } from '../screens/passenger/PassengerHome';
 import { TripRequestScreen, TripSelection } from '../screens/passenger/TripRequestScreen';
 import { TripsScreen } from '../screens/shared/TripsScreen';
-import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
+import { WalletScreen } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
 import { LevelScreen } from '../screens/shared/LevelScreen';
 import { LevelsTableScreen } from '../screens/shared/LevelsTableScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
+import { LinksScreen } from '../screens/shared/LinksScreen';
+import { QuizScreen } from '../screens/shared/QuizScreen';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { FALLBACK_LEVEL } from '../utils/elements';
 import type { Driver, PaymentMethod, PresetRoute, Reward, ReviewSubmission } from '../types';
@@ -44,16 +46,14 @@ type Overlay =
   | { type: 'level' }
   | { type: 'levels' }
   | { type: 'admin' }
+  | { type: 'links' }
+  | { type: 'quiz' }
   | null;
 
 interface Props {
   user: AuthUser;
   onSignOut: () => void;
 }
-
-/** Secciones que llegan en la Fase 4C. */
-export const comingSoon = (title: string) =>
-  Alert.alert(title, 'Esta sección llega en la próxima entrega de LITHIO.');
 
 export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => {
   // Copia local para reflejar al instante cambios como la foto de perfil.
@@ -209,16 +209,6 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     }
   };
 
-  const onWalletAction = (action: WalletAction) => {
-    const titles: Record<WalletAction, string> = {
-      recargar: 'Recargar diamantes',
-      enviar: 'Enviar a un enlace',
-      donar: 'Donar al Fondo Solidario',
-      retirar: 'Retirar',
-      taller: 'Taller aliado',
-    };
-    comingSoon(titles[action]);
-  };
 
   const renderOverlay = () => {
     if (!overlay) return null;
@@ -249,6 +239,29 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     }
     if (overlay.type === 'levels') {
       return <LevelsTableScreen accent={theme.colors.primary} onBack={() => setOverlay({ type: 'level' })} />;
+    }
+    if (overlay.type === 'links') {
+      return (
+        <LinksScreen
+          accent={theme.colors.primary}
+          onBack={() => {
+            setOverlay(null);
+            apiService.getLinksCount().then(setLinksCount).catch(() => {});
+          }}
+        />
+      );
+    }
+    if (overlay.type === 'quiz') {
+      return (
+        <QuizScreen
+          accent={theme.colors.primary}
+          onBack={() => setOverlay(null)}
+          onAnswered={(points) => {
+            setQuizAnswered(true);
+            if (points !== undefined) setSummary((prev) => (prev ? { ...prev, points } : prev));
+          }}
+        />
+      );
     }
     if (overlay.type === 'admin') {
       return <AdminScreen onBack={() => setOverlay(null)} />;
@@ -286,7 +299,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           />
         );
       case 'wallet':
-        return <WalletScreen role="pasajero" reloadKey={reloadKey} onAction={onWalletAction} />;
+        return <WalletScreen role="pasajero" reloadKey={reloadKey} />;
       case 'profile':
         return (
           <AccountScreen
@@ -297,7 +310,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
             onEditPhoto={() => setAvatarSheetVisible(true)}
             onOpenLevel={() => setOverlay({ type: 'level' })}
             onOpenAdmin={summary?.is_admin ? () => setOverlay({ type: 'admin' }) : undefined}
-            onOpenLinks={() => comingSoon('Enlaces')}
+            onOpenLinks={() => setOverlay({ type: 'links' })}
             onOpenRewards={() => setRewardsVisible(true)}
             onOpenTutorial={() => setTutorialVisible(true)}
             onOpenAbout={() => setAboutVisible(true)}
@@ -319,8 +332,8 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
             onOpenActiveRide={() => setOverlay({ type: 'ride' })}
             onOpenWallet={() => setTab('wallet')}
             onOpenProfile={() => setTab('profile')}
-            onOpenQuiz={() => comingSoon('Reacción del día')}
-            onOpenLinks={() => comingSoon('Enlaces')}
+            onOpenQuiz={() => setOverlay({ type: 'quiz' })}
+            onOpenLinks={() => setOverlay({ type: 'links' })}
             onOpenRewards={() => setRewardsVisible(true)}
             onOpenAbout={() => setAboutVisible(true)}
           />

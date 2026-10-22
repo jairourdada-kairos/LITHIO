@@ -47,16 +47,32 @@ export async function pickAvatar(source: AvatarSource): Promise<string | null> {
   return result.assets[0].uri;
 }
 
-async function shrink(uri: string): Promise<string> {
-  try {
-    const context = ImageManipulator.manipulate(uri).resize({ width: 1024 });
-    const image = await context.renderAsync();
-    const saved = await image.saveAsync({ compress: 0.8, format: SaveFormat.JPEG });
-    return saved.uri;
-  } catch {
-    // Si el teléfono no puede reducirla, se sube la foto ya recortada.
-    return uri;
+/** Reduce la foto a 1024 px en JPG y la devuelve en base64. */
+async function shrinkToBase64(uri: string): Promise<string> {
+  const context = ImageManipulator.manipulate(uri).resize({ width: 1024 });
+  const image = await context.renderAsync();
+  const saved = await image.saveAsync({ compress: 0.8, format: SaveFormat.JPEG, base64: true });
+  if (!saved.base64) throw new Error('No se pudo preparar la foto. Intenta con otra.');
+  return saved.base64;
+}
+
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function base64ToBytes(base64: string): Uint8Array {
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const bytes = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let buffer = 0;
+  let bits = 0;
+  let index = 0;
+  for (const char of clean) {
+    buffer = (buffer << 6) | BASE64_ALPHABET.indexOf(char);
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes[index++] = (buffer >> bits) & 0xff;
+    }
   }
+  return bytes.subarray(0, index);
 }
 
 async function readError(response: Response): Promise<string> {
@@ -64,11 +80,18 @@ async function readError(response: Response): Promise<string> {
   return typeof body.detail === 'string' ? body.detail : `No se pudo guardar la foto (${response.status}).`;
 }
 
-/** Foto reducida lista para FormData (web: Blob; iOS/Android: { uri, name, type }). */
+/**
+ * Foto reducida lista para FormData.
+ *
+ * En iOS/Android, `fetch` es el de Expo (SDK 57): no acepta el formato
+ * `{ uri, name, type }` de React Native, pero sí objetos con `bytes()`.
+ * En la web se usa un Blob normal.
+ */
 export async function photoFormValue(uri: string, name = 'foto.jpg'): Promise<Blob> {
-  const small = await shrink(uri);
-  if (Platform.OS === 'web') return (await fetch(small)).blob();
-  return { uri: small, name, type: 'image/jpeg' } as unknown as Blob;
+  const base64 = await shrinkToBase64(uri);
+  const bytes = base64ToBytes(base64);
+  if (Platform.OS === 'web') return new Blob([bytes as BlobPart], { type: 'image/jpeg' });
+  return { name, type: 'image/jpeg', size: bytes.length, bytes: async () => bytes } as unknown as Blob;
 }
 
 /** Elige una foto de la galería sin recorte (p. ej. la captura de una nota). */
@@ -89,8 +112,13 @@ export async function uploadAvatar(uri: string): Promise<string> {
   let response: Response;
   try {
     response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/avatar`, { method: 'POST', body: form });
-  } catch {
-    throw new Error('No hay conexión con el servidor de LITHIO. Revisa tu Wi-Fi e intenta de nuevo.');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    throw new Error(
+      /network|internet|connect|timed out/i.test(message) || !message
+        ? 'No hay conexión con el servidor de LITHIO. Revisa tu Wi-Fi e intenta de nuevo.'
+        : `No se pudo enviar la foto: ${message}`
+    );
   }
   if (!response.ok) throw new Error(await readError(response));
   const body = await response.json();

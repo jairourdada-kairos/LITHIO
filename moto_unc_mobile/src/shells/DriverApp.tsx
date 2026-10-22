@@ -22,7 +22,7 @@ import { RequestSheet } from '../components/driver/RequestSheet';
 import { DriverHome } from '../screens/driver/DriverHome';
 import { DriverApplicationScreen } from '../screens/driver/DriverApplicationScreen';
 import { TripsScreen } from '../screens/shared/TripsScreen';
-import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
+import { WalletScreen } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
 import { LevelScreen } from '../screens/shared/LevelScreen';
@@ -30,7 +30,7 @@ import { LevelsTableScreen } from '../screens/shared/LevelsTableScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { FALLBACK_LEVEL } from '../utils/elements';
-import { comingSoon } from './PassengerApp';
+import { LinksScreen } from '../screens/shared/LinksScreen';
 import type { Ride, RideStatus } from '../types';
 
 type Tab = 'home' | 'trips' | 'wallet' | 'profile';
@@ -130,7 +130,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 }) => {
   const [tab, setTab] = useState<Tab>('home');
   const [profileOpen, setProfileOpen] = useState(false);
-  const [overlay, setOverlay] = useState<'level' | 'levels' | 'admin' | null>(null);
+  const [overlay, setOverlay] = useState<'level' | 'levels' | 'admin' | 'links' | null>(null);
   const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -233,16 +233,6 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     void respond(ride, status);
   };
 
-  const onWalletAction = (action: WalletAction) => {
-    const titles: Record<WalletAction, string> = {
-      recargar: 'Recargar diamantes',
-      enviar: 'Enviar a un enlace',
-      donar: 'Donar al Fondo Solidario',
-      retirar: 'Retirar ganancias',
-      taller: 'Taller aliado',
-    };
-    comingSoon(titles[action]);
-  };
 
   const renderTab = () => {
     if (overlay === 'level') {
@@ -257,12 +247,13 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     }
     if (overlay === 'levels') return <LevelsTableScreen accent={theme.colors.secondary} onBack={() => setOverlay('level')} />;
     if (overlay === 'admin') return <AdminScreen onBack={() => setOverlay(null)} />;
+    if (overlay === 'links') return <LinksScreen accent={theme.colors.secondary} onBack={() => setOverlay(null)} />;
     if (profileOpen) return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} />;
     switch (tab) {
       case 'trips':
         return <TripsScreen role="conductor" reloadKey={reloadKey} accent={theme.colors.secondary} />;
       case 'wallet':
-        return <WalletScreen role="conductor" reloadKey={reloadKey} onAction={onWalletAction} />;
+        return <WalletScreen role="conductor" reloadKey={reloadKey} />;
       case 'profile':
         return (
           <AccountScreen
@@ -273,7 +264,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
             onEditPhoto={() => setAvatarSheetVisible(true)}
             onOpenLevel={() => setOverlay('level')}
             onOpenAdmin={summary.is_admin ? () => setOverlay('admin') : undefined}
-            onOpenLinks={() => comingSoon('Enlaces')}
+            onOpenLinks={() => setOverlay('links')}
             onOpenTutorial={onOpenTutorial}
             onOpenAbout={onOpenAbout}
             onSignOut={onSignOut}
