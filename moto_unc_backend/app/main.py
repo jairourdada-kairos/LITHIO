@@ -39,10 +39,13 @@ from .schemas import (
     PassengerRegisterRequest, DriverRegisterRequest
 )
 from .seed import seed_database
+from . import wallet_service
+from .drivers import is_approved, require_approved_driver
+from .links_service import award_fe, level_for
+from .routers import driver_applications, links, quiz, wallet
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
-# Venezuela no cambia de horario: UTC-4 todo el año.
-VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")
+VENEZUELA_TZ = config.VENEZUELA_TZ
 # Estados en los que el conductor ya está ocupado con un pasajero.
 BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
 
@@ -76,6 +79,11 @@ cors_origins = [
 if "*" in cors_origins:
     raise ValueError("CORS_ALLOWED_ORIGINS no puede incluir el origen comodín.")
 
+app.include_router(wallet.router)
+app.include_router(links.router)
+app.include_router(quiz.router)
+app.include_router(driver_applications.router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -97,51 +105,7 @@ if os.path.isdir(dashboard_dir):
 # GESTOR DE CONEXIONES EN TIEMPO REAL (WEBSOCKETS)
 # Permite enviar notificaciones instantáneas a los teléfonos
 # -------------------------------------------------------------
-class ConnectionManager:
-    """Conexiones en memoria de este proceso.
-
-    Un usuario puede tener varias conexiones a la vez (teléfono y web, o una
-    reconexión que llega antes de que se cierre la anterior), así que se
-    guarda un conjunto por usuario. Para correr varias instancias del backend
-    habría que repartir los mensajes con Redis pub/sub.
-    """
-
-    def __init__(self):
-        # Mapea user_id -> conexiones abiertas
-        self.active_connections: Dict[int, Set[WebSocket]] = {}
-
-    def connect(self, user_id: int, websocket: WebSocket):
-        self.active_connections.setdefault(user_id, set()).add(websocket)
-
-    def disconnect(self, user_id: int, websocket: WebSocket):
-        connections = self.active_connections.get(user_id)
-        if connections is None:
-            return
-        connections.discard(websocket)
-        if not connections:
-            del self.active_connections[user_id]
-
-    def is_connected(self, user_id: int) -> bool:
-        return bool(self.active_connections.get(user_id))
-
-    async def _send(self, user_id: int, websocket: WebSocket, payload: str):
-        try:
-            await websocket.send_text(payload)
-        except (WebSocketDisconnect, RuntimeError, OSError):
-            self.disconnect(user_id, websocket)
-
-    async def send_personal_message(self, message: dict, user_id: int):
-        payload = json.dumps(message, default=str)
-        for connection in list(self.active_connections.get(user_id, ())):
-            await self._send(user_id, connection, payload)
-
-    async def broadcast(self, message: dict):
-        payload = json.dumps(message, default=str)
-        for user_id, connections in list(self.active_connections.items()):
-            for connection in list(connections):
-                await self._send(user_id, connection, payload)
-
-manager = ConnectionManager()
+from .realtime import manager  # noqa: E402  (gestor compartido de WebSockets)
 
 
 def serialize_ride_for_socket(ride: Ride) -> dict:
@@ -522,6 +486,7 @@ def create_admin_driver(payload: dict, db: Session = Depends(get_db)):
 
     driver_profile = DriverProfile(
         user_id=user.id,
+        verification_status="aprobado",
         moto_brand_model=payload.get("moto_brand_model", "Bera SBR 150"),
         moto_color=payload.get("moto_color", "Negro"),
         plate=payload.get("plate", "ABC123"),
@@ -897,7 +862,11 @@ def register_driver(
         moto_color=data.moto_color,
         plate=data.plate,
         helmet_provided=data.helmet_provided,
-        is_available=True,
+        # No aparece en el directorio hasta que el administrador lo apruebe.
+        is_available=False,
+        verification_status="pendiente",
+        license_number=data.license_number,
+        moto_year=data.moto_year,
         rating_avg=0.0,
         trips_count=0,
         current_location_tag="Entrada UNC - Altos Mirandinos",
@@ -917,7 +886,7 @@ def register_driver(
 @app.get("/api/drivers", response_model=List[DriverCardItem])
 def list_drivers(db: Session = Depends(get_db)):
     """Retorna el listado de conductores con su estado, moto y nivel"""
-    drivers = db.query(DriverProfile).join(User).all()
+    drivers = db.query(DriverProfile).join(User).filter(DriverProfile.verification_status == "aprobado").all()
     busy_driver_ids = {
         driver_id
         for (driver_id,) in db.query(Ride.driver_id).filter(Ride.status.in_(BUSY_RIDE_STATUSES)).distinct()
@@ -949,9 +918,7 @@ async def toggle_driver_availability(
     """El conductor cambia entre Disponible y Fuera de Servicio"""
     if current_user.id != driver_id:
         raise HTTPException(status_code=403, detail="Solo puedes cambiar tu propia disponibilidad.")
-    profile = db.query(DriverProfile).filter(DriverProfile.user_id == driver_id).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Perfil de conductor no encontrado")
+    profile = require_approved_driver(db, current_user)
     if req.is_available and driver_is_busy(db, driver_id):
         raise HTTPException(
             status_code=409,
@@ -993,11 +960,15 @@ async def request_ride(
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
     if driver.id == passenger.id:
         raise HTTPException(status_code=400, detail="No puedes solicitar un viaje a tu propia cuenta.")
-    if ride_data.payment_method not in {"efectivo", "pago_movil"}:
+    if ride_data.payment_method not in {"efectivo", "pago_movil", "diamantes"}:
         raise HTTPException(
             status_code=400,
-            detail="El pago con Fe o Diamantes aún no está habilitado. Usa efectivo o Pago Móvil.",
+            detail="Método de pago no válido. Usa efectivo, Pago Móvil o diamantes.",
         )
+    if not is_approved(driver.driver_profile):
+        raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
+    if ride_data.payment_method == "diamantes" and (passenger.diamonds_cents or 0) < wallet_service.to_cents(ride_data.fare_amount):
+        raise HTTPException(status_code=400, detail="No tienes diamantes suficientes para este viaje. Recarga tu billetera.")
     if ride_data.is_scheduled:
         try:
             scheduled_at = datetime.strptime(ride_data.scheduled_time or "", "%Y-%m-%d %H:%M")
@@ -1025,6 +996,10 @@ async def request_ride(
         points_rewarded=35
     )
     db.add(new_ride)
+    db.flush()
+    if new_ride.payment_method == "diamantes":
+        # La tarifa queda retenida y se cobra al completar el viaje.
+        wallet_service.hold_ride_payment(db, wallet_service.lock_user(db, passenger.id), new_ride)
     db.commit()
     db.refresh(new_ride)
 
@@ -1176,9 +1151,13 @@ def get_my_summary(
         "trips_completed": completed,
         "scheduled_count": scheduled,
         "points": current_user.points,
+        "diamonds": wallet_service.as_diamonds(current_user.diamonds_cents or 0),
+        "friend_code": current_user.friend_code,
+        "level": level_for(current_user.fe_lifetime or 0),
         "rating_avg": profile.rating_avg if profile else None,
         "is_available": profile.is_available if profile else None,
         "has_driver_profile": profile is not None,
+        "verification_status": profile.verification_status if profile else None,
     }
 
 
@@ -1230,13 +1209,16 @@ async def update_ride_status(
     if update.status == "cancelado" and old_status in BUSY_RIDE_STATUSES and driver_profile:
         driver_profile.is_available = True
         availability_changed = True
+    if update.status in {"cancelado", "rechazado"}:
+        wallet_service.refund_ride_payment(db, ride)
 
     # Si se completa el viaje, sumar Fe al pasajero e incrementar contador del conductor
     if update.status == "completado" and old_status != "completado":
         passenger = db.query(User).filter(User.id == ride.passenger_id).first()
         if passenger:
-            passenger.points += ride.points_rewarded
+            award_fe(passenger, ride.points_rewarded)
             fe_awarded = ride.points_rewarded
+        wallet_service.settle_ride_payment(db, ride)
 
         if driver_profile:
             driver_profile.trips_count += 1
@@ -1320,7 +1302,7 @@ def create_review(
     # Cada reseña útil suma 20 Fe al pasajero.
     passenger = db.query(User).filter(User.id == passenger_id).first()
     if passenger:
-        passenger.points += 20
+        award_fe(passenger, 20)
 
     # Recalcular promedio de estrellas del conductor
     driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()

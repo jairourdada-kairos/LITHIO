@@ -5,6 +5,7 @@ o un VPS) se definen en el panel del proveedor. Este módulo debe importarse
 antes que cualquier otro que lea variables de entorno.
 """
 import os
+from datetime import timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -30,3 +31,6 @@ def _normalize_database_url(url: str) -> str:
 DATABASE_URL = _normalize_database_url(
     os.getenv("DATABASE_URL", f"sqlite:///{(BACKEND_DIR / 'moto_unc.db').as_posix()}")
 )
+
+# Venezuela no cambia de horario: UTC-4 todo el año.
+VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")

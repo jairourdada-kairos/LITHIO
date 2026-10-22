@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .crypto import EncryptedString
@@ -24,6 +24,11 @@ class User(Base):
     points = Column(Integer, default=100)  # Bono de bienvenida de 100 puntos
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
+    # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.
+    diamonds_cents = Column(Integer, default=0, nullable=False)
+    # Fe ganado en total (no baja al canjear): define el nivel por elemento químico.
+    fe_lifetime = Column(Integer, default=0, nullable=False)
+    friend_code = Column(String(12), nullable=True, unique=True, index=True)  # Código de enlace, p. ej. Li-4F7Q
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relaciones
@@ -45,6 +50,14 @@ class DriverProfile(Base):
     rating_avg = Column(Float, default=5.0)
     trips_count = Column(Integer, default=0)
     current_location_tag = Column(String, default="Entrada UNC - Altos Mirandinos")
+    # Postulación: pendiente -> en_revision -> inspeccion -> aprobado | rechazado
+    verification_status = Column(String, default="pendiente", nullable=False)
+    verification_notes = Column(Text, nullable=True)  # Mensaje del administrador al conductor
+    inspection_date = Column(String, nullable=True)  # Cita para la inspección de la moto
+    license_number = Column(EncryptedString, nullable=True)
+    moto_year = Column(Integer, nullable=True)
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
     # Campos de pago del conductor
     binance_address = Column(EncryptedString, nullable=True)
     mobile_payment_number = Column(EncryptedString, nullable=True)
@@ -117,3 +130,61 @@ class Reward(Base):
     discount_percent = Column(Integer, default=20)
     icon = Column(String, default="gift")
     is_active = Column(Boolean, default=True)
+
+
+class WalletTransaction(Base):
+    """Movimiento de la billetera de diamantes. El saldo del usuario se actualiza
+    en la misma transacción de base de datos que crea este registro."""
+    __tablename__ = "wallet_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # recarga, retiro, envio, recepcion, donacion, pago_viaje, cobro_viaje, taller, reembolso
+    kind = Column(String, nullable=False)
+    amount_cents = Column(Integer, nullable=False)  # Positivo entra, negativo sale
+    # pendiente (en revisión o retenido), aprobado, rechazado
+    status = Column(String, default="aprobado", nullable=False)
+    counterpart_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    ride_id = Column(Integer, ForeignKey("rides.id"), nullable=True)
+    reward_id = Column(Integer, ForeignKey("workshop_rewards.id"), nullable=True)
+    reference = Column(EncryptedString, nullable=True)  # Referencia de Pago Móvil o datos de retiro
+    note = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+
+
+class WorkshopReward(Base):
+    """Servicios del taller aliado que los conductores canjean con diamantes."""
+    __tablename__ = "workshop_rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    cost_cents = Column(Integer, nullable=False)
+    icon = Column(String, default="wrench")
+    is_active = Column(Boolean, default=True)
+
+
+class Link(Base):
+    """Enlace (amistad) entre dos usuarios."""
+    __tablename__ = "links"
+    __table_args__ = (UniqueConstraint("requester_id", "addressee_id", name="uq_links_pair"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    addressee_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String, default="pendiente", nullable=False)  # pendiente, aceptado
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class QuizAnswer(Base):
+    """Respuesta a la Reacción del día: una por usuario y día."""
+    __tablename__ = "quiz_answers"
+    __table_args__ = (UniqueConstraint("user_id", "quiz_date", name="uq_quiz_user_day"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    quiz_date = Column(Date, nullable=False)
+    option_index = Column(Integer, nullable=False)
+    correct = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

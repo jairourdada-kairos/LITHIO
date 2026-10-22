@@ -1,5 +1,6 @@
 from .database import SessionLocal, engine, Base
-from .models import User, DriverProfile, Reward, Ride, Review, Route
+from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward
+from .links_service import assign_friend_code
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
 from datetime import datetime
@@ -83,10 +84,21 @@ ADDED_COLUMNS = {
         "cedula_hash": "VARCHAR(64)",
         "career": "VARCHAR",
         "semester": "VARCHAR",
+        "diamonds_cents": "INTEGER NOT NULL DEFAULT 0",
+        "fe_lifetime": "INTEGER NOT NULL DEFAULT 0",
+        "friend_code": "VARCHAR(12)",
     },
     "driver_profiles": {
         "mobile_payment_bank": "TEXT",
         "mobile_payment_id": "TEXT",
+        # Los conductores que ya existían antes de la verificación quedan aprobados.
+        "verification_status": "VARCHAR NOT NULL DEFAULT 'aprobado'",
+        "verification_notes": "TEXT",
+        "inspection_date": "VARCHAR",
+        "license_number": "TEXT",
+        "moto_year": "INTEGER",
+        "submitted_at": "TIMESTAMP",
+        "reviewed_at": "TIMESTAMP",
     },
 }
 
@@ -94,6 +106,7 @@ ADDED_COLUMNS = {
 ENCRYPTED_COLUMNS = {
     "users": ("phone", "cedula"),
     "driver_profiles": (
+        "license_number",
         "binance_address",
         "mobile_payment_number",
         "mobile_payment_bank",
@@ -113,7 +126,31 @@ def ensure_columns(db):
                 db.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}"))
     if "cedula_hash" not in {index["name"] for index in inspector.get_indexes("users")}:
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_cedula_hash ON users (cedula_hash)"))
+    db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_friend_code ON users (friend_code)"))
     db.commit()
+
+
+def backfill_user_fields(db):
+    """Código de enlace para todos y Fe histórico mínimo igual al saldo actual."""
+    for user in db.query(User).filter(User.friend_code.is_(None)).all():
+        assign_friend_code(db, user)
+    db.execute(text("UPDATE users SET fe_lifetime = points WHERE fe_lifetime < points"))
+    db.commit()
+
+
+WORKSHOP_CATALOG = [
+    {"title": "Cambio de aceite", "description": "Aceite y mano de obra en el taller aliado.", "cost_cents": 800, "icon": "oil"},
+    {"title": "Ajuste de cadena", "description": "Tensado y lubricación de la cadena.", "cost_cents": 300, "icon": "link-variant"},
+    {"title": "Lavado de moto", "description": "Lavado completo de la moto.", "cost_cents": 400, "icon": "water"},
+    {"title": "Mantenimiento general", "description": "Revisión de frenos, luces y cauchos.", "cost_cents": 1500, "icon": "wrench"},
+]
+
+
+def seed_workshop(db):
+    if db.query(WorkshopReward).count() == 0:
+        for item in WORKSHOP_CATALOG:
+            db.add(WorkshopReward(**item))
+        db.commit()
 
 
 def migrate_plaintext_columns(db):
@@ -154,6 +191,8 @@ def seed_database():
     db = SessionLocal()
     ensure_columns(db)
     migrate_plaintext_columns(db)
+    backfill_user_fields(db)
+    seed_workshop(db)
     sync_route_catalog(db)
     sync_legacy_reward_copy(db)
 
@@ -183,6 +222,7 @@ def seed_database():
         else:
             db.add(DriverProfile(
                 user_id=admin.id,
+                verification_status="aprobado",
                 moto_brand_model="Bera SBR 2026",
                 moto_color="Roja",
                 plate="AA9X12Y",
@@ -214,6 +254,7 @@ def seed_database():
 
     jairo_driver = DriverProfile(
         user_id=jairo.id,
+        verification_status="aprobado",
         moto_brand_model="Bera SBR 2026",
         moto_color="Roja",
         plate="AA9X12Y",

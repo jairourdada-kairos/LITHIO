@@ -82,6 +82,7 @@ def client(monkeypatch):
             moto_brand_model="Bera SBR 150",
             moto_color="Azul",
             plate="PRIVATE-PLATE",
+            verification_status="aprobado",
             is_available=True,
             mobile_payment_number="PRIVATE-PAYMENT",
             mobile_payment_bank="PRIVATE-BANK",
@@ -93,6 +94,7 @@ def client(monkeypatch):
             moto_brand_model="Keeway 150",
             moto_color="Rojo",
             plate="PRIVATE-PLATE-2",
+            verification_status="aprobado",
             is_available=True,
         ),
         DriverProfile(
@@ -100,6 +102,7 @@ def client(monkeypatch):
             moto_brand_model="Haojue 150",
             moto_color="Gris",
             plate="PRIVATE-PLATE-3",
+            verification_status="aprobado",
             is_available=False,
         ),
     ])

@@ -76,6 +76,8 @@ class DriverRegisterRequest(RegistrationFields):
     moto_brand_model: str = Field(default="Bera SBR 150", min_length=2, max_length=60)
     moto_color: str = Field(default="Negro", min_length=2, max_length=30)
     plate: str = Field(min_length=5, max_length=10)
+    license_number: Optional[str] = Field(default=None, min_length=5, max_length=20, description="Licencia de conducir")
+    moto_year: Optional[int] = Field(default=None, ge=1990, le=2030)
     helmet_provided: bool = True
     # Métodos de pago (al menos uno recomendado)
     binance_address: Optional[str] = None
