@@ -1,22 +1,36 @@
+from . import config  # Carga el .env antes que cualquier otro módulo de la app
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from typing import List, Dict
+from typing import List, Dict, Set
 import json
 import asyncio
 import os
 import re
 import urllib.request
 import urllib.error
-from dotenv import load_dotenv
 from datetime import datetime
 
-from .database import engine, get_db, Base
+from . import crypto
+from .database import engine, get_db, Base, SessionLocal
 from .models import User, DriverProfile, Ride, Review, Reward, Route
+from .auth import (
+    FirebaseIdentity,
+    get_current_user,
+    get_firebase_identity,
+    get_user_for_identity,
+    is_admin,
+    require_admin,
+    verify_firebase_token,
+)
 from .schemas import (
-    UserResponse, SwitchRoleRequest, DriverCardItem,
+    UserResponse, SwitchRoleRequest, DriverCardItem, DriverFinancialResponse,
+    AdminProfileResponse, AdminDriverResponse, AdminRouteResponse,
+    AdminRewardResponse,
     ToggleAvailabilityRequest, RideCreate, RideStatusUpdate,
     RideResponse, ReviewCreate, ReviewResponse,
     RewardResponse, RedeemRewardRequest,
@@ -24,25 +38,46 @@ from .schemas import (
 )
 from .seed import seed_database
 
-load_dotenv()
+ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
+# Estados en los que el conductor ya está ocupado con un pasajero.
+BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
 
-# Crear tablas y sembrar datos iniciales
-Base.metadata.create_all(bind=engine)
-seed_database()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Falla al arrancar si faltan las claves de cifrado, antes de tocar datos.
+    crypto.validate_configuration()
+    # Crear tablas, migrar columnas, cifrar datos heredados y sembrar datos iniciales
+    Base.metadata.create_all(bind=engine)
+    seed_database()
+    yield
+
 
 app = FastAPI(
     title="LITHIO API",
     description="Linked Intelligent Transport for Higher Innovative Opportunities (Transporte Inteligente Vinculado para Oportunidades Innovadoras).",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configuración de CORS
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:8080,http://127.0.0.1:8080",
+    ).split(",")
+    if origin.strip()
+]
+if "*" in cors_origins:
+    raise ValueError("CORS_ALLOWED_ORIGINS no puede incluir el origen comodín.")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Montar Dashboard Web (HTML / CSS / JS)
@@ -59,33 +94,87 @@ if os.path.isdir(dashboard_dir):
 # Permite enviar notificaciones instantáneas a los teléfonos
 # -------------------------------------------------------------
 class ConnectionManager:
+    """Conexiones en memoria de este proceso.
+
+    Un usuario puede tener varias conexiones a la vez (teléfono y web, o una
+    reconexión que llega antes de que se cierre la anterior), así que se
+    guarda un conjunto por usuario. Para correr varias instancias del backend
+    habría que repartir los mensajes con Redis pub/sub.
+    """
+
     def __init__(self):
-        # Mapea user_id -> WebSocket
-        self.active_connections: Dict[int, WebSocket] = {}
+        # Mapea user_id -> conexiones abiertas
+        self.active_connections: Dict[int, Set[WebSocket]] = {}
 
-    async def connect(self, user_id: int, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections[user_id] = websocket
+    def connect(self, user_id: int, websocket: WebSocket):
+        self.active_connections.setdefault(user_id, set()).add(websocket)
 
-    def disconnect(self, user_id: int):
-        if user_id in self.active_connections:
+    def disconnect(self, user_id: int, websocket: WebSocket):
+        connections = self.active_connections.get(user_id)
+        if connections is None:
+            return
+        connections.discard(websocket)
+        if not connections:
             del self.active_connections[user_id]
 
+    def is_connected(self, user_id: int) -> bool:
+        return bool(self.active_connections.get(user_id))
+
+    async def _send(self, user_id: int, websocket: WebSocket, payload: str):
+        try:
+            await websocket.send_text(payload)
+        except (WebSocketDisconnect, RuntimeError, OSError):
+            self.disconnect(user_id, websocket)
+
     async def send_personal_message(self, message: dict, user_id: int):
-        if user_id in self.active_connections:
-            try:
-                await self.active_connections[user_id].send_text(json.dumps(message))
-            except Exception:
-                self.disconnect(user_id)
+        payload = json.dumps(message, default=str)
+        for connection in list(self.active_connections.get(user_id, ())):
+            await self._send(user_id, connection, payload)
 
     async def broadcast(self, message: dict):
-        for user_id, connection in list(self.active_connections.items()):
-            try:
-                await connection.send_text(json.dumps(message))
-            except Exception:
-                self.disconnect(user_id)
+        payload = json.dumps(message, default=str)
+        for user_id, connections in list(self.active_connections.items()):
+            for connection in list(connections):
+                await self._send(user_id, connection, payload)
 
 manager = ConnectionManager()
+
+
+def serialize_ride_for_socket(ride: Ride) -> dict:
+    """Resumen del viaje que viaja por WebSocket (sin datos de pago)."""
+    return {
+        "id": ride.id,
+        "passenger_id": ride.passenger_id,
+        "driver_id": ride.driver_id,
+        "passenger_name": ride.passenger.name if ride.passenger else None,
+        "driver_name": ride.driver.name if ride.driver else None,
+        "origin": ride.origin,
+        "destination": ride.destination,
+        "is_scheduled": ride.is_scheduled,
+        "scheduled_time": ride.scheduled_time,
+        "status": ride.status,
+        "payment_method": ride.payment_method,
+        "fare_amount": ride.fare_amount,
+        "points_rewarded": ride.points_rewarded,
+        "created_at": ride.created_at.isoformat() if ride.created_at else None,
+    }
+
+
+def get_active_ride(db: Session, user_id: int) -> Ride | None:
+    return db.query(Ride).filter(
+        (Ride.passenger_id == user_id) | (Ride.driver_id == user_id),
+        Ride.status.in_(ACTIVE_RIDE_STATUSES),
+    ).order_by(Ride.id.desc()).first()
+
+
+def driver_is_busy(db: Session, driver_id: int, exclude_ride_id: int | None = None) -> bool:
+    query = db.query(Ride.id).filter(
+        Ride.driver_id == driver_id,
+        Ride.status.in_(BUSY_RIDE_STATUSES),
+    )
+    if exclude_ride_id is not None:
+        query = query.filter(Ride.id != exclude_ride_id)
+    return query.first() is not None
 
 
 @app.get("/webhooks/whatsapp")
@@ -142,16 +231,104 @@ async def notify_driver_whatsapp(driver: User, ride: Ride) -> str:
     except (urllib.error.URLError, urllib.error.HTTPError):
         return "failed"
 
-@app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: int):
-    await manager.connect(user_id, websocket)
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    user_id = None
+    await websocket.accept()
     try:
+        try:
+            raw_auth_message = await asyncio.wait_for(
+                websocket.receive_text(),
+                timeout=10,
+            )
+        except asyncio.TimeoutError:
+            await websocket.close(code=1008, reason="Tiempo de autenticación agotado")
+            return
+
+        if len(raw_auth_message) > 8192:
+            await websocket.close(code=1008, reason="Mensaje de autenticación no válido")
+            return
+
+        try:
+            auth_message = json.loads(raw_auth_message)
+        except json.JSONDecodeError:
+            await websocket.close(code=1008, reason="Mensaje de autenticación no válido")
+            return
+
+        if not isinstance(auth_message, dict) or auth_message.get("type") != "AUTH":
+            await websocket.close(code=1008, reason="Autenticación requerida")
+            return
+
+        token = auth_message.get("token")
+        if not isinstance(token, str) or not token:
+            await websocket.close(code=1008, reason="Autenticación requerida")
+            return
+
+        identity = verify_firebase_token(token)
+        db = SessionLocal()
+        try:
+            user = get_user_for_identity(identity, db)
+            user_id = user.id
+            active_ride = get_active_ride(db, user_id)
+            snapshot = serialize_ride_for_socket(active_ride) if active_ride else None
+        finally:
+            db.close()
+
+        manager.connect(user_id, websocket)
+        await websocket.send_json({"type": "AUTHENTICATED", "user_id": user_id})
+        # Tras cada (re)conexión el cliente recibe el viaje activo para
+        # recuperar cualquier cambio de estado que se perdió estando offline.
+        await websocket.send_json({"type": "ACTIVE_RIDE_SYNC", "ride": snapshot})
         while True:
-            data = await websocket.receive_text()
-            # Mantiene el canal vivo con ping/pong o mensajes bidireccionales
-            pass
+            raw_message = await websocket.receive_text()
+            if len(raw_message) > 8192:
+                continue
+            try:
+                message = json.loads(raw_message)
+            except json.JSONDecodeError:
+                continue
+            # Latido de la app para detectar conexiones muertas (redes móviles).
+            if isinstance(message, dict) and message.get("type") == "PING":
+                await websocket.send_json({"type": "PONG"})
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        pass
+    except HTTPException:
+        await websocket.close(code=1008, reason="Sesión no válida")
+    finally:
+        if user_id is not None:
+            manager.disconnect(user_id, websocket)
+
+
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    """Usado por Railway/Render para saber si el servicio está vivo."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+    return {"status": "ok", "environment": config.APP_ENV}
+
+
+@app.get("/api/auth/config")
+def get_firebase_web_config():
+    api_key = os.getenv("FIREBASE_WEB_API_KEY")
+    project_id = os.getenv("FIREBASE_PROJECT_ID")
+    if not api_key or not project_id:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Configura FIREBASE_PROJECT_ID y FIREBASE_WEB_API_KEY "
+                "en moto_unc_backend/.env y reinicia el backend."
+            ),
+        )
+    return {
+        "apiKey": api_key,
+        "authDomain": os.getenv(
+            "FIREBASE_AUTH_DOMAIN",
+            f"{project_id}.firebaseapp.com",
+        ),
+        "projectId": project_id,
+    }
 
 
 # -------------------------------------------------------------
@@ -238,7 +415,12 @@ def get_preset_routes(db: Session = Depends(get_db)):
     ]
 
 
-@app.post("/api/admin/routes", status_code=201)
+@app.post(
+    "/api/admin/routes",
+    status_code=201,
+    response_model=AdminRouteResponse,
+    dependencies=[Depends(require_admin)],
+)
 def create_route_admin(payload: dict, db: Session = Depends(get_db)):
     route = Route(
         origin=payload.get("origin", ""),
@@ -262,7 +444,11 @@ def create_route_admin(payload: dict, db: Session = Depends(get_db)):
     }
 
 
-@app.put("/api/admin/routes/{route_id}")
+@app.put(
+    "/api/admin/routes/{route_id}",
+    response_model=AdminRouteResponse,
+    dependencies=[Depends(require_admin)],
+)
 def update_route_admin(route_id: int, payload: dict, db: Session = Depends(get_db)):
     route = db.query(Route).filter(Route.id == route_id).first()
     if not route:
@@ -291,7 +477,7 @@ def update_route_admin(route_id: int, payload: dict, db: Session = Depends(get_d
     }
 
 
-@app.delete("/api/admin/routes/{route_id}")
+@app.delete("/api/admin/routes/{route_id}", dependencies=[Depends(require_admin)])
 def delete_route_admin(route_id: int, db: Session = Depends(get_db)):
     route = db.query(Route).filter(Route.id == route_id).first()
     if not route:
@@ -301,7 +487,12 @@ def delete_route_admin(route_id: int, db: Session = Depends(get_db)):
     return {"message": "Ruta eliminada correctamente"}
 
 
-@app.post("/api/admin/drivers", status_code=201)
+@app.post(
+    "/api/admin/drivers",
+    status_code=201,
+    response_model=AdminDriverResponse,
+    dependencies=[Depends(require_admin)],
+)
 def create_admin_driver(payload: dict, db: Session = Depends(get_db)):
     email = payload.get("email")
     if not email:
@@ -348,10 +539,14 @@ def create_admin_driver(payload: dict, db: Session = Depends(get_db)):
     }
 
 
-@app.put("/api/admin/profile/{user_id}")
+@app.put(
+    "/api/admin/profile/{user_id}",
+    response_model=AdminProfileResponse,
+    dependencies=[Depends(require_admin)],
+)
 def update_admin_profile(user_id: int, payload: dict, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id, User.role.in_(["admin", "ambos"])).first()
-    if not user:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not is_admin(user):
         raise HTTPException(status_code=404, detail="Administrador no encontrado")
     for field in ("name", "email", "phone"):
         if field in payload:
@@ -361,7 +556,7 @@ def update_admin_profile(user_id: int, payload: dict, db: Session = Depends(get_
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone}
 
 
-@app.delete("/api/admin/drivers/{driver_id}")
+@app.delete("/api/admin/drivers/{driver_id}", dependencies=[Depends(require_admin)])
 def delete_admin_driver(driver_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == driver_id).first()
     if not user:
@@ -374,7 +569,11 @@ def delete_admin_driver(driver_id: int, db: Session = Depends(get_db)):
     return {"message": "Conductor eliminado correctamente"}
 
 
-@app.put("/api/admin/drivers/{driver_id}")
+@app.put(
+    "/api/admin/drivers/{driver_id}",
+    response_model=AdminDriverResponse,
+    dependencies=[Depends(require_admin)],
+)
 def update_admin_driver(driver_id: int, payload: dict, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == driver_id).first()
     profile = db.query(DriverProfile).filter(DriverProfile.user_id == driver_id).first()
@@ -410,7 +609,12 @@ def update_admin_driver(driver_id: int, payload: dict, db: Session = Depends(get
     }
 
 
-@app.post("/api/admin/rewards", status_code=201)
+@app.post(
+    "/api/admin/rewards",
+    status_code=201,
+    response_model=AdminRewardResponse,
+    dependencies=[Depends(require_admin)],
+)
 def create_admin_reward(payload: dict, db: Session = Depends(get_db)):
     reward = Reward(
         title=payload.get("title", "Recompensa"),
@@ -434,7 +638,11 @@ def create_admin_reward(payload: dict, db: Session = Depends(get_db)):
     }
 
 
-@app.put("/api/admin/rewards/{reward_id}")
+@app.put(
+    "/api/admin/rewards/{reward_id}",
+    response_model=AdminRewardResponse,
+    dependencies=[Depends(require_admin)],
+)
 def update_admin_reward(reward_id: int, payload: dict, db: Session = Depends(get_db)):
     reward = db.query(Reward).filter(Reward.id == reward_id).first()
     if not reward:
@@ -463,7 +671,7 @@ def update_admin_reward(reward_id: int, payload: dict, db: Session = Depends(get
     }
 
 
-@app.delete("/api/admin/rewards/{reward_id}")
+@app.delete("/api/admin/rewards/{reward_id}", dependencies=[Depends(require_admin)])
 def delete_admin_reward(reward_id: int, db: Session = Depends(get_db)):
     reward = db.query(Reward).filter(Reward.id == reward_id).first()
     if not reward:
@@ -476,27 +684,58 @@ def delete_admin_reward(reward_id: int, db: Session = Depends(get_db)):
 # -------------------------------------------------------------
 # PERFILES Y ROLES DE USUARIO
 # -------------------------------------------------------------
-@app.get("/api/users/by-email", response_model=UserResponse)
-def get_user_by_email(email: str, db: Session = Depends(get_db)):
-    """Obtiene el perfil para el inicio de sesión móvil por correo."""
-    user = db.query(User).filter(User.email == email.strip().lower()).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+@app.get("/api/users/me", response_model=UserResponse)
+def get_my_user(user: User = Depends(get_current_user)):
     return user
 
 
+@app.get("/api/admin/me", response_model=AdminProfileResponse)
+def get_admin_profile(user: User = Depends(require_admin)):
+    return user
+
+
+@app.get("/api/users/me/financial", response_model=DriverFinancialResponse)
+def get_my_financial_profile(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(DriverProfile).filter(DriverProfile.user_id == user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Perfil de conductor no encontrado")
+    return profile
+
+
 @app.get("/api/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.id != user_id and not is_admin(current_user):
+        raise HTTPException(status_code=403, detail="No puedes consultar el perfil de otro usuario.")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return user
 
 @app.post("/api/users/{user_id}/switch-role")
-def switch_user_role(user_id: int, req: SwitchRoleRequest, db: Session = Depends(get_db)):
+def switch_user_role(
+    user_id: int,
+    req: SwitchRoleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Solo puedes cambiar tu propio rol.")
+    if req.new_role not in {"pasajero", "conductor", "ambos"}:
+        raise HTTPException(status_code=400, detail="El rol solicitado no es válido.")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if req.new_role in {"conductor", "ambos"}:
+        profile = db.query(DriverProfile).filter(DriverProfile.user_id == user_id).first()
+        if not profile:
+            raise HTTPException(status_code=400, detail="Debes registrar un perfil de conductor primero.")
     user.role = req.new_role
     db.commit()
     return {"message": f"Rol cambiado a {req.new_role}", "role": user.role}
@@ -506,29 +745,46 @@ def switch_user_role(user_id: int, req: SwitchRoleRequest, db: Session = Depends
 # REGISTRO DE NUEVOS USUARIOS (PASAJERO Y CONDUCTOR)
 # -------------------------------------------------------------
 @app.post("/api/passengers/register", response_model=UserResponse, status_code=201)
-def register_passenger(data: PassengerRegisterRequest, db: Session = Depends(get_db)):
+def register_passenger(
+    data: PassengerRegisterRequest,
+    identity: FirebaseIdentity = Depends(get_firebase_identity),
+    db: Session = Depends(get_db),
+):
     """
     Registra un nuevo pasajero. Acepta datos extra (last_name, age) y
     opcionalmente el UID de Firebase para usuarios que se autentican
     con Google o Facebook.
     """
-    # Verificar email único
-    existing = db.query(User).filter(User.email == data.email).first()
+    email = data.email.strip().lower()
+    if not identity.email or identity.email != email:
+        raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
+    existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe una cuenta con ese correo electrónico."
-        )
+        if existing.role == "pasajero":
+            return existing
+        raise HTTPException(status_code=409, detail="Esta cuenta ya tiene un perfil.")
+    existing_email = db.query(User).filter(User.email == email).first()
+    if existing_email:
+        if (
+            identity.email_verified
+            and not existing_email.firebase_uid
+            and existing_email.role in {"pasajero", "ambos"}
+        ):
+            existing_email.firebase_uid = identity.uid
+            db.commit()
+            db.refresh(existing_email)
+            return existing_email
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
     new_user = User(
         name=data.name,
         last_name=data.last_name,
         age=data.age,
-        email=data.email,
+        email=email,
         phone=data.phone,
         role="pasajero",
         avatar_url=data.avatar_url,
-        firebase_uid=data.firebase_uid,
+        firebase_uid=identity.uid,
         points=100,  # Bono de bienvenida
         xp_level="Pasajero Novato"
     )
@@ -539,28 +795,46 @@ def register_passenger(data: PassengerRegisterRequest, db: Session = Depends(get
 
 
 @app.post("/api/drivers/register", response_model=UserResponse, status_code=201)
-def register_driver(data: DriverRegisterRequest, db: Session = Depends(get_db)):
+def register_driver(
+    data: DriverRegisterRequest,
+    identity: FirebaseIdentity = Depends(get_firebase_identity),
+    db: Session = Depends(get_db),
+):
     """
     Registra un nuevo conductor con datos personales, de la moto y
     métodos de pago (Binance, pago móvil, cuenta bancaria).
     """
-    # Verificar email único
-    existing = db.query(User).filter(User.email == data.email).first()
+    email = data.email.strip().lower()
+    if not identity.email or identity.email != email:
+        raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
+    existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe una cuenta con ese correo electrónico."
-        )
+        if existing.role == "conductor" and existing.driver_profile:
+            return existing
+        raise HTTPException(status_code=409, detail="Esta cuenta ya tiene un perfil.")
+    existing_email = db.query(User).filter(User.email == email).first()
+    if existing_email:
+        if (
+            identity.email_verified
+            and not existing_email.firebase_uid
+            and existing_email.role in {"conductor", "ambos"}
+            and existing_email.driver_profile
+        ):
+            existing_email.firebase_uid = identity.uid
+            db.commit()
+            db.refresh(existing_email)
+            return existing_email
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
     new_user = User(
         name=data.name,
         last_name=data.last_name,
         age=data.age,
-        email=data.email,
+        email=email,
         phone=data.phone,
         role="conductor",
         avatar_url=data.avatar_url,
-        firebase_uid=data.firebase_uid,
+        firebase_uid=identity.uid,
         points=100,
         xp_level="Conductor Novato"
     )
@@ -594,26 +868,24 @@ def register_driver(data: DriverRegisterRequest, db: Session = Depends(get_db)):
 def list_drivers(db: Session = Depends(get_db)):
     """Retorna el listado de conductores con su estado, moto y nivel"""
     drivers = db.query(DriverProfile).join(User).all()
+    busy_driver_ids = {
+        driver_id
+        for (driver_id,) in db.query(Ride.driver_id).filter(Ride.status.in_(BUSY_RIDE_STATUSES)).distinct()
+    }
     results = []
     for dp in drivers:
         results.append(DriverCardItem(
             user_id=dp.user.id,
             name=dp.user.name,
-            phone=dp.user.phone,
             avatar_url=dp.user.avatar_url,
             moto_brand_model=dp.moto_brand_model,
             moto_color=dp.moto_color,
-            plate=dp.plate,
             helmet_provided=dp.helmet_provided,
-            is_available=dp.is_available,
+            # Un conductor con un viaje aceptado nunca aparece disponible.
+            is_available=dp.is_available and dp.user_id not in busy_driver_ids,
             rating_avg=dp.rating_avg,
             trips_count=dp.trips_count,
             xp_level=dp.user.xp_level,
-            current_location_tag=dp.current_location_tag,
-            mobile_payment_number=dp.mobile_payment_number,
-            mobile_payment_bank=dp.mobile_payment_bank,
-            mobile_payment_id=dp.mobile_payment_id,
-            bank_account_number=dp.bank_account_number
         ))
     return results
 
@@ -621,12 +893,20 @@ def list_drivers(db: Session = Depends(get_db)):
 async def toggle_driver_availability(
     driver_id: int, 
     req: ToggleAvailabilityRequest, 
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """El conductor cambia entre Disponible y Fuera de Servicio"""
+    if current_user.id != driver_id:
+        raise HTTPException(status_code=403, detail="Solo puedes cambiar tu propia disponibilidad.")
     profile = db.query(DriverProfile).filter(DriverProfile.user_id == driver_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Perfil de conductor no encontrado")
+    if req.is_available and driver_is_busy(db, driver_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Tienes un viaje en curso. Finalízalo antes de marcarte como disponible.",
+        )
     profile.is_available = req.is_available
     db.commit()
 
@@ -645,27 +925,36 @@ async def toggle_driver_availability(
 # -------------------------------------------------------------
 @app.post("/api/rides", response_model=RideResponse)
 async def request_ride(
-    passenger_id: int, 
     ride_data: RideCreate, 
+    passenger_id: int | None = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Un pasajero solicita un viaje eligiendo directamente a su conductor.
     Envía una alerta en tiempo real a la app del conductor seleccionado.
     """
-    passenger = db.query(User).filter(User.id == passenger_id).first()
+    if passenger_id is not None and passenger_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No puedes solicitar un viaje como otro usuario.")
+    passenger = current_user
     driver = db.query(User).filter(User.id == ride_data.driver_id).first()
 
-    if not passenger or not driver:
+    if not driver or not driver.driver_profile:
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
+    if driver.id == passenger.id:
+        raise HTTPException(status_code=400, detail="No puedes solicitar un viaje a tu propia cuenta.")
     if ride_data.payment_method not in {"efectivo", "pago_movil"}:
         raise HTTPException(
             status_code=400,
             detail="El pago con Fe o Diamantes aún no está habilitado. Usa efectivo o Pago Móvil.",
         )
+    if get_active_ride(db, passenger.id):
+        raise HTTPException(status_code=409, detail="Ya tienes un viaje activo. Finalízalo o cancélalo primero.")
+    if not driver.driver_profile.is_available or driver_is_busy(db, driver.id):
+        raise HTTPException(status_code=409, detail="Este conductor no está disponible en este momento.")
 
     new_ride = Ride(
-        passenger_id=passenger_id,
+        passenger_id=passenger.id,
         driver_id=ride_data.driver_id,
         origin=ride_data.origin,
         destination=ride_data.destination,
@@ -695,7 +984,8 @@ async def request_ride(
             "is_scheduled": new_ride.is_scheduled,
             "scheduled_time": new_ride.scheduled_time,
             "fare_amount": new_ride.fare_amount,
-            "payment_method": new_ride.payment_method
+            "payment_method": new_ride.payment_method,
+            "ride": serialize_ride_for_socket(new_ride),
         },
         user_id=ride_data.driver_id
     )
@@ -704,11 +994,24 @@ async def request_ride(
     resp.passenger_name = passenger.name
     resp.driver_name = driver.name
     resp.whatsapp_status = whatsapp_status
+    driver_profile = driver.driver_profile
+    if ride_data.payment_method == "pago_movil" and driver_profile:
+        resp.driver_mobile_payment_number = driver_profile.mobile_payment_number
+        resp.driver_mobile_payment_bank = driver_profile.mobile_payment_bank
+        resp.driver_mobile_payment_id = driver_profile.mobile_payment_id
+        resp.driver_bank_account_number = driver_profile.bank_account_number
+        resp.driver_binance_address = driver_profile.binance_address
     return resp
 
 @app.get("/api/rides/driver/{driver_id}/pending", response_model=List[RideResponse])
-def get_pending_rides_for_driver(driver_id: int, db: Session = Depends(get_db)):
+def get_pending_rides_for_driver(
+    driver_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Viajes pendientes por aceptar para este conductor"""
+    if current_user.id != driver_id:
+        raise HTTPException(status_code=403, detail="Solo el conductor asignado puede ver estas solicitudes.")
     rides = db.query(Ride).filter(
         Ride.driver_id == driver_id, 
         Ride.status == "solicitado"
@@ -722,8 +1025,14 @@ def get_pending_rides_for_driver(driver_id: int, db: Session = Depends(get_db)):
     return results
 
 @app.get("/api/rides/active/{user_id}", response_model=RideResponse)
-def get_active_ride_for_user(user_id: int, db: Session = Depends(get_db)):
+def get_active_ride_for_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Obtiene el viaje activo de un usuario (sea pasajero o conductor)"""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Solo puedes consultar tus propios viajes.")
     ride = db.query(Ride).filter(
         ((Ride.passenger_id == user_id) | (Ride.driver_id == user_id)),
         Ride.status.in_(["solicitado", "aceptado", "en_camino", "en_curso"])
@@ -735,12 +1044,21 @@ def get_active_ride_for_user(user_id: int, db: Session = Depends(get_db)):
     res = RideResponse.model_validate(ride)
     res.passenger_name = ride.passenger.name
     res.driver_name = ride.driver.name
+    if current_user.id == ride.passenger_id and ride.status in {"aceptado", "en_camino", "en_curso"}:
+        profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
+        if profile:
+            res.driver_mobile_payment_number = profile.mobile_payment_number
+            res.driver_mobile_payment_bank = profile.mobile_payment_bank
+            res.driver_mobile_payment_id = profile.mobile_payment_id
+            res.driver_bank_account_number = profile.bank_account_number
+            res.driver_binance_address = profile.binance_address
     return res
 
 @app.put("/api/rides/{ride_id}/status")
 async def update_ride_status(
     ride_id: int, 
     update: RideStatusUpdate, 
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -751,9 +1069,39 @@ async def update_ride_status(
     if not ride:
         raise HTTPException(status_code=404, detail="Viaje no encontrado")
 
+    driver_actions = {"aceptado", "rechazado", "en_camino", "en_curso", "completado"}
+    if update.status not in driver_actions | {"cancelado"}:
+        raise HTTPException(status_code=400, detail="El estado solicitado no es válido.")
+    if update.status in driver_actions and current_user.id != ride.driver_id:
+        raise HTTPException(status_code=403, detail="Solo el conductor asignado puede actualizar este estado.")
+    if update.status == "cancelado" and current_user.id not in {ride.passenger_id, ride.driver_id}:
+        raise HTTPException(status_code=403, detail="Solo los participantes pueden cancelar este viaje.")
+
+    transitions = {
+        "solicitado": {"aceptado", "rechazado", "cancelado"},
+        "aceptado": {"en_camino", "en_curso", "cancelado"},
+        "en_camino": {"en_curso", "cancelado"},
+        "en_curso": {"completado", "cancelado"},
+    }
+    if update.status not in transitions.get(ride.status, set()):
+        raise HTTPException(status_code=400, detail="La transición de estado no está permitida.")
+
+    driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
+    if update.status == "aceptado" and driver_is_busy(db, ride.driver_id, exclude_ride_id=ride.id):
+        raise HTTPException(status_code=409, detail="Ya tienes un viaje aceptado. Finalízalo antes de aceptar otro.")
+
     old_status = ride.status
     ride.status = update.status
     fe_awarded = 0
+    availability_changed = False
+
+    # Mientras atiende un viaje, el conductor sale del directorio de disponibles.
+    if update.status == "aceptado" and driver_profile and driver_profile.is_available:
+        driver_profile.is_available = False
+        availability_changed = True
+    if update.status == "cancelado" and old_status in BUSY_RIDE_STATUSES and driver_profile:
+        driver_profile.is_available = True
+        availability_changed = True
 
     # Si se completa el viaje, sumar Fe al pasajero e incrementar contador del conductor
     if update.status == "completado" and old_status != "completado":
@@ -762,22 +1110,32 @@ async def update_ride_status(
             passenger.points += ride.points_rewarded
             fe_awarded = ride.points_rewarded
 
-        driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
         if driver_profile:
             driver_profile.trips_count += 1
             driver_profile.is_available = True  # Vuelve a quedar disponible
+            availability_changed = True
 
     db.commit()
+    db.refresh(ride)
 
-    # Avisar al pasajero del cambio de estado
-    await manager.send_personal_message(
-        {
-            "type": "RIDE_STATUS_UPDATED",
-            "ride_id": ride.id,
-            "new_status": update.status
-        },
-        user_id=ride.passenger_id
-    )
+    # Avisar a ambos participantes (el conductor puede tener varios dispositivos)
+    status_message = {
+        "type": "RIDE_STATUS_UPDATED",
+        "ride_id": ride.id,
+        "new_status": update.status,
+        "previous_status": old_status,
+        "fe_awarded": fe_awarded,
+        "ride": serialize_ride_for_socket(ride),
+    }
+    for participant_id in {ride.passenger_id, ride.driver_id}:
+        await manager.send_personal_message(status_message, user_id=participant_id)
+
+    if availability_changed and driver_profile:
+        await manager.broadcast({
+            "type": "DRIVER_AVAILABILITY_CHANGED",
+            "driver_id": ride.driver_id,
+            "is_available": driver_profile.is_available,
+        })
 
     return {"message": "Estado del viaje actualizado", "status": ride.status, "fe_awarded": fe_awarded}
 
@@ -786,13 +1144,18 @@ async def update_ride_status(
 # CALIFICACIÓN Y GAMIFICACIÓN (RESEÑAS & FE)
 # -------------------------------------------------------------
 @app.post("/api/reviews", response_model=ReviewResponse)
-def create_review(rev_data: ReviewCreate, passenger_id: int, db: Session = Depends(get_db)):
+def create_review(
+    rev_data: ReviewCreate,
+    passenger_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """El pasajero califica al conductor y gana Fe por una reseña útil."""
     ride = db.query(Ride).filter(Ride.id == rev_data.ride_id).first()
     if not ride:
         raise HTTPException(status_code=404, detail="Viaje no encontrado")
 
-    if ride.passenger_id != passenger_id:
+    if passenger_id != current_user.id or ride.passenger_id != current_user.id:
         raise HTTPException(status_code=403, detail="Este viaje no pertenece a este pasajero")
     if ride.status != "completado":
         raise HTTPException(status_code=400, detail="Solo puedes calificar un viaje completado")
@@ -848,8 +1211,15 @@ def get_rewards(db: Session = Depends(get_db)):
     return db.query(Reward).filter(Reward.is_active == True).all()
 
 @app.post("/api/gamification/redeem")
-def redeem_reward(user_id: int, req: RedeemRewardRequest, db: Session = Depends(get_db)):
+def redeem_reward(
+    user_id: int,
+    req: RedeemRewardRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Canjea una recompensa descontando Fe del usuario."""
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo puedes canjear recompensas para tu cuenta.")
     user = db.query(User).filter(User.id == user_id).first()
     reward = db.query(Reward).filter(Reward.id == req.reward_id).first()
 

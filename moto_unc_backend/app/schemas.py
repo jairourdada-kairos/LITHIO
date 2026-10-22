@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
 from datetime import datetime
 
 # --- USUARIOS & AUTENTICACIÓN ---
@@ -19,7 +19,6 @@ class PassengerRegisterRequest(BaseModel):
     age: int
     phone: str
     email: str
-    firebase_uid: Optional[str] = None  # UID de Firebase Auth (Google/Facebook)
     avatar_url: Optional[str] = None
 
 # --- REGISTRO DE CONDUCTOR ---
@@ -29,7 +28,6 @@ class DriverRegisterRequest(BaseModel):
     age: int
     phone: str
     email: str
-    firebase_uid: Optional[str] = None
     avatar_url: Optional[str] = None
     # Datos de la moto
     moto_brand_model: str = "Bera SBR 150"
@@ -43,24 +41,6 @@ class DriverRegisterRequest(BaseModel):
     mobile_payment_id: Optional[str] = None
     bank_account_number: Optional[str] = None
 
-class DriverProfileBase(BaseModel):
-    moto_brand_model: str
-    moto_color: str
-    plate: str
-    helmet_provided: bool = True
-    is_available: bool = True
-    rating_avg: float = 0.0
-    trips_count: int = 0
-    current_location_tag: str = "Entrada UNC"
-    binance_address: Optional[str] = None
-    mobile_payment_number: Optional[str] = None
-    bank_account_number: Optional[str] = None
-
-class DriverProfileResponse(DriverProfileBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    user_id: int
-
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -69,9 +49,52 @@ class UserResponse(UserBase):
     avatar_url: Optional[str] = None
     points: int
     xp_level: str
-    firebase_uid: Optional[str] = None
     created_at: datetime
-    driver_profile: Optional[DriverProfileResponse] = None
+
+class DriverFinancialResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    binance_address: Optional[str] = None
+    mobile_payment_number: Optional[str] = None
+    mobile_payment_bank: Optional[str] = None
+    mobile_payment_id: Optional[str] = None
+    bank_account_number: Optional[str] = None
+
+class AdminProfileResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str
+
+class AdminDriverResponse(BaseModel):
+    id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    moto_brand_model: Optional[str] = None
+    plate: Optional[str] = None
+    is_available: Optional[bool] = None
+    rating_avg: Optional[float] = None
+    trips_count: Optional[int] = None
+    xp_level: Optional[str] = None
+
+class AdminRouteResponse(BaseModel):
+    id: int
+    origin: str
+    destination: str
+    fare_usd: float
+    estimated_minutes: int
+    popular: bool
+    tag: Optional[str] = None
+
+class AdminRewardResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    points_cost: int
+    discount_percent: int
+    icon: str
+    is_active: bool
 
 class SwitchRoleRequest(BaseModel):
     new_role: str  # 'pasajero' o 'conductor'
@@ -83,21 +106,14 @@ class ToggleAvailabilityRequest(BaseModel):
 class DriverCardItem(BaseModel):
     user_id: int
     name: str
-    phone: str
     avatar_url: Optional[str] = None
     moto_brand_model: str
     moto_color: str
-    plate: str
     helmet_provided: bool
     is_available: bool
     rating_avg: float = 0.0
     trips_count: int
     xp_level: str
-    current_location_tag: str
-    mobile_payment_number: Optional[str] = None
-    mobile_payment_bank: Optional[str] = None
-    mobile_payment_id: Optional[str] = None
-    bank_account_number: Optional[str] = None
 
 # --- VIAJES ---
 class RideCreate(BaseModel):
@@ -131,11 +147,16 @@ class RideResponse(BaseModel):
     passenger_name: Optional[str] = None
     driver_name: Optional[str] = None
     whatsapp_status: Optional[str] = None
+    driver_mobile_payment_number: Optional[str] = None
+    driver_mobile_payment_bank: Optional[str] = None
+    driver_mobile_payment_id: Optional[str] = None
+    driver_bank_account_number: Optional[str] = None
+    driver_binance_address: Optional[str] = None
 
 # --- RESEÑAS & GAMIFICACIÓN ---
 class ReviewCreate(BaseModel):
     ride_id: int
-    rating: int  # 1-5
+    rating: int = Field(ge=1, le=5, strict=True)  # Solo enteros de 1 a 5 estrellas
     badges: Optional[str] = "Manejo seguro,Casco limpio"
     comment: Optional[str] = None
 

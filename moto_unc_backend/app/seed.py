@@ -1,6 +1,7 @@
 from .database import SessionLocal, engine, Base
 from .models import User, DriverProfile, Reward, Ride, Review, Route
-from sqlalchemy import text
+from sqlalchemy import inspect, text
+from .crypto import encrypt, is_encrypted
 from datetime import datetime
 
 ROUTE_CATALOG = [
@@ -75,41 +76,64 @@ def sync_route_catalog(db):
         for route_data in ROUTE_CATALOG:
             db.add(Route(**route_data))
 
-def ensure_payment_columns(db):
-    columns = {
-        row[1]
-        for row in db.execute(text("PRAGMA table_info(driver_profiles)"))
-    }
-    for column in ("mobile_payment_bank", "mobile_payment_id"):
-        if column not in columns:
-            db.execute(text(f"ALTER TABLE driver_profiles ADD COLUMN {column} VARCHAR"))
+# Columnas agregadas después de la primera versión; create_all() no altera tablas existentes.
+ADDED_COLUMNS = {
+    "users": {
+        "cedula": "TEXT",
+        "cedula_hash": "VARCHAR(64)",
+        "career": "VARCHAR",
+        "semester": "VARCHAR",
+    },
+    "driver_profiles": {
+        "mobile_payment_bank": "TEXT",
+        "mobile_payment_id": "TEXT",
+    },
+}
+
+# Columnas EncryptedString que pudieron guardarse en texto plano antes del cifrado.
+ENCRYPTED_COLUMNS = {
+    "users": ("phone", "cedula"),
+    "driver_profiles": (
+        "binance_address",
+        "mobile_payment_number",
+        "mobile_payment_bank",
+        "mobile_payment_id",
+        "bank_account_number",
+    ),
+    "rides": ("payment_reference",),
+}
+
+
+def ensure_columns(db):
+    inspector = inspect(db.get_bind())
+    for table, columns in ADDED_COLUMNS.items():
+        existing = {column["name"] for column in inspector.get_columns(table)}
+        for column, column_type in columns.items():
+            if column not in existing:
+                db.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}"))
+    if "cedula_hash" not in {index["name"] for index in inspector.get_indexes("users")}:
+        db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_cedula_hash ON users (cedula_hash)"))
     db.commit()
 
-def sync_driver_payment_data(db):
-    payment_data = {
-        "Jairo Eduardo Urdaneta González": {
-            "number": "04124091527",
-            "bank": "0102 Banco de Venezuela",
-            "id_number": "29662109"
-        },
-        "Jhonnyer Andrade": {
-            "number": "04221305688",
-            "bank": "0102 Banco de Venezuela",
-            "id_number": "31705375"
-        },
-        "Keiver Iglesias": {
-            "number": "04247819362",
-            "bank": "0163 Banco del Tesoro",
-            "id_number": "26349616"
-        }
-    }
-    for name, data in payment_data.items():
-        user = db.query(User).filter(User.name == name).first()
-        if user and user.driver_profile:
-            user.driver_profile.mobile_payment_number = data["number"]
-            user.driver_profile.mobile_payment_bank = data["bank"]
-            user.driver_profile.mobile_payment_id = data["id_number"]
+
+def migrate_plaintext_columns(db):
+    """Cifra los datos sensibles heredados que siguen en texto plano. Es idempotente."""
+    migrated = 0
+    for table, columns in ENCRYPTED_COLUMNS.items():
+        for column in columns:
+            rows = db.execute(
+                text(f"SELECT id, {column} FROM {table} WHERE {column} IS NOT NULL")
+            ).all()
+            for row_id, value in rows:
+                if not is_encrypted(value):
+                    db.execute(
+                        text(f"UPDATE {table} SET {column} = :value WHERE id = :id"),
+                        {"value": encrypt(value), "id": row_id},
+                    )
+                    migrated += 1
     db.commit()
+    if migrated:
+        print(f"Cifrado en reposo: {migrated} valores sensibles heredados fueron cifrados.")
 
 def sync_legacy_reward_copy(db):
     for reward in db.query(Reward).all():
@@ -128,8 +152,8 @@ def sync_legacy_reward_copy(db):
 def seed_database():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    ensure_payment_columns(db)
-    sync_driver_payment_data(db)
+    ensure_columns(db)
+    migrate_plaintext_columns(db)
     sync_route_catalog(db)
     sync_legacy_reward_copy(db)
 

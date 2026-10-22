@@ -10,7 +10,6 @@ venv/
 .env
 .env.*
 !.env.example
-.env.*
 
 # FastAPI / pytest
 .pytest_cache/

@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from .crypto import EncryptedString
 from .database import Base
+
+# Las columnas EncryptedString se guardan cifradas en la base de datos (ver crypto.py).
 
 class User(Base):
     __tablename__ = "users"
@@ -11,7 +14,11 @@ class User(Base):
     last_name = Column(String, nullable=True)
     age = Column(Integer, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    phone = Column(String, nullable=False)
+    phone = Column(EncryptedString, nullable=False)
+    cedula = Column(EncryptedString, nullable=True)
+    cedula_hash = Column(String(64), nullable=True, unique=True, index=True)  # Índice ciego para evitar duplicados
+    career = Column(String, nullable=True)  # Carrera universitaria
+    semester = Column(String, nullable=True)
     role = Column(String, default="pasajero")  # 'pasajero', 'conductor', 'ambos'
     avatar_url = Column(String, nullable=True)
     points = Column(Integer, default=100)  # Bono de bienvenida de 100 puntos
@@ -39,11 +46,11 @@ class DriverProfile(Base):
     trips_count = Column(Integer, default=0)
     current_location_tag = Column(String, default="Entrada UNC - Altos Mirandinos")
     # Campos de pago del conductor
-    binance_address = Column(String, nullable=True)
-    mobile_payment_number = Column(String, nullable=True)
-    mobile_payment_bank = Column(String, nullable=True)
-    mobile_payment_id = Column(String, nullable=True)
-    bank_account_number = Column(String, nullable=True)
+    binance_address = Column(EncryptedString, nullable=True)
+    mobile_payment_number = Column(EncryptedString, nullable=True)
+    mobile_payment_bank = Column(EncryptedString, nullable=True)
+    mobile_payment_id = Column(EncryptedString, nullable=True)
+    bank_account_number = Column(EncryptedString, nullable=True)
 
     user = relationship("User", back_populates="driver_profile")
 
@@ -73,7 +80,7 @@ class Ride(Base):
     status = Column(String, default="solicitado")  
     # Estados: 'solicitado', 'aceptado', 'en_camino', 'en_curso', 'completado', 'cancelado'
     payment_method = Column(String, default="efectivo")  # 'efectivo', 'pago_movil', 'puntos'
-    payment_reference = Column(String, nullable=True)
+    payment_reference = Column(EncryptedString, nullable=True)
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
     points_rewarded = Column(Integer, default=50)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -85,6 +92,7 @@ class Ride(Base):
 
 class Review(Base):
     __tablename__ = "reviews"
+    __table_args__ = (CheckConstraint("rating BETWEEN 1 AND 5", name="ck_reviews_rating_range"),)
 
     id = Column(Integer, primary_key=True, index=True)
     ride_id = Column(Integer, ForeignKey("rides.id"), unique=True, nullable=False)

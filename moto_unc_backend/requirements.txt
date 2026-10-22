@@ -5,3 +5,8 @@ pydantic>=2.0.0
 python-multipart>=0.0.9
 websockets>=12.0
 python-dotenv>=1.0.0
+firebase-admin>=6.0.0
+# Cifrado en reposo de datos sensibles (Fernet + HMAC)
+cryptography>=42.0.0
+# Driver de PostgreSQL para la base de datos en la nube
+psycopg[binary]>=3.1.18

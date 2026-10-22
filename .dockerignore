@@ -1,0 +1,16 @@
+**/.env
+**/.env.*
+!**/.env.example
+**/venv
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/node_modules
+moto_unc_mobile
+app
+.git
+.claude
+.vscode
+*.zip
+*.md
