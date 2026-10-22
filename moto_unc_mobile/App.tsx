@@ -162,7 +162,6 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     <View key={scheme} style={[styles.blank, { backgroundColor: theme.colors.bgDark }]}>
       <StatusBar
         barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.bgDark}
       />
       {renderScreen()}
     </View>

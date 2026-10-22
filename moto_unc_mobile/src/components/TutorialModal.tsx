@@ -7,7 +7,7 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Modal, View, Text, ScrollView, Pressable, useWindowDimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { Modal, View, Text, ScrollView, ScrollViewInstance, Pressable, useWindowDimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,7 +119,7 @@ export const TutorialModal: React.FC<Props> = (props) => (
 const TutorialContent: React.FC<Props> = ({ role, userId, onClose }) => {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
   const slides = role === 'conductor' ? DRIVER_SLIDES : PASSENGER_SLIDES;
   const accent = role === 'conductor' ? theme.colors.secondary : theme.colors.primary;

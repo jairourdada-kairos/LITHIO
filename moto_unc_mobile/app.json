@@ -36,7 +36,8 @@
           "photosPermission": "LITHIO usa tus fotos para tu foto de perfil.",
           "cameraPermission": "LITHIO usa la cámara para tomar tu foto de perfil."
         }
-      ]
+      ],
+      "expo-status-bar"
     ]
   }
 }

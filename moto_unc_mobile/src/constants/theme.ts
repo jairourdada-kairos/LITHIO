@@ -1,4 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { ImageStyle, TextStyle, ViewStyle } from 'react-native';
+
+// React Native 0.88 ya no exporta StyleSheet.NamedStyles; es la misma forma.
+type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
 
 /**
  * theme.ts — Paletas de LITHIO (oscura y clara) y estilos que siguen el tema
@@ -103,8 +106,8 @@ const colors = new Proxy({} as Palette, {
  * Hoja de estilos que depende del tema. Úsala como un StyleSheet normal:
  * `const styles = themed(() => ({ box: { backgroundColor: theme.colors.cardBg } }))`.
  */
-export function themed<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
-  factory: () => T & StyleSheet.NamedStyles<any>
+export function themed<T extends NamedStyles<T> | NamedStyles<any>>(
+  factory: () => T & NamedStyles<any>
 ): T {
   const cache: Partial<Record<ColorScheme, T>> = {};
   return new Proxy({} as T, {
