@@ -7,20 +7,12 @@
  */
 
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { theme } from '../constants/theme';
 import { signUpPassenger, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
+import { AuthLayout } from '../components/brand/AuthLayout';
+import { PrimaryButton } from '../components/brand/PrimaryButton';
 import {
   EMPTY_IDENTITY,
   IdentityErrors,
@@ -79,25 +71,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Volver</Text>
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={styles.emoji}>🎒</Text>
-          <Text style={styles.title}>Crear cuenta</Text>
-          <Text style={styles.subtitle}>Pasajero · Comunidad UNC</Text>
-        </View>
-
+    <AuthLayout title="Crear cuenta" subtitle="Pasajero · Comunidad universitaria" onBack={onBack}>
         {/* Bono de bienvenida */}
         <View style={styles.bonusBadge}>
           <Text style={styles.bonusText}>🎁 Recibirás 100 Fe al registrarte</Text>
@@ -123,64 +97,14 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
 
         <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
-        {/* Botón submit */}
-        <TouchableOpacity
-          style={[styles.btnPrimary, loading && styles.btnDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#0B0F19" />
-          ) : (
-            <Text style={styles.btnPrimaryText}>Crear mi cuenta →</Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <PrimaryButton label="Crear mi cuenta →" onPress={handleSubmit} loading={loading} style={styles.submit} />
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  keyboardView: {
-    flex: 1,
-    backgroundColor: theme.colors.bgDark,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  backBtn: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: theme.colors.primary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: theme.colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.primary,
-    fontWeight: '600',
-    marginTop: 4,
-  },
   bonusBadge: {
-    backgroundColor: 'rgba(255, 200, 87, 0.12)',
+    backgroundColor: theme.colors.goldSoft,
     borderWidth: 1,
     borderColor: theme.colors.gold,
     borderRadius: theme.radius.md,
@@ -190,28 +114,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bonusText: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.gold,
     fontSize: 13,
-    fontWeight: '600',
   },
   requiredNote: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textMuted,
     marginBottom: 12,
   },
-  btnPrimary: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
+  submit: {
     marginTop: 8,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  btnPrimaryText: {
-    color: '#0B0F19',
-    fontSize: 16,
-    fontWeight: '800',
   },
 });

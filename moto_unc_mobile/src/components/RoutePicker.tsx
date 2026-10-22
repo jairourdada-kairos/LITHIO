@@ -151,14 +151,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   toggleCustomText: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.primary,
     fontSize: 12,
-    fontWeight: '600',
   },
   presetsList: {
     paddingHorizontal: 16,
@@ -181,9 +181,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   swapText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 11,
-    fontWeight: '700',
   },
   swapTextActive: {
     color: '#0B0F19',
@@ -210,32 +210,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.secondary,
     fontSize: 11,
-    fontWeight: '700',
   },
   fareText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 14,
-    fontWeight: '800',
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
   routeOrigin: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textPrimary,
     fontSize: 13,
-    fontWeight: '600',
     marginBottom: 4,
   },
   routeDest: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textPrimary,
     fontSize: 13,
-    fontWeight: '600',
     marginBottom: 6,
   },
   estimatedText: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 11,
   },
@@ -247,11 +248,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   inputLabel: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
     fontSize: 12,
-    fontWeight: '600',
   },
   textInput: {
+    fontFamily: theme.fonts.regular,
     backgroundColor: theme.colors.cardElevated,
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
@@ -281,9 +283,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   scheduleBtnText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
     fontSize: 12,
-    fontWeight: '700',
   },
   scheduleBtnTextActive: {
     color: theme.colors.primary,
@@ -294,8 +296,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeLabel: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.gold,
     fontSize: 12,
-    fontWeight: '600',
   }
 });

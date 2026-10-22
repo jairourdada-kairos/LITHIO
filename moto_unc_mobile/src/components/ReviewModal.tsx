@@ -148,12 +148,13 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.cardBorder,
   },
   title: {
+    fontFamily: theme.fonts.bold,
     fontSize: 18,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
+    fontFamily: theme.fonts.regular,
     fontSize: 13,
     color: theme.colors.textSecondary,
     textAlign: 'center',
@@ -166,6 +167,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   starIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 38,
     color: '#334155',
   },
@@ -173,17 +175,17 @@ const styles = StyleSheet.create({
     color: theme.colors.gold,
   },
   ratingScore: {
+    fontFamily: theme.fonts.bold,
     textAlign: 'center',
     color: theme.colors.gold,
-    fontWeight: '800',
     fontSize: 13,
     marginTop: 6,
     marginBottom: 16,
   },
   badgesTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: '700',
     marginBottom: 8,
   },
   badgesContainer: {
@@ -205,21 +207,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
   badgeText: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
     fontSize: 11,
-    fontWeight: '600',
   },
   badgeTextSelected: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
-    fontWeight: '700',
   },
   commentTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: '700',
     marginBottom: 6,
   },
   commentInput: {
+    fontFamily: theme.fonts.regular,
     backgroundColor: theme.colors.cardElevated,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
@@ -243,16 +246,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   rewardIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 18,
   },
   rewardNoticeText: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     fontSize: 12,
     flex: 1,
   },
   boldText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
-    fontWeight: '800',
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -268,9 +273,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.cardBorder,
   },
   cancelBtnText: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
     fontSize: 13,
-    fontWeight: '600',
   },
   submitBtn: {
     flex: 2,
@@ -280,8 +285,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitBtnText: {
+    fontFamily: theme.fonts.bold,
     color: '#0B0F19',
     fontSize: 13,
-    fontWeight: '900',
   }
 });

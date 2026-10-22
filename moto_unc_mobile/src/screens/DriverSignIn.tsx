@@ -4,23 +4,15 @@
  * Permite entrar con correo y ofrece la opción de crear cuenta si no existe.
  */
 
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Animated,
-} from 'react-native';
+import React, { useState } from 'react';
+import { Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { theme } from '../constants/theme';
 import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
+import { AuthLayout } from '../components/brand/AuthLayout';
+import { FormField } from '../components/FormField';
+import { PrimaryButton } from '../components/brand/PrimaryButton';
+import { validateEmail } from '../utils/validation';
 
 interface Props {
   onSuccess: (user: AuthUser) => void;
@@ -29,30 +21,22 @@ interface Props {
 }
 
 export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onBack }) => {
-  const [email, setEmail] = useState('jairourdada@gmail.com');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-
-  const shake = () => {
-    Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
-    ]).start();
-  };
 
   const handleEmailLogin = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      shake();
-      Alert.alert('Correo inválido', 'Por favor ingresa un correo electrónico válido.');
-      return;
-    }
+    const newErrors = {
+      email: validateEmail(email),
+      password: password ? undefined : 'Escribe tu contraseña',
+    };
+    setErrors(newErrors);
+    if (newErrors.email || newErrors.password) return;
 
     setLoading(true);
     try {
-      const user = await signInWithEmail(email.trim().toLowerCase());
+      const user = await signInWithEmail(email.trim().toLowerCase(), password);
       if (user) {
         if (user.role !== 'conductor' && user.role !== 'ambos') {
           Alert.alert(
@@ -81,145 +65,77 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onBack 
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <AuthLayout
+      title="Conductor"
+      subtitle="Inicia sesión con tu correo"
+      accent={theme.colors.secondary}
+      onBack={onBack}
     >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Volver</Text>
-        </TouchableOpacity>
+      <FormField
+        label="Correo electrónico"
+        value={email}
+        onChangeText={(value) => {
+          setEmail(value);
+          setErrors((prev) => ({ ...prev, email: undefined }));
+        }}
+        placeholder="tu@correo.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        error={errors.email}
+      />
 
-        <View style={styles.header}>
-          <Text style={styles.emoji}>🛵</Text>
-          <Text style={styles.title}>Conductor</Text>
-          <Text style={styles.subtitle}>Inicia sesión con tu correo</Text>
-        </View>
+      <FormField
+        label="Contraseña"
+        value={password}
+        onChangeText={(value) => {
+          setPassword(value);
+          setErrors((prev) => ({ ...prev, password: undefined }));
+        }}
+        placeholder="Tu contraseña"
+        secureTextEntry
+        autoCapitalize="none"
+        autoComplete="current-password"
+        textContentType="password"
+        error={errors.password}
+        onSubmitEditing={handleEmailLogin}
+      />
 
-        <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-          <Text style={styles.label}>Correo electrónico</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="tu@correo.com"
-            placeholderTextColor={theme.colors.textMuted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </Animated.View>
+      <PrimaryButton
+        label="Entrar como conductor →"
+        onPress={handleEmailLogin}
+        loading={loading}
+        accent={theme.colors.secondary}
+        style={styles.submit}
+      />
 
-        <TouchableOpacity
-          style={[styles.btnPrimary, loading && styles.btnDisabled]}
-          onPress={handleEmailLogin}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnPrimaryText}>Entrar como conductor →</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.linkRow} onPress={onGoToSignUp}>
-          <Text style={styles.linkText}>
-            ¿No tienes cuenta?{' '}
-            <Text style={styles.linkAccent}>Crear cuenta de conductor</Text>
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Pressable style={styles.linkRow} onPress={onGoToSignUp} accessibilityRole="button" hitSlop={8}>
+        <Text style={styles.linkText}>
+          ¿No tienes cuenta? <Text style={styles.linkAccent}>Crear cuenta de conductor</Text>
+        </Text>
+      </Pressable>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  keyboardView: {
-    flex: 1,
-    backgroundColor: theme.colors.bgDark,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  backBtn: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: theme.colors.primary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  emoji: {
-    fontSize: 52,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: theme.colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.primary,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  label: {
-    color: theme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  input: {
-    backgroundColor: theme.colors.cardBg,
-    borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.colors.textPrimary,
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  btnPrimary: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  submit: {
     marginTop: 8,
-  },
-  btnDisabled: {
-    opacity: 0.7,
-  },
-  btnPrimaryText: {
-    color: '#08111d',
-    fontSize: 16,
-    fontWeight: '800',
+    marginBottom: 20,
   },
   linkRow: {
-    marginTop: 20,
     alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   linkText: {
-    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.regular,
     fontSize: 14,
-    textAlign: 'center',
+    color: theme.colors.textSecondary,
   },
   linkAccent: {
-    color: theme.colors.primary,
-    fontWeight: '700',
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.secondary,
   },
 });

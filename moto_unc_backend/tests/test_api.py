@@ -122,6 +122,10 @@ def client(monkeypatch):
     def verify_test_token(token: str) -> FirebaseIdentity:
         if token == "test-new-user":
             return FirebaseIdentity("uid-new-user", "nueva@unc.edu.ve", False)
+        if token == "test-legacy-unverified":
+            return FirebaseIdentity("uid-legacy", "legacy@unc.edu.ve", False)
+        if token == "test-legacy-verified":
+            return FirebaseIdentity("uid-legacy", "legacy@unc.edu.ve", True)
         if token == "test-other-user":
             return FirebaseIdentity("uid-other-user", "otro@unc.edu.ve", False)
         if token == "test-wrong-email":
@@ -826,3 +830,39 @@ def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+
+def test_legacy_profile_links_only_after_email_verification(client):
+    # Perfil creado antes de Firebase (sin firebase_uid), como la cuenta del administrador.
+    with client.session_factory() as db:
+        db.execute(text("UPDATE users SET email = 'legacy@unc.edu.ve' WHERE id = 2"))
+        db.commit()
+    unverified = {"Authorization": "Bearer test-legacy-unverified"}
+
+    # Sin verificar: ni iniciar sesión ni registrarse vincula el perfil existente.
+    sign_in = client.get("/api/users/me", headers=unverified)
+    assert sign_in.status_code == 428
+    assert "Verifica tu correo" in sign_in.json()["detail"]
+
+    register = client.post(
+        "/api/drivers/register",
+        json={
+            **VALID_REGISTRATION,
+            "email": "legacy@unc.edu.ve",
+            "age": 30,
+            "plate": "AB123CD",
+        },
+        headers=unverified,
+    )
+    assert register.status_code == 428
+    with client.session_factory() as db:
+        uid = db.execute(text("SELECT firebase_uid FROM users WHERE id = 2")).scalar_one()
+    assert uid is None
+
+    # Con el correo verificado, el mismo perfil queda vinculado al iniciar sesión.
+    verified = client.get("/api/users/me", headers={"Authorization": "Bearer test-legacy-verified"})
+    assert verified.status_code == 200
+    assert verified.json()["id"] == 2
+    with client.session_factory() as db:
+        uid = db.execute(text("SELECT firebase_uid FROM users WHERE id = 2")).scalar_one()
+    assert uid == "uid-legacy"

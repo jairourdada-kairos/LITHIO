@@ -127,6 +127,20 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
         </View>
 
+        {!isDriver && ride.payment_method === 'pago_movil' && ride.driver_mobile_payment_number && (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoLabel}>📲 Datos de Pago Móvil del conductor</Text>
+            {ride.driver_mobile_payment_bank && (
+              <Text style={styles.infoVal}>Banco: {ride.driver_mobile_payment_bank}</Text>
+            )}
+            <Text style={styles.infoVal}>Teléfono: {ride.driver_mobile_payment_number}</Text>
+            {ride.driver_mobile_payment_id && (
+              <Text style={styles.infoVal}>Identificación: {ride.driver_mobile_payment_id}</Text>
+            )}
+            <Text style={styles.infoHint}>Solo visible para los participantes de este viaje.</Text>
+          </View>
+        )}
+
         {/* Acciones para el Conductor */}
         {isDriver ? (
           <View style={styles.actionsBox}>
@@ -225,14 +239,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bannerTitle: {
+    fontFamily: theme.fonts.bold,
     fontSize: 14,
-    fontWeight: '900',
     color: '#0B0F19',
   },
   body: {
     padding: 16,
   },
   bannerDesc: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',
@@ -264,23 +279,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   infoLabel: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 12,
   },
   infoVal: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: '700',
+  },
+  infoHint: {
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    marginTop: 4,
   },
   fareVal: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 14,
-    fontWeight: '900',
   },
   driverVal: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 13,
-    fontWeight: '800',
   },
   actionsBox: {
     gap: 8,
@@ -317,19 +339,19 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.error,
   },
   btnTextWhite: {
+    fontFamily: theme.fonts.bold,
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '800',
   },
   btnTextDark: {
+    fontFamily: theme.fonts.bold,
     color: '#0B0F19',
     fontSize: 13,
-    fontWeight: '900',
   },
   btnTextRed: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.error,
     fontSize: 13,
-    fontWeight: '700',
   },
   completedNotice: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -339,9 +361,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.success,
   },
   completedNoticeText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.success,
     fontSize: 12,
-    fontWeight: '700',
     textAlign: 'center',
   }
 });

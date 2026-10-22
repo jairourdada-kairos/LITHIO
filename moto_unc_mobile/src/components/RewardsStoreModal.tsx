@@ -130,11 +130,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
+    fontFamily: theme.fonts.bold,
     fontSize: 18,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   subtitle: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: 2,
@@ -148,9 +149,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
     fontSize: 16,
-    fontWeight: '700',
   },
   balanceCard: {
     backgroundColor: 'rgba(245, 158, 11, 0.12)',
@@ -162,9 +163,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   balanceLabel: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
     fontSize: 12,
-    fontWeight: '600',
   },
   balanceRow: {
     flexDirection: 'row',
@@ -173,14 +174,16 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   balanceCoin: {
+    fontFamily: theme.fonts.regular,
     fontSize: 22,
   },
   balancePoints: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 24,
-    fontWeight: '900',
   },
   balanceHint: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 11,
   },
@@ -194,20 +197,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   codeSuccessTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.success,
-    fontWeight: '800',
     fontSize: 13,
   },
   codeSuccessSubtitle: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
   couponCode: {
+    fontFamily: theme.fonts.bold,
     color: '#FFFFFF',
     backgroundColor: '#0F172A',
     fontSize: 16,
-    fontWeight: '900',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 6,
@@ -231,6 +235,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   rewardIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 24,
   },
   rewardInfo: {
@@ -238,11 +243,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   rewardTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: '800',
   },
   rewardDesc: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 12,
   },
@@ -261,12 +267,13 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   costCoin: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
   },
   costText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 12,
-    fontWeight: '800',
   },
   redeemBtn: {
     backgroundColor: theme.colors.primary,
@@ -278,9 +285,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   redeemBtnText: {
+    fontFamily: theme.fonts.bold,
     color: '#0B0F19',
     fontSize: 12,
-    fontWeight: '800',
   },
   redeemBtnTextDisabled: {
     color: '#94A3B8',

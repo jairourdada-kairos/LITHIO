@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { UserRole } from '../types';
 
@@ -9,6 +10,7 @@ interface HeaderProps {
   points: number;
   xpLevel: string;
   onOpenRewards: () => void;
+  onOpenAbout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   points,
   xpLevel,
   onOpenRewards,
+  onOpenAbout,
 }) => {
   const isDriver = currentRole === 'conductor';
 
@@ -29,6 +32,15 @@ export const Header: React.FC<HeaderProps> = ({
             <Text style={styles.title}>LITHIO</Text>
             <Text style={styles.subtitle}>Transporte inteligente</Text>
           </View>
+          <TouchableOpacity
+            onPress={onOpenAbout}
+            style={styles.aboutButton}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="¿Qué es LITHIO?"
+          >
+            <MaterialCommunityIcons name="atom" size={18} color={theme.colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Balance de Puntos Gamificados */}
@@ -86,19 +98,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  aboutButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
   logoIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 30,
   },
   title: {
+    fontFamily: theme.fonts.bold,
     fontSize: 20,
-    fontWeight: '800',
     color: theme.colors.primary,
     letterSpacing: 1,
   },
   subtitle: {
+    fontFamily: theme.fonts.medium,
     fontSize: 11,
     color: theme.colors.textSecondary,
-    fontWeight: '500',
   },
   pointsPill: {
     flexDirection: 'row',
@@ -112,11 +135,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   coinIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 16,
   },
   pointsText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
-    fontWeight: '800',
     fontSize: 14,
   },
   bottomRow: {
@@ -136,14 +160,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   badgeLabel: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textMuted,
     fontSize: 10,
-    fontWeight: '700',
   },
   badgeValue: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textPrimary,
     fontSize: 11,
-    fontWeight: '600',
   },
   roleButton: {
     flexDirection: 'row',
@@ -164,16 +188,17 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.success,
   },
   roleButtonIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 14,
   },
   roleButtonText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: '700',
   },
   roleSwitchHint: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
     fontSize: 14,
-    fontWeight: '700',
   }
 });

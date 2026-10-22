@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
 } from '@firebase/auth';
 import { authenticatedFetch, getFirebaseAuth } from './firebase';
@@ -32,6 +33,28 @@ async function readError(response: Response): Promise<string> {
     if (messages.length) return messages.join('\n');
   }
   return typeof body.detail === 'string' ? body.detail : `La solicitud falló (${response.status}).`;
+}
+
+// El backend responde 428 cuando el correo ya tiene un perfil creado antes de
+// Firebase (p. ej. la cuenta del administrador): solo se vincula con el correo verificado.
+const EMAIL_VERIFICATION_REQUIRED = 428;
+
+async function requestEmailVerification(): Promise<never> {
+  const user = getFirebaseAuth().currentUser;
+  let sent = false;
+  if (user) {
+    try {
+      await sendEmailVerification(user);
+      sent = true;
+    } catch {
+      // Demasiados envíos seguidos: el enlace anterior sigue sirviendo.
+    }
+  }
+  throw new Error(
+    sent
+      ? `Este correo ya tiene un perfil en LITHIO. Te enviamos un enlace de verificación a ${user?.email}. Ábrelo (revisa también spam) y luego inicia sesión con este mismo correo y contraseña.`
+      : 'Este correo ya tiene un perfil en LITHIO. Abre el enlace de verificación que te enviamos por correo y luego inicia sesión.'
+  );
 }
 
 export interface AuthUser {
@@ -107,6 +130,9 @@ async function register(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (response.status === EMAIL_VERIFICATION_REQUIRED) {
+    return requestEmailVerification();
+  }
   if (!response.ok) {
     throw new Error(await readError(response));
   }
@@ -130,6 +156,9 @@ export function signUpDriver(
 export async function signInWithEmail(email: string, password: string): Promise<AuthUser | null> {
   await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
   const response = await fetchWithTimeout(`${API_BASE}/api/users/me`);
+  if (response.status === EMAIL_VERIFICATION_REQUIRED) {
+    return requestEmailVerification();
+  }
   if (response.status === 404 || response.status === 403) return null;
   if (!response.ok) throw new Error(await readError(response));
   return response.json();

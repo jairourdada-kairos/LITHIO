@@ -3,12 +3,21 @@ import {
   StyleSheet, 
   Text, 
   View, 
-  SafeAreaView, 
   ScrollView, 
   StatusBar, 
   Alert,
   RefreshControl
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import {
+  SpaceGrotesk_300Light,
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk';
+import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { theme } from './src/constants/theme';
 import { 
   Driver, 
@@ -30,6 +39,7 @@ import { RequestRideModal } from './src/components/RequestRideModal';
 import { ActiveRideCard } from './src/components/ActiveRideCard';
 import { ReviewModal } from './src/components/ReviewModal';
 import { RewardsStoreModal } from './src/components/RewardsStoreModal';
+import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { DriverDashboard } from './src/components/DriverDashboard';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { PassengerSignIn } from './src/screens/PassengerSignIn';
@@ -80,6 +90,7 @@ function MainApp({ currentUser }: MainAppProps) {
   const [isRequestModalVisible, setIsRequestModalVisible] = useState<boolean>(false);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState<boolean>(false);
   const [isRewardsModalVisible, setIsRewardsModalVisible] = useState<boolean>(false);
+  const [isAboutVisible, setIsAboutVisible] = useState<boolean>(false);
   const [rewards, setRewards] = useState<Reward[]>([]);
 
   // Carga inicial + suscripción WebSocket
@@ -114,13 +125,21 @@ function MainApp({ currentUser }: MainAppProps) {
 
   const loadData = async () => {
     setRefreshing(true);
-    const routesData = await apiService.getPresetRoutes();
-    const driversData = await apiService.getDrivers();
-    const rewardsData = await apiService.getRewards();
-    setPresetRoutes(routesData);
-    setDrivers(driversData);
-    setRewards(rewardsData);
-    setRefreshing(false);
+    try {
+      const routesData = await apiService.getPresetRoutes();
+      const driversData = await apiService.getDrivers();
+      const rewardsData = await apiService.getRewards();
+      setPresetRoutes(routesData);
+      setDrivers(driversData);
+      setRewards(rewardsData);
+    } catch (error) {
+      Alert.alert(
+        'No se pudieron cargar los datos',
+        error instanceof Error ? error.message : 'Intenta de nuevo.'
+      );
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Alternar entre Modo Pasajero y Modo Conductor
@@ -137,9 +156,13 @@ function MainApp({ currentUser }: MainAppProps) {
 
   // Cambiar disponibilidad del conductor
   const handleToggleAvailability = async (val: boolean) => {
-    setIsDriverAvailable(val);
-    await apiService.toggleDriverAvailability(currentUser.id, val);
-    setDrivers(prev => prev.map(d => d.user_id === currentUser.id ? { ...d, is_available: val } : d));
+    try {
+      await apiService.toggleDriverAvailability(currentUser.id, val);
+      setIsDriverAvailable(val);
+      setDrivers(prev => prev.map(d => d.user_id === currentUser.id ? { ...d, is_available: val } : d));
+    } catch (error) {
+      Alert.alert('No se pudo actualizar la disponibilidad', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    }
   };
 
   // 1. Pasajero pulsa "Elegir a X como mi Moto Taxi"
@@ -167,16 +190,22 @@ function MainApp({ currentUser }: MainAppProps) {
   const handleConfirmRide = async (paymentMethod: PaymentMethod, reference?: string) => {
     if (!selectedDriverForRequest) return;
 
-    const newRide = await apiService.requestRide(currentUser.id, {
-      driver_id: selectedDriverForRequest.user_id,
-      origin: selectedOrigin,
-      destination: selectedDestination,
-      is_scheduled: isScheduled,
-      scheduled_time: isScheduled ? scheduledTime : undefined,
-      payment_method: paymentMethod,
-      payment_reference: reference,
-      fare_amount: selectedFare,
-    });
+    let newRide: Ride;
+    try {
+      newRide = await apiService.requestRide(currentUser.id, {
+        driver_id: selectedDriverForRequest.user_id,
+        origin: selectedOrigin,
+        destination: selectedDestination,
+        is_scheduled: isScheduled,
+        scheduled_time: isScheduled ? scheduledTime : undefined,
+        payment_method: paymentMethod,
+        payment_reference: reference,
+        fare_amount: selectedFare,
+      });
+    } catch (error) {
+      Alert.alert('No se pudo solicitar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      return;
+    }
 
     setActiveRide(newRide);
     setIsRequestModalVisible(false);
@@ -190,7 +219,13 @@ function MainApp({ currentUser }: MainAppProps) {
   // 3. Cambiar estado del viaje (Aceptar, En camino, Completar)
   const handleUpdateRideStatus = async (status: RideStatus) => {
     if (!activeRide) return;
-    const result = await apiService.updateRideStatus(activeRide.id, status);
+    let result: { fe_awarded: number };
+    try {
+      result = await apiService.updateRideStatus(activeRide.id, status);
+    } catch (error) {
+      Alert.alert('No se pudo actualizar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      return;
+    }
     
     // El backend acredita los Fe cuando confirma el viaje completado.
     if (status === 'completado') {
@@ -212,7 +247,13 @@ function MainApp({ currentUser }: MainAppProps) {
 
   // 4. Calificar viaje completado
   const handleSubmitReview = async (review: ReviewSubmission) => {
-    const res = await apiService.submitReview(currentUser.id, review);
+    let res: { points_earned: number };
+    try {
+      res = await apiService.submitReview(currentUser.id, review);
+    } catch (error) {
+      Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      return;
+    }
     setUserPoints(prev => prev + res.points_earned);
     setIsReviewModalVisible(false);
     setActiveRide(null);
@@ -231,7 +272,7 @@ function MainApp({ currentUser }: MainAppProps) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.bgDark} />
 
       {/* Encabezado con selector de rol y balance de puntos */}
@@ -241,6 +282,7 @@ function MainApp({ currentUser }: MainAppProps) {
         points={userPoints}
         xpLevel={xpLevel}
         onOpenRewards={() => setIsRewardsModalVisible(true)}
+        onOpenAbout={() => setIsAboutVisible(true)}
       />
 
       <ScrollView
@@ -384,6 +426,8 @@ function MainApp({ currentUser }: MainAppProps) {
         onClose={() => setIsRewardsModalVisible(false)}
         onRedeem={handleRedeemReward}
       />
+
+      <AboutLithioModal visible={isAboutVisible} onClose={() => setIsAboutVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -393,23 +437,49 @@ function MainApp({ currentUser }: MainAppProps) {
 // ENTRADA PRINCIPAL — Gestiona el flujo de autenticación
 // ============================================================================
 export default function App() {
+  // Space Grotesk (textos) y Space Mono (datos): la app se ve igual sin
+  // importar la fuente del sistema que tenga configurada el teléfono.
+  const [fontsLoaded, fontError] = useFonts({
+    SpaceGrotesk_300Light,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+    SpaceMono_400Regular,
+    SpaceMono_700Bold,
+  });
+
+  return (
+    <SafeAreaProvider style={{ backgroundColor: theme.colors.bgDark }}>
+      {/* Si las fuentes fallan se sigue con las del sistema en vez de bloquear la app. */}
+      {fontsLoaded || fontError ? <AppContent /> : <View style={styles.fontLoading} />}
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   const [authStep, setAuthStep] = useState<AuthStep>('welcome');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isAboutVisible, setIsAboutVisible] = useState(false);
 
   const handleAuthSuccess = (user: AuthUser) => {
     setCurrentUser(user);
-    // Conectar WebSocket con el ID del usuario autenticado
-    wsService.connect(user.id);
+    // El servidor obtiene la identidad directamente del ID token Firebase.
+    wsService.connect();
     setAuthStep('app');
   };
 
   if (authStep === 'welcome') {
     return (
-      <AuthScreen
-        onSelectPassenger={() => setAuthStep('passenger-signin')}
-        onSelectDriver={() => setAuthStep('driver-signin')}
-        onSelectSignIn={() => setAuthStep('passenger-signin')}
-      />
+      <>
+        <AuthScreen
+          onSelectPassenger={() => setAuthStep('passenger-signin')}
+          onSelectDriver={() => setAuthStep('driver-signin')}
+          onSelectSignIn={() => setAuthStep('passenger-signin')}
+          onOpenAbout={() => setIsAboutVisible(true)}
+        />
+        <AboutLithioModal visible={isAboutVisible} onClose={() => setIsAboutVisible(false)} />
+      </>
     );
   }
 
@@ -460,6 +530,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.bgDark,
   },
+  fontLoading: {
+    flex: 1,
+    backgroundColor: theme.colors.bgDark,
+  },
   scrollContent: {
     paddingBottom: 40,
   },
@@ -477,15 +551,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   backLink: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 16,
-    fontWeight: '700',
     marginBottom: 24,
   },
   screenTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 28,
-    fontWeight: '800',
     marginBottom: 18,
   },
   profileCard: {
@@ -497,6 +571,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.cardBorder,
   },
   profileAvatar: {
+    fontFamily: theme.fonts.bold,
     width: 72,
     height: 72,
     borderRadius: 36,
@@ -505,16 +580,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     color: '#082f49',
     fontSize: 32,
-    fontWeight: '800',
     marginBottom: 14,
   },
   profileName: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 18,
-    fontWeight: '800',
     textAlign: 'center',
   },
   profileDetail: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 14,
     marginTop: 6,
@@ -527,19 +602,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.cardElevated,
   },
   vehicleLabel: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 12,
   },
   vehicleName: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 17,
-    fontWeight: '800',
     marginTop: 4,
   },
   vehicleColor: {
+    fontFamily: theme.fonts.bold,
     color: '#ef4444',
     fontSize: 14,
-    fontWeight: '700',
     marginTop: 3,
   },
   sectionHeader: {
@@ -549,11 +625,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
+    fontFamily: theme.fonts.bold,
     fontSize: 15,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   sectionSubtitle: {
+    fontFamily: theme.fonts.regular,
     fontSize: 11,
     color: theme.colors.textSecondary,
     marginTop: 2,
@@ -567,8 +644,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.cardBorder,
   },
   countText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 11,
-    fontWeight: '700',
   }
 });

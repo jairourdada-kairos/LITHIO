@@ -46,19 +46,14 @@ export const DriverCard: React.FC<DriverCardProps> = ({ driver, onSelectDriver }
           <Text style={styles.motoLabel}>🏍️ Moto:</Text>
           <Text style={styles.motoValue}>{driver.moto_brand_model} ({driver.moto_color})</Text>
         </View>
-        <View style={styles.motoDetail}>
-          <Text style={styles.motoLabel}>🔢 Placa:</Text>
-          <Text style={styles.motoPlate}>{driver.plate}</Text>
-        </View>
       </View>
 
-      {/* Badges de Seguridad & Ubicación */}
+      {/* Datos públicos no financieros del servicio */}
       <View style={styles.badgesRow}>
         <View style={styles.miniBadge}>
-          <Text style={styles.miniBadgeText}>🪖 Casco adicional limpio</Text>
-        </View>
-        <View style={styles.miniBadge}>
-          <Text style={styles.miniBadgeText}>📍 {driver.current_location_tag}</Text>
+          <Text style={styles.miniBadgeText}>
+            {driver.helmet_provided ? '🪖 Casco adicional' : 'Sin casco adicional'}
+          </Text>
         </View>
       </View>
 
@@ -119,8 +114,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   driverName: {
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   starBadge: {
@@ -132,14 +127,14 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   starBadgeText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 10,
-    fontWeight: '800',
   },
   xpText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 11,
-    fontWeight: '700',
   },
   ratingRow: {
     flexDirection: 'row',
@@ -147,11 +142,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 12,
-    fontWeight: '700',
   },
   tripsText: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 11,
   },
@@ -185,8 +181,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
   statusText: {
+    fontFamily: theme.fonts.bold,
     fontSize: 11,
-    fontWeight: '700',
   },
   statusTextAvail: {
     color: theme.colors.success,
@@ -206,18 +202,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   motoLabel: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 12,
   },
   motoValue: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: '600',
   },
   motoPlate: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 12,
-    fontWeight: '800',
     backgroundColor: 'rgba(56, 189, 248, 0.1)',
     paddingHorizontal: 6,
     borderRadius: 4,
@@ -235,6 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   miniBadgeText: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 11,
   },
@@ -248,8 +246,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   selectBtnText: {
+    fontFamily: theme.fonts.bold,
     color: '#0B0F19',
     fontSize: 13,
-    fontWeight: '800',
   }
 });

@@ -14,16 +14,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Switch,
 } from 'react-native';
 import { theme } from '../constants/theme';
 import { signUpDriver, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
+import { AuthLayout } from '../components/brand/AuthLayout';
+import { PrimaryButton } from '../components/brand/PrimaryButton';
 import {
   EMPTY_IDENTITY,
   IdentityErrors,
@@ -192,9 +190,12 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
 
       <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
-      <TouchableOpacity style={styles.btnPrimary} onPress={handleNext} activeOpacity={0.85}>
-        <Text style={styles.btnPrimaryText}>Siguiente: Moto y Pagos →</Text>
-      </TouchableOpacity>
+      <PrimaryButton
+        label="Siguiente: Moto y Pagos →"
+        onPress={handleNext}
+        accent={theme.colors.secondary}
+        style={styles.submit}
+      />
     </>
   );
 
@@ -327,42 +328,25 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
           <Text style={styles.btnSecondaryText}>← Atrás</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.btnPrimary, styles.btnFlex, loading && styles.btnDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#0B0F19" />
-          ) : (
-            <Text style={styles.btnPrimaryText}>Crear cuenta →</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.btnFlex}>
+          <PrimaryButton
+            label="Crear cuenta →"
+            onPress={handleSubmit}
+            loading={loading}
+            accent={theme.colors.secondary}
+          />
+        </View>
       </View>
     </>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <AuthLayout
+      title="Crear cuenta"
+      subtitle="Conductor · Comunidad universitaria"
+      accent={theme.colors.secondary}
+      onBack={onBack}
     >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Volver</Text>
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={styles.emoji}>🛵</Text>
-          <Text style={styles.title}>Crear cuenta</Text>
-          <Text style={styles.subtitle}>Conductor · Comunidad UNC</Text>
-        </View>
-
         {/* Indicador de progreso */}
         <View style={styles.progressRow}>
           <View style={[styles.progressDot, step >= 1 && styles.progressDotActive]} />
@@ -379,28 +363,11 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         </View>
 
         {step === 1 ? renderStep1() : renderStep2()}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  keyboardView: {
-    flex: 1,
-    backgroundColor: theme.colors.bgDark,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  backBtn: { marginBottom: 20 },
-  backText: { color: theme.colors.secondary, fontSize: 15, fontWeight: '600' },
-  header: { alignItems: 'center', marginBottom: 20 },
-  emoji: { fontSize: 48, marginBottom: 10 },
-  title: { fontSize: 26, fontWeight: '800', color: theme.colors.textPrimary },
-  subtitle: { fontSize: 14, color: theme.colors.secondary, fontWeight: '600', marginTop: 4 },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,17 +400,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 4,
   },
-  progressLabel: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '500' },
-  progressLabelActive: { color: theme.colors.secondary, fontWeight: '700' },
+  progressLabel: { fontFamily: theme.fonts.medium, fontSize: 11, color: theme.colors.textMuted },
+  progressLabelActive: { fontFamily: theme.fonts.bold, color: theme.colors.secondary },
   row: { flexDirection: 'row', gap: 12 },
   halfField: { flex: 1 },
   label: {
+    fontFamily: theme.fonts.semibold,
     fontSize: 13,
-    fontWeight: '600',
     color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   input: {
+    fontFamily: theme.fonts.regular,
     backgroundColor: theme.colors.cardBg,
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
@@ -456,6 +424,7 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: theme.colors.error },
   errorText: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.error,
     marginTop: -12,
@@ -464,47 +433,39 @@ const styles = StyleSheet.create({
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.cardBg,
+    backgroundColor: theme.colors.glassBg,
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
+    borderColor: theme.colors.glassBorder,
     borderRadius: theme.radius.md,
     padding: 14,
     marginBottom: 8,
     gap: 12,
   },
   switchTextGroup: { flex: 1 },
-  switchLabel: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-  switchDesc: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+  switchLabel: { fontFamily: theme.fonts.semibold, fontSize: 14, color: theme.colors.textPrimary },
+  switchDesc: { fontFamily: theme.fonts.regular, fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   sectionHeader: { marginBottom: 12 },
-  requiredNote: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 12 },
+  requiredNote: { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.textMuted, marginBottom: 12 },
   sectionTitle: {
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
     marginBottom: 2,
   },
-  sectionDesc: { fontSize: 12, color: theme.colors.textMuted },
-  buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  sectionDesc: { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.textMuted },
+  buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 8, alignItems: 'stretch' },
   btnSecondary: {
     flex: 0,
+    minHeight: 52,
     paddingHorizontal: 20,
-    paddingVertical: 15,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.cardBg,
+    backgroundColor: theme.colors.glassBg,
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
+    borderColor: theme.colors.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnSecondaryText: { color: theme.colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  btnPrimary: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.radius.md,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  btnFlex: { flex: 1, marginTop: 0 },
-  btnDisabled: { opacity: 0.6 },
-  btnPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  btnSecondaryText: { fontFamily: theme.fonts.semibold, color: theme.colors.textSecondary, fontSize: 15 },
+  btnFlex: { flex: 1 },
+  submit: { marginTop: 8 },
 });

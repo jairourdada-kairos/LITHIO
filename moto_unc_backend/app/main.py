@@ -20,6 +20,7 @@ from . import crypto
 from .database import engine, get_db, Base, SessionLocal
 from .models import User, DriverProfile, Ride, Review, Reward, Route
 from .auth import (
+    EMAIL_VERIFICATION_REQUIRED,
     FirebaseIdentity,
     get_current_user,
     get_firebase_identity,
@@ -763,6 +764,15 @@ def fill_missing_identity(user: User, data: PassengerRegisterRequest | DriverReg
     user.semester = user.semester or data.semester
 
 
+def require_verified_email_to_link(existing: User, identity: FirebaseIdentity):
+    """Una cuenta creada antes de Firebase solo se vincula si el correo está verificado."""
+    if not existing.firebase_uid and not identity.email_verified:
+        raise HTTPException(
+            status_code=EMAIL_VERIFICATION_REQUIRED,
+            detail="Este correo ya tiene un perfil en LITHIO. Verifica tu correo para vincularlo a tu cuenta.",
+        )
+
+
 def commit_registration(db: Session, user: User) -> User:
     try:
         db.commit()
@@ -795,6 +805,7 @@ def register_passenger(
         raise HTTPException(status_code=409, detail="Esta cuenta ya tiene un perfil.")
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:
+        require_verified_email_to_link(existing_email, identity)
         if (
             identity.email_verified
             and not existing_email.firebase_uid
@@ -846,6 +857,7 @@ def register_driver(
         raise HTTPException(status_code=409, detail="Esta cuenta ya tiene un perfil.")
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:
+        require_verified_email_to_link(existing_email, identity)
         if (
             identity.email_verified
             and not existing_email.firebase_uid

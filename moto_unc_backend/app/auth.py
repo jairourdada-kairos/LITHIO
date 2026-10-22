@@ -18,6 +18,9 @@ from .models import User
 logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
 
+# 428 Precondition Required: la app responde enviando el correo de verificación.
+EMAIL_VERIFICATION_REQUIRED = 428
+
 
 @dataclass(frozen=True)
 class FirebaseIdentity:
@@ -103,13 +106,19 @@ def get_user_for_identity(identity: FirebaseIdentity, db: Session) -> User:
     if user:
         return user
 
-    if identity.email and identity.email_verified:
+    if identity.email:
         user = (
             db.query(User)
             .filter(func.lower(User.email) == identity.email)
             .first()
         )
         if user and not user.firebase_uid:
+            # Perfil creado antes de Firebase: se vincula solo si el correo es del usuario.
+            if not identity.email_verified:
+                raise HTTPException(
+                    status_code=EMAIL_VERIFICATION_REQUIRED,
+                    detail="Este correo ya tiene un perfil en LITHIO. Verifica tu correo para vincularlo a tu cuenta.",
+                )
             user.firebase_uid = identity.uid
             db.commit()
             db.refresh(user)

@@ -89,11 +89,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   availTitle: {
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   availSubtitle: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textSecondary,
     lineHeight: 16,
@@ -113,24 +114,24 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statNumber: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 18,
-    fontWeight: '900',
   },
   statNumberGold: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 18,
-    fontWeight: '900',
   },
   statNumberCyan: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 18,
-    fontWeight: '900',
   },
   statLabel: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textMuted,
     fontSize: 11,
-    fontWeight: '600',
   },
   waitingCard: {
     backgroundColor: theme.colors.cardElevated,
@@ -144,14 +145,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   waitingIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 36,
   },
   waitingTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
     fontSize: 15,
-    fontWeight: '800',
   },
   waitingDesc: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textSecondary,
     fontSize: 12,
     textAlign: 'center',

@@ -45,8 +45,8 @@ export const FormField: React.FC<Props> = ({ label, error, hint, required, prefi
 
 export const fieldStyles = StyleSheet.create({
   label: {
+    fontFamily: theme.fonts.semibold,
     fontSize: 13,
-    fontWeight: '600',
     color: theme.colors.textSecondary,
     marginBottom: 8,
   },
@@ -65,11 +65,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   input: {
+    fontFamily: theme.fonts.regular,
     flex: 1,
     minWidth: 0, // Sin esto, en web el input no se encoge y desborda las filas de dos columnas
-    backgroundColor: theme.colors.cardBg,
+    backgroundColor: theme.colors.glassBgStrong,
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
+    borderColor: theme.colors.glassBorder,
     borderRadius: theme.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -80,11 +81,13 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.error,
   },
   error: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.error,
     marginTop: 6,
   },
   hint: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textMuted,
     marginTop: 6,

@@ -51,7 +51,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               <Text style={styles.driverAvatar}>🏍️</Text>
               <View style={styles.driverDetails}>
                 <Text style={styles.driverName}>{driver.name}</Text>
-                <Text style={styles.driverMoto}>{driver.moto_brand_model} • {driver.plate}</Text>
+                <Text style={styles.driverMoto}>{driver.moto_brand_model} • {driver.moto_color}</Text>
                 <Text style={styles.driverRating}>⭐ {driver.rating_avg.toFixed(2)} ({driver.trips_count} carreras)</Text>
               </View>
             </View>
@@ -113,19 +113,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                 <View style={styles.mobilePaymentCard}>
                   <Text style={styles.mobilePaymentTitle}>📲 Datos para Pago Móvil</Text>
                   <Text style={styles.mobilePaymentRow}>
-                    <Text style={styles.mobilePaymentLabel}>Titular: </Text>{driver.name}
-                  </Text>
-                  <Text style={styles.mobilePaymentRow}>
-                    <Text style={styles.mobilePaymentLabel}>Teléfono: </Text>{driver.phone || 'No registrado'}
-                  </Text>
-                  <Text style={styles.mobilePaymentRow}>
-                    <Text style={styles.mobilePaymentLabel}>Banco: </Text>{driver.mobile_payment_bank || 'No registrado'}
-                  </Text>
-                  <Text style={styles.mobilePaymentRow}>
-                    <Text style={styles.mobilePaymentLabel}>Número Pago Móvil: </Text>{driver.mobile_payment_number || 'No registrado'}
-                  </Text>
-                  <Text style={styles.mobilePaymentRow}>
-                    <Text style={styles.mobilePaymentLabel}>Cédula: </Text>{driver.mobile_payment_id || 'No registrada'}
+                    Los datos se mostrarán de forma privada dentro del viaje solicitado.
                   </Text>
                 </View>
                 <Text style={styles.referenceLabel}>Número o Últimos 4 Dígitos de Referencia:</Text>
@@ -194,8 +182,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
+    fontFamily: theme.fonts.bold,
     fontSize: 18,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   closeBtn: {
@@ -207,9 +195,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
     fontSize: 16,
-    fontWeight: '700',
   },
   driverSummary: {
     flexDirection: 'row',
@@ -223,24 +211,26 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.cardBorder,
   },
   driverAvatar: {
+    fontFamily: theme.fonts.regular,
     fontSize: 32,
   },
   driverDetails: {
     gap: 2,
   },
   driverName: {
+    fontFamily: theme.fonts.bold,
     fontSize: 15,
-    fontWeight: '800',
     color: theme.colors.textPrimary,
   },
   driverMoto: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textSecondary,
   },
   driverRating: {
+    fontFamily: theme.fonts.bold,
     fontSize: 11,
     color: theme.colors.gold,
-    fontWeight: '700',
   },
   routeBox: {
     backgroundColor: theme.colors.cardElevated,
@@ -256,15 +246,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   routeDot: {
+    fontFamily: theme.fonts.regular,
     fontSize: 14,
   },
   routeLabel: {
+    fontFamily: theme.fonts.regular,
     fontSize: 11,
     color: theme.colors.textMuted,
   },
   routeVal: {
+    fontFamily: theme.fonts.bold,
     fontSize: 13,
-    fontWeight: '700',
     color: theme.colors.textPrimary,
   },
   routeDivider: {
@@ -280,13 +272,13 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.cardBorder,
   },
   scheduledNoticeText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
     fontSize: 12,
-    fontWeight: '700',
   },
   sectionHeading: {
+    fontFamily: theme.fonts.bold,
     fontSize: 14,
-    fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: 8,
   },
@@ -314,11 +306,12 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   paymentIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 18,
   },
   paymentText: {
+    fontFamily: theme.fonts.bold,
     fontSize: 11,
-    fontWeight: '700',
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },
@@ -339,25 +332,27 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   mobilePaymentTitle: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 13,
-    fontWeight: '800',
     marginBottom: 3,
   },
   mobilePaymentRow: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     fontSize: 12,
   },
   mobilePaymentLabel: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
-    fontWeight: '700',
   },
   referenceLabel: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
     fontSize: 12,
-    fontWeight: '600',
   },
   referenceInput: {
+    fontFamily: theme.fonts.regular,
     backgroundColor: theme.colors.cardElevated,
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
@@ -368,6 +363,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   referenceHint: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
     fontSize: 11,
   },
@@ -383,16 +379,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   rewardIcon: {
+    fontFamily: theme.fonts.regular,
     fontSize: 18,
   },
   rewardText: {
+    fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     fontSize: 12,
     flex: 1,
   },
   rewardBold: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
-    fontWeight: '800',
   },
   totalRow: {
     flexDirection: 'row',
@@ -401,13 +399,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   totalLabel: {
+    fontFamily: theme.fonts.semibold,
     fontSize: 14,
     color: theme.colors.textSecondary,
-    fontWeight: '600',
   },
   totalAmount: {
+    fontFamily: theme.fonts.bold,
     fontSize: 22,
-    fontWeight: '900',
     color: theme.colors.primary,
   },
   confirmBtn: {
@@ -418,8 +416,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   confirmBtnText: {
+    fontFamily: theme.fonts.bold,
     color: '#0B0F19',
     fontSize: 14,
-    fontWeight: '900',
   }
 });

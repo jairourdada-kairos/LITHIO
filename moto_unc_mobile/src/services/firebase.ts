@@ -1,0 +1,61 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
+import {
+  Auth,
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth,
+} from '@firebase/auth';
+
+let auth: Auth | undefined;
+
+export function getFirebaseAuth(): Auth {
+  if (auth) return auth;
+
+  const config = {
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  };
+  const missingConfig = Object.entries(config)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missingConfig.length > 0) {
+    throw new Error(
+      `Configura Firebase en moto_unc_mobile/.env (${missingConfig.join(', ')}).`
+    );
+  }
+
+  const app = getApps().length > 0 ? getApp() : initializeApp(config);
+  try {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error) {
+    if (!(error instanceof FirebaseError) || error.code !== 'auth/already-initialized') {
+      throw error;
+    }
+    auth = getAuth(app);
+  }
+  return auth;
+}
+
+export async function getFirebaseIdToken(): Promise<string> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    throw new Error('Inicia sesión para continuar.');
+  }
+  return user.getIdToken();
+}
+
+export async function authenticatedFetch(
+  url: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${await getFirebaseIdToken()}`);
+  return fetch(url, { ...init, headers });
+}

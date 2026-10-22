@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -27,6 +27,9 @@
       "eas": {
         "projectId": "1ff398e2-9e9c-4e68-8eaa-5a4e9879475c"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

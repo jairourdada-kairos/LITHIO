@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
   },
   nationality: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.cardBg,
+    backgroundColor: theme.colors.glassBgStrong,
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
+    borderColor: theme.colors.glassBorder,
     borderRadius: theme.radius.md,
     padding: 3,
   },
@@ -239,8 +239,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
   },
   nationalityText: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.textSecondary,
-    fontWeight: '700',
     fontSize: 15,
   },
   nationalityTextSelected: {
@@ -261,22 +261,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: theme.radius.full,
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
-    backgroundColor: theme.colors.cardBg,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBgStrong,
   },
   chipError: {
     borderColor: theme.colors.error,
   },
   chipText: {
+    fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
-    fontWeight: '600',
     fontSize: 14,
   },
   chipTextSelected: {
+    fontFamily: theme.fonts.bold,
     color: theme.colors.bgDark,
-    fontWeight: '800',
   },
   error: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.error,
     marginTop: 6,

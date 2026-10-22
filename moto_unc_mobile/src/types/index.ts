@@ -14,21 +14,14 @@ export interface User {
 export interface Driver {
   user_id: number;
   name: string;
-  phone: string;
   avatar_url?: string;
   moto_brand_model: string;
   moto_color: string;
-  plate: string;
   helmet_provided: boolean;
   is_available: boolean;
   rating_avg: number;
   trips_count: number;
   xp_level: string;
-  current_location_tag: string;
-  mobile_payment_number?: string;
-  mobile_payment_bank?: string;
-  mobile_payment_id?: string;
-  bank_account_number?: string;
 }
 
 export type RideStatus = 
@@ -58,6 +51,11 @@ export interface Ride {
   created_at: string;
   passenger_name?: string;
   driver_name?: string;
+  driver_mobile_payment_number?: string;
+  driver_mobile_payment_bank?: string;
+  driver_mobile_payment_id?: string;
+  driver_bank_account_number?: string;
+  driver_binance_address?: string;
 }
 
 export interface PresetRoute {
