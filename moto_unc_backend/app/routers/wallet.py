@@ -227,3 +227,60 @@ async def review_transaction(tx_id: int, data: ReviewIn, db: Session = Depends(g
         user_id=tx.user_id,
     )
     return serialize(db, tx)
+
+
+# ---------------- Catálogo del taller (administración) ----------------
+
+class WorkshopIn(BaseModel):
+    title: str = Field(min_length=3, max_length=80)
+    description: Optional[str] = Field(default=None, max_length=200)
+    cost: float = Field(gt=0, le=500)
+    is_active: bool = True
+
+
+def workshop_admin_payload(item: WorkshopReward) -> dict:
+    return {
+        "id": item.id,
+        "title": item.title,
+        "description": item.description,
+        "cost": wallet.as_diamonds(item.cost_cents),
+        "is_active": bool(item.is_active),
+    }
+
+
+@router.get("/admin/workshop", dependencies=[Depends(require_admin)])
+def admin_workshop(db: Session = Depends(get_db)):
+    return [workshop_admin_payload(r) for r in db.query(WorkshopReward).order_by(WorkshopReward.cost_cents).all()]
+
+
+@router.post("/admin/workshop", status_code=201, dependencies=[Depends(require_admin)])
+def create_workshop_item(data: WorkshopIn, db: Session = Depends(get_db)):
+    item = WorkshopReward(title=data.title, description=data.description, cost_cents=wallet.to_cents(data.cost), is_active=data.is_active)
+    db.add(item)
+    db.commit()
+    return workshop_admin_payload(item)
+
+
+@router.put("/admin/workshop/{item_id}", dependencies=[Depends(require_admin)])
+def update_workshop_item(item_id: int, data: WorkshopIn, db: Session = Depends(get_db)):
+    item = db.get(WorkshopReward, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+    item.title, item.description = data.title, data.description
+    item.cost_cents, item.is_active = wallet.to_cents(data.cost), data.is_active
+    db.commit()
+    return workshop_admin_payload(item)
+
+
+@router.delete("/admin/workshop/{item_id}", dependencies=[Depends(require_admin)])
+def delete_workshop_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.get(WorkshopReward, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+    # Si ya hay canjes que lo citan, solo se desactiva para no romper el historial.
+    if db.query(WalletTransaction).filter(WalletTransaction.reward_id == item_id).first():
+        item.is_active = False
+    else:
+        db.delete(item)
+    db.commit()
+    return {"ok": True}

@@ -100,7 +100,14 @@ export const AccountScreen: React.FC<Props> = ({
         </Pressable>
         <View style={styles.flex}>
           <Text style={styles.name} numberOfLines={2}>{fullName}</Text>
-          <RoleBadge role={role} style={styles.badge} />
+          <View style={styles.badgeRow}>
+            <RoleBadge role={role} />
+            {levelBadge(level.z) ? (
+              <View style={[styles.levelBadge, level.z >= 36 && { borderColor: theme.colors.gold }]}>
+                <Text style={[styles.levelBadgeText, level.z >= 36 && { color: theme.colors.gold }]}>{levelBadge(level.z)}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -183,6 +190,14 @@ const Stat: React.FC<{ value: string; label: string; color?: string }> = ({ valu
   </View>
 );
 
+/** Insignias de nivel: Litio (Z=3), gas noble (Z=10, Neón) y Leyenda (Z=36, Kriptón). */
+function levelBadge(z: number): string | null {
+  if (z >= 36) return '★ Leyenda LITHIO';
+  if (z >= 10) return 'Gas noble';
+  if (z >= 3) return 'Insignia Li';
+  return null;
+}
+
 const styles = themed(() => ({
   scroll: {
     paddingHorizontal: 20,
@@ -207,8 +222,23 @@ const styles = themed(() => ({
     fontSize: 21,
     color: theme.colors.textPrimary,
   },
-  badge: {
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     marginTop: 6,
+  },
+  levelBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+  },
+  levelBadgeText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 11,
+    color: theme.colors.textSecondary,
   },
   camera: {
     position: 'absolute',

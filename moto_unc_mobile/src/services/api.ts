@@ -63,6 +63,8 @@ export interface FeStore {
   points: number;
   coupon_prices: { percent: number; cost: number }[];
   voucher_cost: number;
+  /** 10 % de descuento por nivel (Hierro, Z=26, o superior). */
+  store_discount: boolean;
   coupons: FeCoupon[];
   vouchers: GradeVoucher[];
 }

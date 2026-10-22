@@ -41,8 +41,8 @@ from .schemas import (
 from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
-from .links_service import award_fe, level_for
-from .routers import driver_applications, fe_store, links, profile, quiz, wallet
+from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
+from .routers import driver_applications, fe_store, links, profile, quiz, rates, wallet
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 VENEZUELA_TZ = config.VENEZUELA_TZ
@@ -85,6 +85,7 @@ app.include_router(quiz.router)
 app.include_router(driver_applications.router)
 app.include_router(profile.router)
 app.include_router(fe_store.router)
+app.include_router(rates.router)
 
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1066,7 +1067,9 @@ def get_pending_rides_for_driver(
     rides = db.query(Ride).filter(
         Ride.driver_id == driver_id, 
         Ride.status == "solicitado"
-    ).all()
+    ).order_by(Ride.id).all()
+    # Beneficio del Argón (Z=18): sus solicitudes aparecen primero.
+    rides.sort(key=lambda r: user_z(r.passenger) < PRIORITY_LEVEL)
     results = []
     for r in rides:
         res = RideResponse.model_validate(r)

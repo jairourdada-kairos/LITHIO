@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user, require_admin
 from ..config import EVIDENCE_DIR
 from ..database import get_db
-from ..models import Coupon, GradeVoucher, User
+from ..links_service import GIFT_COUPONS, STORE_DISCOUNT_LEVEL, user_z
+from ..models import Coupon, GradeVoucher, PerkGrant, User
 from ..realtime import manager
 from .profile import _detect_format
 
@@ -24,6 +25,22 @@ router = APIRouter(prefix="/api", tags=["tienda-fe"])
 COUPON_PRICES = {25: 150, 50: 300}
 VOUCHER_COST = 500
 MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
+
+
+def price(user: User, base: int) -> int:
+    """Precio en Fe con el 10 % de descuento del nivel Hierro (Fe, Z=26) o superior."""
+    return round(base * 0.9) if user_z(user) >= STORE_DISCOUNT_LEVEL else base
+
+
+def grant_level_perks(db: Session, user: User) -> None:
+    """Entrega una sola vez los cupones de regalo de los niveles alcanzados."""
+    z = user_z(user)
+    granted = {g.z for g in db.query(PerkGrant).filter(PerkGrant.user_id == user.id)}
+    for level, percent in GIFT_COUPONS.items():
+        if level <= z and level not in granted:
+            db.add(PerkGrant(user_id=user.id, z=level))
+            db.add(Coupon(user_id=user.id, percent=percent, fe_cost=0))
+    db.commit()
 
 
 def _spend_fe(user: User, cost: int) -> None:
@@ -58,12 +75,14 @@ def voucher_payload(voucher: GradeVoucher) -> dict:
 
 @router.get("/fe-store")
 def store(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    grant_level_perks(db, user)
     coupons = db.query(Coupon).filter(Coupon.user_id == user.id).order_by(Coupon.id.desc()).limit(20).all()
     vouchers = db.query(GradeVoucher).filter(GradeVoucher.user_id == user.id).order_by(GradeVoucher.id.desc()).all()
     return {
         "points": user.points or 0,
-        "coupon_prices": [{"percent": p, "cost": c} for p, c in COUPON_PRICES.items()],
-        "voucher_cost": VOUCHER_COST,
+        "coupon_prices": [{"percent": p, "cost": price(user, c)} for p, c in COUPON_PRICES.items()],
+        "voucher_cost": price(user, VOUCHER_COST),
+        "store_discount": user_z(user) >= STORE_DISCOUNT_LEVEL,
         "coupons": [coupon_payload(c) for c in coupons],
         "vouchers": [voucher_payload(v) for v in vouchers],
     }
@@ -75,7 +94,7 @@ class CouponIn(BaseModel):
 
 @router.post("/fe-store/coupons")
 def buy_coupon(data: CouponIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    cost = COUPON_PRICES[data.percent]
+    cost = price(user, COUPON_PRICES[data.percent])
     _spend_fe(user, cost)
     coupon = Coupon(user_id=user.id, percent=data.percent, fe_cost=cost)
     db.add(coupon)
@@ -99,7 +118,8 @@ async def request_voucher(
     extension = _detect_format(data)
     if not extension:
         raise HTTPException(status_code=400, detail="Solo se aceptan fotos JPG, PNG o WEBP.")
-    _spend_fe(user, VOUCHER_COST)
+    cost = price(user, VOUCHER_COST)
+    _spend_fe(user, cost)
 
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{user.id}-{secrets.token_hex(8)}.{extension}"
@@ -109,7 +129,7 @@ async def request_voucher(
         subject=subject.strip(),
         note=(note or "").strip() or None,
         evidence_file=filename,
-        fe_cost=VOUCHER_COST,
+        fe_cost=cost,
     )
     db.add(voucher)
     db.commit()

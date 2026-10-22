@@ -217,3 +217,25 @@ class GradeVoucher(Base):
     review_note = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
+
+
+class ExchangeRate(Base):
+    """Tasa oficial BCV (Bs por USD) de un día en Venezuela."""
+    __tablename__ = "exchange_rates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rate_date = Column(Date, nullable=False, unique=True)
+    rate = Column(Float, nullable=False)
+    source = Column(String, nullable=False)  # dolarapi o manual
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PerkGrant(Base):
+    """Beneficio de nivel ya entregado (cupones de regalo): uno por usuario y nivel."""
+    __tablename__ = "perk_grants"
+    __table_args__ = (UniqueConstraint("user_id", "z", name="uq_perk_user_level"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    z = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

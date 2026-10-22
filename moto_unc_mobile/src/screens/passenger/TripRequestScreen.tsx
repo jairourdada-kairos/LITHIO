@@ -15,6 +15,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import type { Driver, PresetRoute } from '../../types';
+import { formatBs, useBcvRate } from '../../services/rates';
 
 export interface TripSelection {
   route: PresetRoute;
@@ -67,6 +68,7 @@ export const TripRequestScreen: React.FC<Props> = ({
   onBack,
   onChooseDriver,
 }) => {
+  const bcv = useBcvRate();
   const insets = useSafeAreaInsets();
   const [scheduled, setScheduled] = useState(initialScheduled);
   const days = useMemo(() => upcomingDays(7), []);
@@ -180,7 +182,10 @@ export const TripRequestScreen: React.FC<Props> = ({
                   <Text style={styles.routePlace} numberOfLines={1}>{r.destination}</Text>
                   <Text style={styles.routeMeta}>{r.tag || 'Ruta LITHIO'} · {r.estimated_minutes} min</Text>
                 </View>
-                <Text style={[styles.routeFare, selected && { color: theme.colors.primary }]}>${r.fare_usd.toFixed(2)}</Text>
+                <View style={styles.fareBox}>
+                  <Text style={[styles.routeFare, selected && { color: theme.colors.primary }]}>${r.fare_usd.toFixed(2)}</Text>
+                  {bcv ? <Text style={styles.routeBs}>{formatBs(r.fare_usd, bcv)}</Text> : null}
+                </View>
               </PressableScale>
             );
           })}
@@ -386,6 +391,14 @@ const styles = themed(() => ({
     fontSize: 12,
     color: theme.colors.textMuted,
     marginTop: 2,
+  },
+  fareBox: {
+    alignItems: 'flex-end',
+  },
+  routeBs: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    color: theme.colors.textMuted,
   },
   routeFare: {
     fontFamily: theme.fonts.bold,

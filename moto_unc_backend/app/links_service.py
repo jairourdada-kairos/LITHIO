@@ -59,9 +59,20 @@ LEVEL_PERKS = {
     13: "Cupón de 50 % en un viaje",
     18: "Prioridad en viajes programados",
     26: "10 % permanente en la tienda de Fe",
-    29: "Un viaje gratis UNC ↔ Biblioteca",
+    29: "Un viaje gratis (cupón de 100 %)",
     36: "Leyenda LITHIO: insignia dorada",
 }
+
+
+# Niveles que regalan un cupón (porcentaje de descuento) al alcanzarlos.
+GIFT_COUPONS = {6: 25, 13: 50, 29: 100}
+QUIZ_BONUS_LEVEL = 8      # +5 Fe en la Reacción del día
+PRIORITY_LEVEL = 18       # Sus solicitudes aparecen primero al conductor
+STORE_DISCOUNT_LEVEL = 26  # 10 % en la tienda de Fe
+
+
+def user_z(user: User) -> int:
+    return level_for(user.fe_lifetime or 0)["z"]
 
 
 def next_perk(z: int) -> tuple[int, str] | None:

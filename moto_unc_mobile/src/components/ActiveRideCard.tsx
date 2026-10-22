@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Ride, RideStatus, UserRole } from '../types';
+import { formatBs, useBcvRate } from '../services/rates';
 
 interface ActiveRideCardProps {
   ride: Ride;
@@ -18,6 +19,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
   onOpenReview,
   onCancel,
 }) => {
+  const bcv = useBcvRate();
   const isDriver = role === 'conductor';
 
   // Texto y estilo según estado
@@ -111,7 +113,9 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>💵 Tarifa:</Text>
-            <Text style={styles.fareVal}>${ride.fare_amount.toFixed(2)} USD</Text>
+            <Text style={styles.fareVal}>
+              ${ride.fare_amount.toFixed(2)} USD{bcv ? ` · ${formatBs(ride.fare_amount, bcv)}` : ''}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>💳 Pago:</Text>

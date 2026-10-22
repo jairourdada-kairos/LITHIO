@@ -13,6 +13,7 @@ import { PressableScale } from '../../components/brand/PressableScale';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService, WalletInfo, WalletTransaction } from '../../services/api';
 import { WalletActionSheet } from '../../components/WalletActionSheet';
+import { formatBs, useBcvRate } from '../../services/rates';
 import type { SessionRole } from '../../services/session';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -39,6 +40,7 @@ const STATUS_TEXT: Record<string, string> = { pendiente: 'En revisión', aprobad
 
 export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
   const [action, setAction] = useState<WalletAction | null>(null);
+  const bcv = useBcvRate();
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,14 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
       <View style={styles.balanceCard}>
         <Text style={styles.muted}>{role === 'conductor' ? 'Ganancias disponibles' : 'Saldo disponible'}</Text>
         <Text style={styles.balance}>◆ {(wallet?.balance ?? 0).toFixed(2)}</Text>
-        <Text style={styles.muted}>1 ◆ = 1 USD · Hierro: Fe {wallet?.points ?? 0}</Text>
+        <Text style={styles.muted}>
+          {bcv ? `≈ ${formatBs(wallet?.balance ?? 0, bcv)} · ` : ''}1 ◆ = 1 USD · Fe {wallet?.points ?? 0}
+        </Text>
+        {bcv ? (
+          <Text style={styles.muted}>
+            Tasa BCV {bcv.is_current ? 'de hoy' : `del ${bcv.date}`}: Bs {bcv.rate.toFixed(2)}
+          </Text>
+        ) : null}
         <View style={styles.actions}>
           {actions.map((action) => (
             <PressableScale

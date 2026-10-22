@@ -72,3 +72,19 @@ async def review_application(user_id: int, data: ApplicationReviewIn, db: Sessio
     # El conductor ve el cambio al instante si tiene la app abierta.
     await manager.send_personal_message({"type": "DRIVER_APPLICATION_UPDATED", "application": payload}, user_id=user_id)
     return payload
+
+
+@router.get("/admin/drivers", dependencies=[Depends(require_admin)])
+def list_all_drivers(db: Session = Depends(get_db)):
+    """Todos los conductores, en cualquier estado de verificación (panel web)."""
+    profiles = db.query(DriverProfile).join(User).order_by(User.name).all()
+    return [
+        {
+            **application_payload(profile.user, profile),
+            "phone": profile.user.phone,
+            "is_available": bool(profile.is_available),
+            "rating_avg": profile.rating_avg,
+            "trips_count": profile.trips_count,
+        }
+        for profile in profiles
+    ]

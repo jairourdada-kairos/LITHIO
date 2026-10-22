@@ -42,9 +42,10 @@
 
             <nav class="nav-menu">
                 <button class="nav-item active" data-section="dashboard">📊 Resumen</button>
+                <button class="nav-item" data-section="approvals">✅ Aprobaciones</button>
                 <button class="nav-item" data-section="drivers">🛵 Conductores</button>
                 <button class="nav-item" data-section="routes">🛣️ Rutas</button>
-                <button class="nav-item" data-section="rewards">🌟 Recompensas</button>
+                <button class="nav-item" data-section="rewards">🔧 Taller</button>
                 <button class="nav-item" data-section="profile">👤 Perfil</button>
             </nav>
         </aside>
@@ -80,10 +81,10 @@
                     </div>
                 </div>
                 <div class="stat-card glass-panel">
-                    <div class="stat-icon">🌟</div>
+                    <div class="stat-icon">✅</div>
                     <div class="stat-info">
-                        <h3>Hierro (Fe)</h3>
-                        <p class="stat-value" id="stat-star-coins">0</p>
+                        <h3>Por aprobar</h3>
+                        <p class="stat-value" id="stat-pending-count">0</p>
                     </div>
                 </div>
                 <div class="stat-card glass-panel">
@@ -93,9 +94,30 @@
                         <p class="stat-value" id="stat-routes-count">0</p>
                     </div>
                 </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">Bs</div>
+                    <div class="stat-info">
+                        <h3>Tasa BCV <small id="stat-bcv-meta"></small></h3>
+                        <p class="stat-value" id="stat-bcv">—</p>
+                        <button class="small-btn" id="set-bcv-btn" type="button">Fijar a mano</button>
+                    </div>
+                </div>
             </section>
 
             <div class="content-stack">
+                <section class="content-card glass-panel section-panel" id="approvals">
+                    <div class="card-header">
+                        <h3>Aprobaciones pendientes</h3>
+                        <button class="small-btn" id="refresh-btn" type="button">Actualizar</button>
+                    </div>
+                    <h4 class="subsection-title">Postulaciones de conductores</h4>
+                    <div id="applications-list" class="mini-grid"></div>
+                    <h4 class="subsection-title">Billetera: recargas, retiros y taller</h4>
+                    <div id="wallet-list" class="mini-grid"></div>
+                    <h4 class="subsection-title">Vales «Pasar con 20»</h4>
+                    <div id="vouchers-list" class="mini-grid"></div>
+                </section>
+
                 <section class="content-card glass-panel section-panel" id="drivers">
                     <div class="card-header">
                         <h3>Conductores registrados</h3>
@@ -108,6 +130,7 @@
                                 <tr>
                                     <th>Conductor</th>
                                     <th>Vehículo</th>
+                                    <th>Verificación</th>
                                     <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -127,8 +150,8 @@
 
                 <section class="content-card glass-panel section-panel" id="rewards">
                     <div class="card-header">
-                        <h3>Recompensas y cupones</h3>
-                        <button class="primary-btn" id="add-reward-btn">+ Nueva recompensa</button>
+                        <h3>Taller aliado (se paga con diamantes)</h3>
+                        <button class="primary-btn" id="add-reward-btn">+ Nuevo servicio</button>
                     </div>
                     <div id="rewards-list" class="mini-grid"></div>
                 </section>

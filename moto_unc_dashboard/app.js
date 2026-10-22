@@ -7,7 +7,27 @@ const state = {
   drivers: [],
   routes: [],
   rewards: [],
+  applications: [],
+  wallet: [],
+  vouchers: [],
+  bcv: null,
   admin: null
+};
+
+const STATUS_LABEL = {
+  pendiente: 'Nueva',
+  en_revision: 'En revisión',
+  inspeccion: 'Inspección',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado'
+};
+
+// Siguiente paso de una postulación: texto del botón y estado al que avanza.
+const NEXT_STEP = {
+  pendiente: { label: 'Iniciar revisión', status: 'en_revision' },
+  en_revision: { label: 'Citar inspección', status: 'inspeccion' },
+  inspeccion: { label: 'Dar luz verde', status: 'aprobado' },
+  rechazado: { label: 'Reabrir revisión', status: 'en_revision' }
 };
 
 let adminToken = null;
@@ -26,7 +46,10 @@ const entityForm = document.getElementById('entity-form');
 
 const statAdminName = document.getElementById('stat-admin-name');
 const statDriversCount = document.getElementById('stat-drivers-count');
-const statStarCoins = document.getElementById('stat-star-coins');
+const statPendingCount = document.getElementById('stat-pending-count');
+const applicationsList = document.getElementById('applications-list');
+const walletList = document.getElementById('wallet-list');
+const vouchersList = document.getElementById('vouchers-list');
 const statRoutesCount = document.getElementById('stat-routes-count');
 
 function escapeHtml(value) {
@@ -136,17 +159,26 @@ async function fetchData() {
   try {
     setApiStatus(false);
 
-    const [driversRes, routesRes, rewardsRes] = await Promise.all([
-      requestAdmin('/drivers'),
+    const [driversRes, routesRes, workshopRes, applicationsRes, walletRes, vouchersRes] = await Promise.all([
+      requestAdmin('/admin/drivers'),
       requestAdmin('/routes'),
-      requestAdmin('/gamification/rewards')
+      requestAdmin('/admin/workshop'),
+      requestAdmin('/admin/driver-applications'),
+      requestAdmin('/admin/wallet/pending'),
+      requestAdmin('/admin/vouchers')
     ]);
+    // La tasa no debe impedir que cargue el resto del panel.
+    state.bcv = await requestAdmin('/rates/bcv').catch(() => null);
 
-    state.drivers = driversRes.filter(d => !['Carlos Silva', 'Alejandro Díaz'].includes(d.name));
+    state.drivers = driversRes;
     state.routes = routesRes;
-    state.rewards = rewardsRes;
+    state.rewards = workshopRes;
+    state.applications = applicationsRes.filter(a => a.status !== 'rechazado');
+    state.wallet = walletRes;
+    state.vouchers = vouchersRes;
 
     renderStats();
+    renderApprovals();
     renderDrivers();
     renderRoutes();
     renderRewards();
@@ -161,13 +193,78 @@ async function fetchData() {
 function renderStats() {
   statAdminName.textContent = state.admin.name.split(' ')[0];
   statDriversCount.textContent = String(state.drivers.length);
-  statStarCoins.textContent = '0';
+  statPendingCount.textContent = String(state.applications.length + state.wallet.length + state.vouchers.length);
   statRoutesCount.textContent = String(state.routes.length);
+  const bcv = state.bcv;
+  document.getElementById('stat-bcv').textContent = bcv ? `Bs ${bcv.rate.toFixed(2)}` : '—';
+  document.getElementById('stat-bcv-meta').textContent = bcv
+    ? `· ${bcv.is_current ? 'hoy' : bcv.date}${bcv.source === 'manual' ? ' · manual' : ''}`
+    : '· sin datos';
+}
+
+function emptyNote(text) {
+  return `<p class="empty-note">${escapeHtml(text)}</p>`;
+}
+
+function renderApprovals() {
+  applicationsList.innerHTML = state.applications.length ? state.applications.map(app => {
+    const next = NEXT_STEP[app.status];
+    return `
+      <div class="route-card">
+        <strong>${escapeHtml([app.name, app.last_name].filter(Boolean).join(' '))}</strong>
+        <p><span class="status-badge status-pending">${escapeHtml(STATUS_LABEL[app.status] || app.status)}</span></p>
+        <p>${escapeHtml(app.moto.brand_model)} · ${escapeHtml(app.moto.color)} · Placa ${escapeHtml(app.moto.plate)}${app.moto.year ? ` · ${app.moto.year}` : ''}</p>
+        <p>Cédula: ${escapeHtml(app.cedula)} · Licencia: ${escapeHtml(app.license_number || '—')}</p>
+        <p>Teléfono: ${escapeHtml(app.phone)} · ${escapeHtml(app.email)}</p>
+        ${app.inspection_date ? `<p>Inspección: ${escapeHtml(app.inspection_date)}</p>` : ''}
+        <div class="action-group">
+          ${next ? `<button class="small-btn" data-action="app-advance" data-id="${app.user_id}">${escapeHtml(next.label)}</button>` : ''}
+          <button class="small-btn danger" data-action="app-reject" data-id="${app.user_id}">Rechazar</button>
+        </div>
+      </div>`;
+  }).join('') : emptyNote('No hay postulaciones pendientes.');
+
+  walletList.innerHTML = state.wallet.length ? state.wallet.map(item => `
+    <div class="route-card">
+      <strong>${escapeHtml(item.label)} · ◆ ${Math.abs(item.amount).toFixed(2)}</strong>
+      <p>${escapeHtml(item.user_name)} · ${escapeHtml(item.user_email)}</p>
+      ${item.reference ? `<p>${item.kind === 'recarga' ? 'Referencia' : 'Pagar a'}: ${escapeHtml(item.reference)}</p>` : ''}
+      ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}
+      <p>${escapeHtml(new Date(item.created_at).toLocaleString('es-VE'))}</p>
+      <div class="action-group">
+        <button class="small-btn" data-action="wallet-approve" data-id="${item.id}">Aprobar</button>
+        <button class="small-btn danger" data-action="wallet-reject" data-id="${item.id}">Rechazar</button>
+      </div>
+    </div>`).join('') : emptyNote('No hay movimientos esperando revisión.');
+
+  vouchersList.innerHTML = state.vouchers.length ? state.vouchers.map(voucher => `
+    <div class="route-card">
+      <strong>${escapeHtml(voucher.subject)}</strong>
+      <p>${escapeHtml(voucher.user_name)}</p>
+      <img class="evidence-img" data-voucher="${voucher.id}" alt="Foto de la nota">
+      ${voucher.note ? `<p>${escapeHtml(voucher.note)}</p>` : ''}
+      <div class="action-group">
+        <button class="small-btn" data-action="voucher-approve" data-id="${voucher.id}">Aprobar vale</button>
+        <button class="small-btn danger" data-action="voucher-reject" data-id="${voucher.id}">Rechazar</button>
+      </div>
+    </div>`).join('') : emptyNote('No hay vales por revisar.');
+
+  // La evidencia es privada: se descarga con el token y se muestra como blob.
+  vouchersList.querySelectorAll('img[data-voucher]').forEach(async img => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vouchers/${img.dataset.voucher}/evidence`, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+      if (response.ok) img.src = URL.createObjectURL(await response.blob());
+    } catch {
+      img.alt = 'No se pudo cargar la foto';
+    }
+  });
 }
 
 function renderDrivers() {
   if (!state.drivers.length) {
-    driversTableBody.innerHTML = '<tr><td colspan="4">No hay conductores registrados.</td></tr>';
+    driversTableBody.innerHTML = '<tr><td colspan="5">No hay conductores registrados.</td></tr>';
     return;
   }
 
@@ -177,15 +274,16 @@ function renderDrivers() {
         <div class="driver-meta">
           <div class="avatar">${escapeHtml(driver.name.charAt(0).toUpperCase())}</div>
           <div>
-            <strong>${escapeHtml(driver.name)}</strong><br>
-            <small>${escapeHtml(driver.xp_level)}</small>
+            <strong>${escapeHtml([driver.name, driver.last_name].filter(Boolean).join(' '))}</strong><br>
+            <small>★ ${Number(driver.rating_avg || 0).toFixed(1)} · ${driver.trips_count || 0} viajes</small>
           </div>
         </div>
       </td>
       <td>
-        <strong>${escapeHtml(driver.moto_brand_model)}</strong><br>
-        <small>Placa: ${escapeHtml(driver.plate)}</small>
+        <strong>${escapeHtml(driver.moto.brand_model)}</strong><br>
+        <small>Placa: ${escapeHtml(driver.moto.plate)}</small>
       </td>
+      <td>${escapeHtml(STATUS_LABEL[driver.status] || driver.status)}</td>
       <td>
         <span class="status-badge ${driver.is_available ? 'status-available' : 'status-busy'}">
           ${driver.is_available ? 'Disponible' : 'Ocupado'}
@@ -220,9 +318,9 @@ function renderRewards() {
   rewardsList.innerHTML = state.rewards.map(reward => `
     <div class="reward-card">
       <strong>${escapeHtml(reward.title)}</strong>
-      <p>${escapeHtml(reward.description)}</p>
-      <p>Precio: ${reward.points_cost} Fe</p>
-      <p>Descuento: ${reward.discount_percent}%</p>
+      <p>${escapeHtml(reward.description || '')}</p>
+      <p>Precio: ◆ ${Number(reward.cost).toFixed(2)}</p>
+      <p>${reward.is_active ? 'Visible en la app' : 'Oculto'}</p>
       <div class="action-group">
         <button class="small-btn" data-action="edit-reward" data-id="${reward.id}">Editar</button>
         <button class="small-btn danger" data-action="delete-reward" data-id="${reward.id}">Eliminar</button>
@@ -244,9 +342,9 @@ function closeModal() {
 
 function buildForm(type, payload) {
   if (type === 'driver') {
-    const data = payload || {
-      name: '', phone: '', moto_brand_model: '', plate: '', is_available: true, rating_avg: 5, trips_count: 0, xp_level: 'Conductor UNC'
-    };
+    const data = payload
+      ? { ...payload, moto_brand_model: payload.moto.brand_model, plate: payload.moto.plate }
+      : { name: '', phone: '', moto_brand_model: '', plate: '', is_available: true };
 
     return `
       <input type="hidden" name="type" value="driver">
@@ -280,14 +378,19 @@ function buildForm(type, payload) {
   }
 
   if (type === 'reward') {
-    const data = payload || { title: '', description: '', points_cost: 100, discount_percent: 20 };
+    const data = payload || { title: '', description: '', cost: 5, is_active: true };
     return `
       <input type="hidden" name="type" value="reward">
       ${payload ? `<input type="hidden" name="entity_id" value="${payload.id}">` : ''}
-      <label>Título<input name="title" value="${escapeHtml(data.title)}"></label>
-      <label>Descripción<textarea name="description">${escapeHtml(data.description)}</textarea></label>
-      <label>Coste en Fe<input type="number" name="points_cost" value="${data.points_cost || 100}"></label>
-      <label>Descuento %<input type="number" name="discount_percent" value="${data.discount_percent || 20}"></label>
+      <label>Servicio<input name="title" value="${escapeHtml(data.title)}" required minlength="3"></label>
+      <label>Descripción<textarea name="description">${escapeHtml(data.description || '')}</textarea></label>
+      <label>Precio en diamantes (◆ = USD)<input type="number" step="0.5" min="0.5" name="cost" value="${data.cost}"></label>
+      <label>Visible en la app
+        <select name="is_active">
+          <option value="true" ${data.is_active ? 'selected' : ''}>Sí</option>
+          <option value="false" ${!data.is_active ? 'selected' : ''}>No</option>
+        </select>
+      </label>
       <button type="submit" class="primary-btn">Guardar</button>
     `;
   }
@@ -302,26 +405,13 @@ function handleFormSubmit(event) {
   const entityId = formData.get('entity_id');
 
   if (type === 'driver') {
-    const driver = {
-      user_id: Date.now(),
+    // Solo los campos del formulario: la calificación y los viajes no se tocan.
+    const payload = {
       name: formData.get('name'),
       phone: formData.get('phone'),
       moto_brand_model: formData.get('moto_brand_model'),
       plate: formData.get('plate'),
-      is_available: formData.get('is_available') === 'true',
-      rating_avg: Number(formData.get('rating_avg')) || 5,
-      trips_count: Number(formData.get('trips_count')) || 0,
-      xp_level: 'Conductor UNC'
-    };
-    const payload = {
-      name: driver.name,
-      phone: driver.phone,
-      moto_brand_model: driver.moto_brand_model,
-      plate: driver.plate,
-      is_available: driver.is_available,
-      rating_avg: driver.rating_avg,
-      trips_count: driver.trips_count,
-      xp_level: driver.xp_level
+      is_available: formData.get('is_available') === 'true'
     };
     const promise = entityId
       ? requestAdmin(`/admin/drivers/${entityId}`, 'PUT', payload)
@@ -345,18 +435,15 @@ function handleFormSubmit(event) {
   }
 
   if (type === 'reward') {
-    const reward = {
-      id: Date.now(),
+    const item = {
       title: formData.get('title'),
-      description: formData.get('description'),
-      points_cost: Number(formData.get('points_cost')) || 100,
-      discount_percent: Number(formData.get('discount_percent')) || 20,
-      icon: 'star-circle',
-      is_active: true
+      description: formData.get('description') || null,
+      cost: Number(formData.get('cost')) || 0,
+      is_active: formData.get('is_active') === 'true'
     };
     const promise = entityId
-      ? requestAdmin(`/admin/rewards/${entityId}`, 'PUT', reward)
-      : requestAdmin('/admin/rewards', 'POST', reward);
+      ? requestAdmin(`/admin/workshop/${entityId}`, 'PUT', item)
+      : requestAdmin('/admin/workshop', 'POST', item);
     promise.then(fetchData).catch(showError);
   }
 
@@ -376,6 +463,7 @@ function handleActions(event) {
   const id = Number(button.dataset.id);
 
   if (action === 'delete-driver') {
+    if (!confirm('¿Eliminar este conductor y su cuenta? No se puede deshacer.')) return;
     requestAdmin(`/admin/drivers/${id}`, 'DELETE').then(fetchData).catch(showError);
     return;
   }
@@ -386,7 +474,48 @@ function handleActions(event) {
   }
 
   if (action === 'delete-reward') {
-    requestAdmin(`/admin/rewards/${id}`, 'DELETE').then(fetchData).catch(showError);
+    if (!confirm('¿Eliminar este servicio del taller?')) return;
+    requestAdmin(`/admin/workshop/${id}`, 'DELETE').then(fetchData).catch(showError);
+    return;
+  }
+
+  if (action === 'app-advance') {
+    const app = state.applications.find(a => a.user_id === id);
+    const next = app && NEXT_STEP[app.status];
+    if (!next) return;
+    const body = { status: next.status };
+    if (next.status === 'inspeccion') {
+      const date = prompt(`¿Cuándo y dónde revisarás la moto de ${app.name}?`, 'Lunes 9:00 am, estacionamiento UNC');
+      if (!date) return;
+      body.inspection_date = date;
+    }
+    if (next.status === 'aprobado' && !confirm(`La cuenta de ${app.name} quedará activa como conductor. ¿Aprobar?`)) return;
+    requestAdmin(`/admin/driver-applications/${id}`, 'PUT', body).then(fetchData).catch(showError);
+    return;
+  }
+
+  if (action === 'app-reject') {
+    const notes = prompt('Motivo del rechazo (lo verá el conductor):');
+    if (!notes) return;
+    requestAdmin(`/admin/driver-applications/${id}`, 'PUT', { status: 'rechazado', notes }).then(fetchData).catch(showError);
+    return;
+  }
+
+  if (action === 'wallet-approve' || action === 'wallet-reject') {
+    const approve = action === 'wallet-approve';
+    const note = approve ? undefined : prompt('Motivo del rechazo:') ?? null;
+    if (note === null) return;
+    requestAdmin(`/admin/wallet/transactions/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note: note || undefined })
+      .then(fetchData).catch(showError);
+    return;
+  }
+
+  if (action === 'voucher-approve' || action === 'voucher-reject') {
+    const approve = action === 'voucher-approve';
+    const note = approve ? undefined : prompt('Motivo del rechazo (se devuelve el Fe):');
+    if (!approve && !note) return;
+    requestAdmin(`/admin/vouchers/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note })
+      .then(fetchData).catch(showError);
     return;
   }
 
@@ -402,7 +531,7 @@ function handleActions(event) {
 
   if (action === 'edit-reward') {
     const reward = state.rewards.find(r => r.id === id);
-    if (reward) openModal('Editar recompensa', 'reward', reward);
+    if (reward) openModal('Editar servicio', 'reward', reward);
   }
 }
 
@@ -439,7 +568,14 @@ function bindEvents() {
 
   document.getElementById('add-driver-btn').addEventListener('click', () => openModal('Nuevo conductor', 'driver'));
   document.getElementById('add-route-btn').addEventListener('click', () => openModal('Nueva ruta', 'route'));
-  document.getElementById('add-reward-btn').addEventListener('click', () => openModal('Nueva recompensa', 'reward'));
+  document.getElementById('add-reward-btn').addEventListener('click', () => openModal('Nuevo servicio del taller', 'reward'));
+  document.getElementById('refresh-btn').addEventListener('click', fetchData);
+  document.getElementById('set-bcv-btn').addEventListener('click', () => {
+    const value = prompt('Tasa BCV de hoy (Bs por dólar):', state.bcv ? String(state.bcv.rate) : '');
+    const rate = Number(String(value || '').replace(',', '.'));
+    if (!value || !(rate > 0)) return;
+    requestAdmin('/admin/rates/bcv', 'PUT', { rate }).then(fetchData).catch(showError);
+  });
   document.getElementById('close-modal').addEventListener('click', closeModal);
   entityForm.addEventListener('submit', handleFormSubmit);
   document.addEventListener('click', handleActions);

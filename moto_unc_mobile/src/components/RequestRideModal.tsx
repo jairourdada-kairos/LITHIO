@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView 
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
 import { apiService, FeCoupon } from '../services/api';
+import { formatBs, useBcvRate } from '../services/rates';
 
 interface RequestRideModalProps {
   visible: boolean;
@@ -29,6 +30,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const bcv = useBcvRate();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
   const [reference, setReference] = useState('');
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
@@ -159,7 +161,9 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: selected }}
                       >
-                        <Text style={[styles.couponChipText, selected && styles.couponChipTextActive]}>−{c.percent}%</Text>
+                        <Text style={[styles.couponChipText, selected && styles.couponChipTextActive]}>
+                          {c.percent === 100 ? 'Gratis' : `−${c.percent}%`}
+                        </Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -183,7 +187,10 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
             {/* Total y Botón */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tarifa Estimada:</Text>
-              <Text style={styles.totalAmount}>${fareAmount.toFixed(2)} USD</Text>
+              <View style={styles.totalValues}>
+                <Text style={styles.totalAmount}>${finalFare.toFixed(2)} USD</Text>
+                {bcv ? <Text style={styles.totalBs}>{formatBs(finalFare, bcv)} · tasa BCV</Text> : null}
+              </View>
             </View>
 
             <TouchableOpacity
@@ -203,6 +210,15 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 };
 
 const styles = themed(() => ({
+  totalValues: {
+    alignItems: 'flex-end',
+  },
+  totalBs: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
   couponBox: {
     marginBottom: 16,
   },

@@ -119,6 +119,9 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
             <ActivityIndicator color={theme.colors.gold} style={{ marginVertical: 32 }} />
           ) : (
             <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+              {store.store_discount ? (
+                <Text style={[styles.muted, { color: theme.colors.gold }]}>Precios con 10 % de descuento por tu nivel.</Text>
+              ) : null}
               <Text style={styles.section}>Cupones para tu próximo viaje</Text>
               <View style={styles.row}>
                 {store.coupon_prices.map(({ percent, cost }) => {
@@ -140,7 +143,8 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
               </View>
               {activeCoupons.length > 0 ? (
                 <Text style={styles.muted}>
-                  Tienes {activeCoupons.map((c) => `−${c.percent}%`).join(', ')} listo para usar al confirmar un viaje.
+                  Tienes {activeCoupons.map((c) => (c.percent === 100 ? 'un viaje gratis' : `−${c.percent}%`)).join(', ')} listo
+                  para usar al confirmar un viaje. Los niveles C, Al y Cu te regalan cupones.
                 </Text>
               ) : null}
 

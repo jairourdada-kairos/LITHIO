@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..config import VENEZUELA_TZ
 from ..database import get_db
-from ..links_service import award_fe
+from ..links_service import QUIZ_BONUS_LEVEL, award_fe, user_z
 from ..models import QuizAnswer, User
 
 router = APIRouter(prefix="/api/quiz", tags=["reacción del día"])
@@ -68,6 +68,11 @@ class AnswerIn(BaseModel):
     option: int = Field(ge=0, le=2)
 
 
+def reward_for(user: User) -> int:
+    """10 Fe, o 15 desde el Oxígeno (Z=8)."""
+    return FE_REWARD + (5 if user_z(user) >= QUIZ_BONUS_LEVEL else 0)
+
+
 def venezuela_today():
     return datetime.now(VENEZUELA_TZ).date()
 
@@ -85,7 +90,7 @@ def today(user: User = Depends(get_current_user), db: Session = Depends(get_db))
     day = venezuela_today()
     question, options, correct, fact = question_for(day)
     answer = db.query(QuizAnswer).filter(QuizAnswer.user_id == user.id, QuizAnswer.quiz_date == day).first()
-    payload = {"date": day.isoformat(), "question": question, "options": options, "reward": FE_REWARD, "answered": answer is not None}
+    payload = {"date": day.isoformat(), "question": question, "options": options, "reward": reward_for(user), "answered": answer is not None}
     if answer:
         payload.update({"chosen": answer.option_index, "correct": answer.correct, "correct_index": correct, "fact": fact})
     return payload
@@ -97,8 +102,9 @@ def answer_today(data: AnswerIn, user: User = Depends(get_current_user), db: Ses
     question, options, correct, fact = question_for(day)
     is_correct = data.option == correct
     db.add(QuizAnswer(user_id=user.id, quiz_date=day, option_index=data.option, correct=is_correct))
+    reward = reward_for(user)  # Antes de sumar: el bono depende del nivel actual
     if is_correct:
-        award_fe(user, FE_REWARD)
+        award_fe(user, reward)
     try:
         db.commit()
     except IntegrityError:
@@ -108,6 +114,6 @@ def answer_today(data: AnswerIn, user: User = Depends(get_current_user), db: Ses
         "correct": is_correct,
         "correct_index": correct,
         "fact": fact,
-        "fe_awarded": FE_REWARD if is_correct else 0,
+        "fe_awarded": reward if is_correct else 0,
         "points": user.points,
     }
