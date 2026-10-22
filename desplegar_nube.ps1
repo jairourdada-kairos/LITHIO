@@ -7,7 +7,9 @@
 # envian directo a Railway; el script nunca los muestra en pantalla.
 # Se puede ejecutar de nuevo: reutiliza lo que ya exista y vuelve a desplegar.
 
-$ErrorActionPreference = 'Stop'
+# 'Continue': en PowerShell 5.1, con 'Stop' cualquier aviso que un programa
+# escribe en stderr detiene el script. Los fallos se detectan con $LASTEXITCODE.
+$ErrorActionPreference = 'Continue'
 $Root = $PSScriptRoot
 $Backend = Join-Path $Root 'moto_unc_backend'
 $Mobile = Join-Path $Root 'moto_unc_mobile'
@@ -15,8 +17,18 @@ $Service = 'lithio-api'
 
 function Step($text) { Write-Host ''; Write-Host "==> $text" -ForegroundColor Cyan }
 function Fail($text) { Write-Host ''; Write-Host "ERROR: $text" -ForegroundColor Red; exit 1 }
-function Railway { & npx -y '@railway/cli@latest' @args; if ($LASTEXITCODE -ne 0) { throw "railway $($args -join ' ') fallo" } }
-function RailwayOut { $out = & npx -y '@railway/cli@latest' @args 2>&1; if ($LASTEXITCODE -ne 0) { throw ($out -join "`n") }; return ($out -join "`n") }
+# Parametro con nombre: con @args, el envoltorio npx.ps1 pierde los argumentos.
+function Railway {
+  param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest)
+  & npx -y '@railway/cli@latest' @Rest
+  if ($LASTEXITCODE -ne 0) { throw "railway $($Rest -join ' ') fallo" }
+}
+function RailwayOut {
+  param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest)
+  $out = & npx -y '@railway/cli@latest' @Rest 2>&1
+  if ($LASTEXITCODE -ne 0) { throw ($out -join "`n") }
+  return ($out -join "`n")
+}
 
 function Read-DotEnv($path) {
   $values = @{}

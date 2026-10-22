@@ -4,11 +4,17 @@
 # La compilacion se hace en los servidores de Expo (EAS), no en esta PC.
 # Lo unico manual: iniciar sesion en tu cuenta de Expo la primera vez.
 
-$ErrorActionPreference = 'Stop'
+# 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
+$ErrorActionPreference = 'Continue'
 $Mobile = Join-Path $PSScriptRoot 'moto_unc_mobile'
 Set-Location $Mobile
 
-function Eas { & npx -y 'eas-cli@latest' @args; if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: eas $($args -join ' ') fallo" -ForegroundColor Red; exit 1 } }
+# Parametro con nombre: con @args, el envoltorio npx.ps1 pierde los argumentos.
+function Eas {
+  param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest)
+  & npx -y 'eas-cli@latest' @Rest
+  if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: eas $($Rest -join ' ') fallo" -ForegroundColor Red; exit 1 }
+}
 
 $apiLine = Get-Content '.env' -Encoding UTF8 | Where-Object { $_ -like 'EXPO_PUBLIC_API_URL=*' } | Select-Object -First 1
 if (-not $apiLine -or $apiLine -notlike 'EXPO_PUBLIC_API_URL=https://*') {
