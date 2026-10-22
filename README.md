@@ -98,4 +98,17 @@ cd moto_unc_backend
 $env:PYTHONPATH="."
 .\venv\Scripts\pytest tests/test_api.py -v
 ```
-> **Resultado:** 5/5 pruebas pasando en ~1 segundo.
+El conjunto verifica autenticación, permisos de administrador, privacidad de perfiles, viajes, recompensas y WebSockets.
+
+## Autenticación y datos privados
+
+El backend verifica Firebase ID tokens en las rutas privadas. Para configurarlo:
+
+1. Crea una app web en Firebase y habilita el proveedor **Correo/contraseña**.
+2. Copia `moto_unc_mobile/firebase-config.example` a `moto_unc_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
+3. Configura `moto_unc_backend/.env` con el ID del proyecto, la clave web pública de Firebase (`FIREBASE_WEB_API_KEY`), el dominio de autenticación y la ruta local a un archivo de cuenta de servicio. No guardes ni compartas el archivo de cuenta de servicio; mantenlo fuera del repositorio.
+4. Para autorizar administradores, coloca sus Firebase UIDs en `ADMIN_FIREBASE_UIDS` (separados por comas) o asigna el rol `admin` directamente en la base de datos con acceso administrativo seguro.
+5. Configura `CORS_ALLOWED_ORIGINS` con los orígenes web que usarás, separados por comas. El dashboard servido por el backend no requiere un origen adicional; el servidor estático local predeterminado en el puerto 8080 sí.
+6. Reinicia backend y Expo. Los registros existentes se vinculan a Firebase solo cuando el token presenta el mismo correo verificado.
+
+El dashboard solicita inicio de sesión con Firebase y verifica permisos de administrador en el backend antes de mostrar los datos. Los endpoints de perfil requieren autenticación y devuelven datos solo al propietario o a un administrador autorizado. Los datos financieros del conductor no están en la lista pública; se devuelven al pasajero únicamente dentro de su viaje. Las conexiones WebSocket requieren un mensaje inicial de autenticación con ID token y derivan el usuario del token, no de un ID enviado por el cliente.

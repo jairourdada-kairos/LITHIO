@@ -20,7 +20,7 @@ import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { ActiveRideCard } from '../components/ActiveRideCard';
 import { RequestRideModal } from '../components/RequestRideModal';
 import { ReviewModal } from '../components/ReviewModal';
-import { RewardsStoreModal } from '../components/RewardsStoreModal';
+import { FeStoreModal } from '../components/FeStoreModal';
 import { AboutLithioModal } from '../components/AboutLithioModal';
 import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { PassengerHome } from '../screens/passenger/PassengerHome';
@@ -29,6 +29,11 @@ import { TripsScreen } from '../screens/shared/TripsScreen';
 import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
+import { LevelScreen } from '../screens/shared/LevelScreen';
+import { LevelsTableScreen } from '../screens/shared/LevelsTableScreen';
+import { AdminScreen } from '../screens/admin/AdminScreen';
+import { AvatarSheet } from '../components/AvatarSheet';
+import { FALLBACK_LEVEL } from '../utils/elements';
 import type { Driver, PaymentMethod, PresetRoute, Reward, ReviewSubmission } from '../types';
 
 type Tab = 'home' | 'trips' | 'wallet' | 'profile';
@@ -36,6 +41,9 @@ type Overlay =
   | { type: 'trip'; route?: PresetRoute; scheduled?: boolean }
   | { type: 'ride' }
   | { type: 'profile' }
+  | { type: 'level' }
+  | { type: 'levels' }
+  | { type: 'admin' }
   | null;
 
 interface Props {
@@ -47,7 +55,10 @@ interface Props {
 export const comingSoon = (title: string) =>
   Alert.alert(title, 'Esta sección llega en la próxima entrega de LITHIO.');
 
-export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
+export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => {
+  // Copia local para reflejar al instante cambios como la foto de perfil.
+  const [user, setUser] = useState(initialUser);
+  const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
   const [tab, setTab] = useState<Tab>('home');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [routes, setRoutes] = useState<PresetRoute[]>([]);
@@ -142,7 +153,7 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
     setOverlay({ type: 'trip', ...options });
   };
 
-  const confirmRide = async (paymentMethod: PaymentMethod, reference?: string) => {
+  const confirmRide = async (paymentMethod: PaymentMethod, reference?: string, couponId?: number) => {
     if (!pending) return;
     const { driver, selection } = pending;
     try {
@@ -155,6 +166,7 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
         payment_method: paymentMethod,
         payment_reference: reference,
         fare_amount: selection.route.fare_usd,
+        coupon_id: couponId,
       });
       rides.setActiveRide(ride);
       setPending(null);
@@ -197,12 +209,6 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
     }
   };
 
-  const redeem = async (reward: Reward) => {
-    const result = await apiService.redeemReward(user.id, reward.id);
-    setSummary((prev) => (prev ? { ...prev, points: result.new_balance } : prev));
-    return { discount_code: result.discount_code };
-  };
-
   const onWalletAction = (action: WalletAction) => {
     const titles: Record<WalletAction, string> = {
       recargar: 'Recargar diamantes',
@@ -230,6 +236,22 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
     }
     if (overlay.type === 'profile') {
       return <ProfileScreen user={user} role="pasajero" onBack={() => setOverlay(null)} />;
+    }
+    if (overlay.type === 'level') {
+      return (
+        <LevelScreen
+          level={summary?.level ?? FALLBACK_LEVEL}
+          accent={theme.colors.primary}
+          onBack={() => setOverlay(null)}
+          onOpenTable={() => setOverlay({ type: 'levels' })}
+        />
+      );
+    }
+    if (overlay.type === 'levels') {
+      return <LevelsTableScreen accent={theme.colors.primary} onBack={() => setOverlay({ type: 'level' })} />;
+    }
+    if (overlay.type === 'admin') {
+      return <AdminScreen onBack={() => setOverlay(null)} />;
     }
     const ride = rides.activeRide;
     return (
@@ -272,6 +294,9 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
             role="pasajero"
             summary={summary}
             onOpenProfile={() => setOverlay({ type: 'profile' })}
+            onEditPhoto={() => setAvatarSheetVisible(true)}
+            onOpenLevel={() => setOverlay({ type: 'level' })}
+            onOpenAdmin={summary?.is_admin ? () => setOverlay({ type: 'admin' }) : undefined}
             onOpenLinks={() => comingSoon('Enlaces')}
             onOpenRewards={() => setRewardsVisible(true)}
             onOpenTutorial={() => setTutorialVisible(true)}
@@ -350,14 +375,19 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
         />
       ) : null}
 
-      <RewardsStoreModal
+      <FeStoreModal
         visible={rewardsVisible}
-        userPoints={points}
-        rewards={rewards}
         onClose={() => setRewardsVisible(false)}
-        onRedeem={redeem}
+        onPointsChanged={(value) => setSummary((prev) => (prev ? { ...prev, points: value } : prev))}
       />
 
+      <AvatarSheet
+        visible={avatarSheetVisible}
+        hasPhoto={Boolean(user.avatar_url)}
+        accent={theme.colors.primary}
+        onClose={() => setAvatarSheetVisible(false)}
+        onChanged={(avatarUrl) => setUser((prev) => ({ ...prev, avatar_url: avatarUrl ?? undefined }))}
+      />
       <AboutLithioModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
       <TutorialModal visible={tutorialVisible} role="pasajero" userId={user.id} onClose={() => setTutorialVisible(false)} />
     </SafeAreaView>

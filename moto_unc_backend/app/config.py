@@ -34,3 +34,11 @@ DATABASE_URL = _normalize_database_url(
 
 # Venezuela no cambia de horario: UTC-4 todo el año.
 VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")
+
+# Fotos de perfil y otros archivos subidos. En la nube conviene un volumen
+# persistente (o un almacenamiento de objetos) en esta ruta.
+MEDIA_DIR = Path(os.getenv("MEDIA_DIR", str(BACKEND_DIR / "media")))
+
+# Evidencias del vale «Pasar con 20». Fuera de MEDIA_DIR a propósito: /media es
+# público y estas fotos solo las ve el administrador a través de la API.
+EVIDENCE_DIR = Path(os.getenv("EVIDENCE_DIR", str(BACKEND_DIR / "evidence")))

@@ -25,6 +25,11 @@ import { TripsScreen } from '../screens/shared/TripsScreen';
 import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
+import { LevelScreen } from '../screens/shared/LevelScreen';
+import { LevelsTableScreen } from '../screens/shared/LevelsTableScreen';
+import { AdminScreen } from '../screens/admin/AdminScreen';
+import { AvatarSheet } from '../components/AvatarSheet';
+import { FALLBACK_LEVEL } from '../utils/elements';
 import { comingSoon } from './PassengerApp';
 import type { Ride, RideStatus } from '../types';
 
@@ -35,7 +40,9 @@ interface Props {
   onSignOut: () => void;
 }
 
-export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
+export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => {
+  // Copia local para reflejar al instante cambios como la foto de perfil.
+  const [user, setUser] = useState(initialUser);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
@@ -85,6 +92,7 @@ export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
   return (
     <ApprovedDriverApp
       user={user}
+      onAvatarChanged={(avatarUrl) => setUser((prev) => ({ ...prev, avatar_url: avatarUrl ?? undefined }))}
       summary={summary}
       setSummary={setSummary}
       reloadSummary={loadSummary}
@@ -99,6 +107,7 @@ export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
 
 interface ApprovedProps {
   user: AuthUser;
+  onAvatarChanged: (avatarUrl: string | null) => void;
   summary: AccountSummary;
   setSummary: React.Dispatch<React.SetStateAction<AccountSummary | null>>;
   reloadSummary: () => Promise<void>;
@@ -110,6 +119,7 @@ interface ApprovedProps {
 
 const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   user,
+  onAvatarChanged,
   summary,
   setSummary,
   reloadSummary,
@@ -120,6 +130,8 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 }) => {
   const [tab, setTab] = useState<Tab>('home');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [overlay, setOverlay] = useState<'level' | 'levels' | 'admin' | null>(null);
+  const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -160,6 +172,10 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (overlay) {
+        setOverlay(overlay === 'levels' ? 'level' : null);
+        return true;
+      }
       if (profileOpen) {
         setProfileOpen(false);
         return true;
@@ -171,7 +187,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
       return false;
     });
     return () => sub.remove();
-  }, [profileOpen, tab]);
+  }, [profileOpen, tab, overlay]);
 
   const refreshAll = async () => {
     setRefreshing(true);
@@ -229,6 +245,18 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   };
 
   const renderTab = () => {
+    if (overlay === 'level') {
+      return (
+        <LevelScreen
+          level={summary.level ?? FALLBACK_LEVEL}
+          accent={theme.colors.secondary}
+          onBack={() => setOverlay(null)}
+          onOpenTable={() => setOverlay('levels')}
+        />
+      );
+    }
+    if (overlay === 'levels') return <LevelsTableScreen accent={theme.colors.secondary} onBack={() => setOverlay('level')} />;
+    if (overlay === 'admin') return <AdminScreen onBack={() => setOverlay(null)} />;
     if (profileOpen) return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} />;
     switch (tab) {
       case 'trips':
@@ -242,6 +270,9 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
             role="conductor"
             summary={summary}
             onOpenProfile={() => setProfileOpen(true)}
+            onEditPhoto={() => setAvatarSheetVisible(true)}
+            onOpenLevel={() => setOverlay('level')}
+            onOpenAdmin={summary.is_admin ? () => setOverlay('admin') : undefined}
             onOpenLinks={() => comingSoon('Enlaces')}
             onOpenTutorial={onOpenTutorial}
             onOpenAbout={onOpenAbout}
@@ -278,7 +309,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <View style={styles.content}>{renderTab()}</View>
 
-      {!profileOpen ? (
+      {!profileOpen && !overlay ? (
         <BottomTabBar<Tab>
           tabs={[
             { key: 'home', label: 'Inicio', icon: 'home-variant-outline', badge: rides.requests.length },
@@ -299,6 +330,13 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
         onAccept={(ride) => void respond(ride, 'aceptado')}
         onReject={(ride) => void respond(ride, 'rechazado')}
         onDismiss={() => setSheetRide(null)}
+      />
+      <AvatarSheet
+        visible={avatarSheetVisible}
+        hasPhoto={Boolean(user.avatar_url)}
+        accent={theme.colors.secondary}
+        onClose={() => setAvatarSheetVisible(false)}
+        onChanged={onAvatarChanged}
       />
       {children}
     </SafeAreaView>

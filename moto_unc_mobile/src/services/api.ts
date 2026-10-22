@@ -1,7 +1,7 @@
 import { Driver, Ride, RideStatus, Reward, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
-import { authenticatedFetch } from './firebase';
+import { authenticatedFetch, getFirebaseIdToken } from './firebase';
 import type { SessionRole } from './session';
-import type { Level } from '../utils/elements';
+import type { Level, LevelElement } from '../utils/elements';
 
 export interface AccountSummary {
   trips_completed: number;
@@ -14,6 +14,7 @@ export interface AccountSummary {
   is_available: boolean | null;
   has_driver_profile: boolean;
   verification_status: VerificationStatus | null;
+  is_admin: boolean;
 }
 
 export type VerificationStatus = 'pendiente' | 'en_revision' | 'inspeccion' | 'aprobado' | 'rechazado';
@@ -26,6 +27,62 @@ export interface DriverApplication {
   submitted_at: string | null;
   steps: { key: VerificationStatus; done: boolean }[];
   moto: { brand_model: string; color: string; plate: string; year: number | null; helmet_provided: boolean };
+}
+
+export interface AdminApplication extends DriverApplication {
+  user_id: number;
+  name: string;
+  last_name: string | null;
+  email: string;
+  phone: string;
+  cedula: string | null;
+  career: string | null;
+  semester: string | null;
+  license_number: string | null;
+}
+
+export interface FeCoupon {
+  id: number;
+  percent: number;
+  status: 'activo' | 'usado';
+  ride_id: number | null;
+  created_at: string | null;
+}
+
+export interface GradeVoucher {
+  id: number;
+  subject: string;
+  note: string | null;
+  status: 'pendiente' | 'aprobado' | 'rechazado';
+  review_note: string | null;
+  code: string | null;
+  created_at: string | null;
+}
+
+export interface FeStore {
+  points: number;
+  coupon_prices: { percent: number; cost: number }[];
+  voucher_cost: number;
+  coupons: FeCoupon[];
+  vouchers: GradeVoucher[];
+}
+
+export interface AdminVoucher extends GradeVoucher {
+  user_name: string;
+}
+
+export interface AdminWalletItem {
+  id: number;
+  kind: 'recarga' | 'retiro' | 'taller';
+  label: string;
+  amount: number;
+  status: string;
+  note: string | null;
+  created_at: string;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  reference: string | null;
 }
 
 export interface WalletTransaction {
@@ -104,6 +161,7 @@ export const apiService = {
       payment_method: PaymentMethod;
       payment_reference?: string;
       fare_amount: number;
+      coupon_id?: number;
     }
   ): Promise<Ride> {
     const response = await authenticatedFetch(
@@ -148,6 +206,94 @@ export const apiService = {
     const response = await authenticatedFetch(`${BACKEND_URL}/api/drivers/me/application`);
     await assertOk(response);
     return response.json();
+  },
+
+  async getLevels(): Promise<{ current: Level; elements: LevelElement[] }> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/levels`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getDriverApplications(): Promise<AdminApplication[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/driver-applications`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async reviewDriverApplication(
+    userId: number,
+    data: { status: VerificationStatus; notes?: string; inspection_date?: string }
+  ): Promise<void> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/driver-applications/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    await assertOk(response);
+  },
+
+  async getPendingWallet(): Promise<AdminWalletItem[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/pending`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getFeStore(): Promise<FeStore> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async buyCoupon(percent: number): Promise<{ coupon: FeCoupon; points: number }> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store/coupons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ percent }),
+    });
+    await assertOk(response);
+    return response.json();
+  },
+
+  async requestGradeVoucher(subject: string, note: string, photo: Blob): Promise<{ voucher: GradeVoucher; points: number }> {
+    const form = new FormData();
+    form.append('subject', subject);
+    if (note) form.append('note', note);
+    form.append('photo', photo);
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store/vouchers`, { method: 'POST', body: form });
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getPendingVouchers(): Promise<AdminVoucher[]> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/vouchers`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async reviewVoucher(id: number, action: 'aprobar' | 'rechazar', note?: string): Promise<void> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/vouchers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, note }),
+    });
+    await assertOk(response);
+  },
+
+  /** La evidencia es privada: se pide con el token del administrador. */
+  async voucherEvidenceSource(id: number): Promise<{ uri: string; headers: Record<string, string> }> {
+    return {
+      uri: `${BACKEND_URL}/api/admin/vouchers/${id}/evidence`,
+      headers: { Authorization: `Bearer ${await getFirebaseIdToken()}` },
+    };
+  },
+
+  async reviewWalletTransaction(id: number, action: 'aprobar' | 'rechazar', note?: string): Promise<void> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, note }),
+    });
+    await assertOk(response);
   },
 
   async getWallet(): Promise<WalletInfo> {

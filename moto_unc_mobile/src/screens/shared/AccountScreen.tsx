@@ -10,7 +10,7 @@ import React from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme, themed } from '../../constants/theme';
-import { ElementTile } from '../../components/brand/ElementTile';
+import { Avatar } from '../../components/ui/Avatar';
 import { RoleBadge, roleColors } from '../../components/ui/RoleBadge';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { ThemeMode, useThemeMode } from '../../theme/ThemeMode';
@@ -33,6 +33,10 @@ interface Props {
   role: SessionRole;
   summary: AccountSummary | null;
   onOpenProfile: () => void;
+  onEditPhoto: () => void;
+  onOpenLevel: () => void;
+  /** Solo para administradores. */
+  onOpenAdmin?: () => void;
   onOpenLinks: () => void;
   onOpenRewards?: () => void;
   onOpenTutorial: () => void;
@@ -51,6 +55,9 @@ export const AccountScreen: React.FC<Props> = ({
   role,
   summary,
   onOpenProfile,
+  onEditPhoto,
+  onOpenLevel,
+  onOpenAdmin,
   onOpenLinks,
   onOpenRewards,
   onOpenTutorial,
@@ -71,6 +78,7 @@ export const AccountScreen: React.FC<Props> = ({
     ]);
 
   const items: MenuItem[] = [
+    ...(onOpenAdmin ? [{ icon: 'shield-crown-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
     { icon: 'card-account-details-outline', label: 'Mis datos', onPress: onOpenProfile },
     { icon: 'account-multiple-outline', label: 'Enlaces', onPress: onOpenLinks },
     ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
@@ -84,14 +92,24 @@ export const AccountScreen: React.FC<Props> = ({
       <Text style={styles.screenTitle}>Perfil</Text>
 
       <View style={styles.identity}>
-        <ElementTile z={level.z} symbol={level.symbol} name={level.name} size={72} accent={accent} />
+        <Pressable onPress={onEditPhoto} accessibilityRole="button" accessibilityLabel="Cambiar foto de perfil" hitSlop={6}>
+          <Avatar name={fullName} uri={user.avatar_url} size={72} ringColor={accent} />
+          <View style={[styles.camera, { backgroundColor: accent }]}>
+            <MaterialCommunityIcons name="camera" size={14} color={theme.colors.bgDark} />
+          </View>
+        </Pressable>
         <View style={styles.flex}>
           <Text style={styles.name} numberOfLines={2}>{fullName}</Text>
           <RoleBadge role={role} style={styles.badge} />
         </View>
       </View>
 
-      <View style={styles.card}>
+      <Pressable
+        onPress={onOpenLevel}
+        style={({ pressed }) => [styles.card, pressed && styles.itemPressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Nivel ${level.name}. Ver qué significan los niveles`}
+      >
         <View style={styles.levelRow}>
           <Text style={styles.levelTitle}>Nivel {level.name}</Text>
           <Text style={[styles.config, { color: accent }]}>{electronConfiguration(level.z)}</Text>
@@ -99,17 +117,18 @@ export const AccountScreen: React.FC<Props> = ({
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: accent }]} />
         </View>
-        <Text style={styles.levelHint}>
-          {level.next_name
-            ? `${missing} Fe para llegar a ${level.next_name} (${level.next_symbol})`
-            : 'Alcanzaste el nivel máximo de la tabla.'}
-        </Text>
+        <View style={styles.levelHintRow}>
+          <Text style={styles.levelHint}>
+            {level.next_name ? `${missing} Fe para ${level.next_name} (${level.next_symbol})` : 'Nivel máximo de la tabla'}
+          </Text>
+          <Text style={[styles.levelLink, { color: accent }]}>Ver niveles ›</Text>
+        </View>
         <View style={styles.stats}>
           <Stat value={String(summary?.trips_completed ?? '—')} label="Viajes" />
           <Stat value={`◆ ${(summary?.diamonds ?? 0).toFixed(2)}`} label="Diamantes" color={theme.colors.diamond} />
           <Stat value={`Fe ${summary?.points ?? user.points}`} label="Hierro" color={theme.colors.gold} />
         </View>
-      </View>
+      </Pressable>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Apariencia</Text>
@@ -191,6 +210,28 @@ const styles = themed(() => ({
   badge: {
     marginTop: 6,
   },
+  camera: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.bgDark,
+  },
+  levelHintRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  levelLink: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+  },
   card: {
     padding: 18,
     borderRadius: theme.radius.xl,
@@ -225,10 +266,10 @@ const styles = themed(() => ({
     borderRadius: 4,
   },
   levelHint: {
+    flex: 1,
     fontFamily: theme.fonts.regular,
     fontSize: 13,
     color: theme.colors.textSecondary,
-    marginTop: 8,
   },
   stats: {
     flexDirection: 'row',

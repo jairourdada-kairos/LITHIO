@@ -14,6 +14,31 @@ export interface Level {
   next_threshold: number | null;
   next_symbol: string | null;
   next_name: string | null;
+  perk?: string | null;
+  next_perk?: { z: number; symbol: string; name: string; perk: string; threshold: number } | null;
+}
+
+export interface LevelElement {
+  z: number;
+  symbol: string;
+  name: string;
+  threshold: number;
+  perk: string | null;
+  unlocked: boolean;
+  current: boolean;
+}
+
+/** Electrones por capa (modelo de Bohr simplificado: 2, 8, 8, 18). */
+export function shells(z: number): number[] {
+  const capacities = [2, 8, 8, 18];
+  const result: number[] = [];
+  let remaining = z;
+  for (const capacity of capacities) {
+    if (remaining <= 0) break;
+    result.push(Math.min(capacity, remaining));
+    remaining -= capacity;
+  }
+  return result;
 }
 
 // Orden de llenado de orbitales (regla de Madelung) y su capacidad.

@@ -46,6 +46,18 @@ button, input, select { font: inherit; }
     padding: 1rem;
 }
 
+.hidden { display: none !important; }
+
+.auth-gate {
+    width: min(440px, calc(100% - 2rem));
+    margin: 10vh auto;
+    padding: 2rem;
+}
+
+.auth-gate > p { color: var(--text-muted); margin: 0.75rem 0 1.5rem; }
+.auth-status { color: var(--warning); min-height: 1.2rem; }
+.header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
 .sidebar {
     width: 250px;
     padding: 1.4rem 1rem;

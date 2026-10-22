@@ -5,6 +5,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { theme, themed } from '../../constants/theme';
+import { resolveMediaUrl } from '../../services/avatar';
 
 interface Props {
   name: string;
@@ -28,7 +29,7 @@ export const Avatar: React.FC<Props> = ({ name, uri, size = 48, ringColor = them
     accessibilityLabel={`Foto de ${name}`}
   >
     {uri ? (
-      <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+      <Image source={{ uri: resolveMediaUrl(uri) }} style={{ width: size, height: size, borderRadius: size / 2 }} />
     ) : (
       <View style={[styles.fallback, { width: size, height: size, borderRadius: size / 2 }]}>
         <Text style={[styles.initials, { fontSize: size * 0.38, color: ringColor }]}>{initials(name)}</Text>

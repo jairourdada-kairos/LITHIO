@@ -52,7 +52,7 @@ npx expo start
 
 ## Archivos antiguos o duplicados
 
-La carpeta [app](app) existe como versión antigua y debe usarse solo como referencia histórica.
+La carpeta [app](app) existe como versión antigua, está deshabilitada por seguridad y debe usarse solo como referencia histórica.
 La carpeta oficial para desarrollo es [moto_unc_backend](moto_unc_backend).
 
 ## Estado recomendado

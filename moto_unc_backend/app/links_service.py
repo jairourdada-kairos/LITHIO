@@ -48,6 +48,29 @@ ELEMENTS = [
 ]
 
 
+# Beneficio que se muestra al alcanzar ciertos elementos.
+LEVEL_PERKS = {
+    1: "Tu primer paso en la comunidad LITHIO",
+    2: "Acceso a la tienda de Fe",
+    3: "Insignia LITHIO en tu perfil",
+    6: "Cupón de 25 % en un viaje",
+    8: "+5 Fe extra en cada Reacción del día",
+    10: "Insignia de gas noble",
+    13: "Cupón de 50 % en un viaje",
+    18: "Prioridad en viajes programados",
+    26: "10 % permanente en la tienda de Fe",
+    29: "Un viaje gratis UNC ↔ Biblioteca",
+    36: "Leyenda LITHIO: insignia dorada",
+}
+
+
+def next_perk(z: int) -> tuple[int, str] | None:
+    for level in sorted(LEVEL_PERKS):
+        if level > z:
+            return level, LEVEL_PERKS[level]
+    return None
+
+
 def threshold_for(z: int) -> int:
     """Fe histórico necesario para llegar al elemento z: 0, 50, 150, 300, 500…"""
     return 25 * z * (z - 1)
@@ -68,7 +91,18 @@ def level_for(fe_lifetime: int) -> dict:
         "next_threshold": threshold_for(next_z) if next_z else None,
         "next_symbol": ELEMENTS[next_z - 1][0] if next_z else None,
         "next_name": ELEMENTS[next_z - 1][1] if next_z else None,
+        "perk": LEVEL_PERKS.get(z),
+        "next_perk": _next_perk_payload(z),
     }
+
+
+def _next_perk_payload(z: int) -> dict | None:
+    found = next_perk(z)
+    if not found:
+        return None
+    perk_z, perk = found
+    symbol, name = ELEMENTS[perk_z - 1]
+    return {"z": perk_z, "symbol": symbol, "name": name, "perk": perk, "threshold": threshold_for(perk_z)}
 
 
 def link_between(db: Session, a: int, b: int) -> Link | None:

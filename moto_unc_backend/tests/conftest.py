@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from cryptography.fernet import Fernet
 
@@ -7,3 +8,4 @@ from cryptography.fernet import Fernet
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["LITHIO_ENCRYPTION_KEYS"] = Fernet.generate_key().decode()
 os.environ["LITHIO_HASH_KEY"] = Fernet.generate_key().decode()
+os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="lithio-media-")

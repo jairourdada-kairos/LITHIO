@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
+import { apiService, FeCoupon } from '../services/api';
 
 interface RequestRideModalProps {
   visible: boolean;
@@ -13,7 +14,7 @@ interface RequestRideModalProps {
   scheduledTime: string;
   userPoints: number;
   onClose: () => void;
-  onConfirm: (paymentMethod: PaymentMethod, reference?: string) => void;
+  onConfirm: (paymentMethod: PaymentMethod, reference?: string, couponId?: number) => void;
 }
 
 export const RequestRideModal: React.FC<RequestRideModalProps> = ({
@@ -30,6 +31,20 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
   const [reference, setReference] = useState('');
+  const [coupons, setCoupons] = useState<FeCoupon[]>([]);
+  const [couponId, setCouponId] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!visible) return;
+    setCouponId(undefined);
+    apiService
+      .getFeStore()
+      .then((store) => setCoupons(store.coupons.filter((c) => c.status === 'activo')))
+      .catch(() => setCoupons([]));
+  }, [visible]);
+
+  const coupon = coupons.find((c) => c.id === couponId);
+  const finalFare = coupon ? Math.round(fareAmount * (100 - coupon.percent)) / 100 : fareAmount;
 
   if (!driver) return null;
 
@@ -130,6 +145,33 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               </View>
             )}
 
+            {coupons.length > 0 ? (
+              <View style={styles.couponBox}>
+                <Text style={styles.referenceLabel}>Cupón de Fe</Text>
+                <View style={styles.couponRow}>
+                  {coupons.map((c) => {
+                    const selected = c.id === couponId;
+                    return (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[styles.couponChip, selected && styles.couponChipActive]}
+                        onPress={() => setCouponId(selected ? undefined : c.id)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
+                      >
+                        <Text style={[styles.couponChipText, selected && styles.couponChipTextActive]}>−{c.percent}%</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {coupon ? (
+                  <Text style={styles.referenceHint}>
+                    Pagas ${finalFare.toFixed(2)} en lugar de ${fareAmount.toFixed(2)}.
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
             {/* Recompensa Gamificada */}
             <View style={styles.rewardBanner}>
               <Text style={styles.rewardIcon}>🎁</Text>
@@ -146,7 +188,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => onConfirm(paymentMethod, reference)}
+              onPress={() => onConfirm(paymentMethod, reference, couponId)}
               activeOpacity={0.85}
             >
               <Text style={styles.confirmBtnText}>
@@ -161,6 +203,33 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 };
 
 const styles = themed(() => ({
+  couponBox: {
+    marginBottom: 16,
+  },
+  couponRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  couponChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.gold,
+  },
+  couponChipActive: {
+    backgroundColor: theme.colors.gold,
+  },
+  couponChipText: {
+    fontFamily: theme.fonts.monoBold,
+    color: theme.colors.gold,
+    fontSize: 13,
+  },
+  couponChipTextActive: {
+    color: theme.colors.bgDark,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',

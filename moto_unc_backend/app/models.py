@@ -188,3 +188,32 @@ class QuizAnswer(Base):
     option_index = Column(Integer, nullable=False)
     correct = Column(Boolean, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Coupon(Base):
+    """Cupón de descuento comprado con Fe; se aplica a un viaje."""
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    percent = Column(Integer, nullable=False)  # 25 o 50
+    fe_cost = Column(Integer, nullable=False)
+    status = Column(String, default="activo", nullable=False)  # activo, usado
+    ride_id = Column(Integer, ForeignKey("rides.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class GradeVoucher(Base):
+    """Vale «Pasar con 20»: el Fe queda retenido hasta que el administrador lo revisa."""
+    __tablename__ = "grade_vouchers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    subject = Column(String, nullable=False)
+    note = Column(String, nullable=True)
+    evidence_file = Column(String, nullable=False)  # Nombre en EVIDENCE_DIR (privado)
+    fe_cost = Column(Integer, nullable=False)
+    status = Column(String, default="pendiente", nullable=False)  # pendiente, aprobado, rechazado
+    review_note = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)

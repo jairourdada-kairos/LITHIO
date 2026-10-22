@@ -1,17 +1,21 @@
-const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8000/api`;
+const API_ORIGIN = window.location.protocol === 'file:' || window.location.port === '8080'
+  ? `http://${window.location.hostname || 'localhost'}:8000`
+  : window.location.origin;
+const API_BASE_URL = `${API_ORIGIN}/api`;
 
 const state = {
   drivers: [],
   routes: [],
   rewards: [],
-  admin: {
-    name: 'Jairo Eduardo Urdaneta González',
-    email: 'jairourdada@gmail.com',
-    phone: '04124091527',
-    city: 'Caracas'
-  }
+  admin: null
 };
 
+let adminToken = null;
+let firebaseConfig;
+const authGate = document.getElementById('auth-gate');
+const dashboardApp = document.getElementById('dashboard-app');
+const authStatus = document.getElementById('auth-status');
+const loginButton = document.getElementById('login-button');
 const statusText = document.getElementById('api-status');
 const driversTableBody = document.getElementById('drivers-table-body');
 const routesList = document.getElementById('routes-list');
@@ -25,6 +29,103 @@ const statDriversCount = document.getElementById('stat-drivers-count');
 const statStarCoins = document.getElementById('stat-star-coins');
 const statRoutesCount = document.getElementById('stat-routes-count');
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+}
+
+async function getFirebaseConfig() {
+  if (firebaseConfig) return firebaseConfig;
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/config`);
+  } catch {
+    throw new Error(`No se pudo conectar con el backend (${API_ORIGIN}). Inícialo y vuelve a cargar el dashboard.`);
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.detail || 'La autenticación del dashboard no está configurada.');
+  }
+  firebaseConfig = body;
+  return firebaseConfig;
+}
+
+async function firebaseSignIn(email, password) {
+  const config = await getFirebaseConfig();
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(config.apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true })
+    }
+  );
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || typeof body.idToken !== 'string') {
+    const code = body.error?.message;
+    if (code === 'INVALID_PASSWORD' || code === 'EMAIL_NOT_FOUND' || code === 'INVALID_LOGIN_CREDENTIALS') {
+      throw new Error('Correo o contraseña incorrectos.');
+    }
+    throw new Error('No se pudo iniciar sesión con Firebase.');
+  }
+  return body.idToken;
+}
+
+async function requestAdmin(path, method = 'GET', body) {
+  if (!adminToken) throw new Error('Inicia sesión como administrador para continuar.');
+  const headers = new Headers({ Authorization: `Bearer ${adminToken}` });
+  if (body !== undefined) headers.set('Content-Type', 'application/json');
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const result = response.status === 204 ? null : await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result?.detail || `La operación no se pudo completar (${response.status}).`);
+  }
+  return result;
+}
+
+function renderAdminProfile(profile) {
+  state.admin = profile;
+  statAdminName.textContent = profile.name.split(' ')[0];
+  document.getElementById('profile-name').textContent = profile.name;
+  document.getElementById('profile-email').textContent = profile.email;
+  document.getElementById('profile-phone').textContent = profile.phone;
+  const form = document.getElementById('profile-form');
+  form.elements.name.value = profile.name;
+  form.elements.email.value = profile.email;
+  form.elements.phone.value = profile.phone;
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  loginButton.disabled = true;
+  authStatus.textContent = 'Verificando acceso...';
+  const form = new FormData(event.currentTarget);
+  try {
+    adminToken = await firebaseSignIn(form.get('email'), form.get('password'));
+    const profile = await requestAdmin('/admin/me');
+    renderAdminProfile(profile);
+    authGate.classList.add('hidden');
+    dashboardApp.classList.remove('hidden');
+    authStatus.textContent = '';
+    event.currentTarget.reset();
+    await fetchData();
+  } catch (error) {
+    adminToken = null;
+    authStatus.textContent = error instanceof Error ? error.message : 'No se pudo verificar el acceso.';
+  } finally {
+    loginButton.disabled = false;
+  }
+}
+
 function setApiStatus(online) {
   const dot = document.querySelector('.pulse-dot');
   dot.classList.toggle('online', online);
@@ -36,18 +137,14 @@ async function fetchData() {
     setApiStatus(false);
 
     const [driversRes, routesRes, rewardsRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/drivers`),
-      fetch(`${API_BASE_URL}/routes`),
-      fetch(`${API_BASE_URL}/gamification/rewards`)
+      requestAdmin('/drivers'),
+      requestAdmin('/routes'),
+      requestAdmin('/gamification/rewards')
     ]);
 
-    if (!driversRes.ok || !routesRes.ok || !rewardsRes.ok) {
-      throw new Error('No se pudo cargar los datos del backend');
-    }
-
-    state.drivers = (await driversRes.json()).filter(d => !['Carlos Silva', 'Alejandro Díaz'].includes(d.name));
-    state.routes = await routesRes.json();
-    state.rewards = await rewardsRes.json();
+    state.drivers = driversRes.filter(d => !['Carlos Silva', 'Alejandro Díaz'].includes(d.name));
+    state.routes = routesRes;
+    state.rewards = rewardsRes;
 
     renderStats();
     renderDrivers();
@@ -57,21 +154,8 @@ async function fetchData() {
   } catch (error) {
     console.error(error);
     setApiStatus(false);
-    statusText.textContent = 'Sin conexión';
+    statusText.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los datos.';
   }
-}
-
-async function requestAdmin(path, method, body) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'La operación no se pudo completar');
-  }
-  return response.status === 204 ? null : response.json();
 }
 
 function renderStats() {
@@ -91,16 +175,16 @@ function renderDrivers() {
     <tr>
       <td>
         <div class="driver-meta">
-          <div class="avatar">${driver.name.charAt(0).toUpperCase()}</div>
+          <div class="avatar">${escapeHtml(driver.name.charAt(0).toUpperCase())}</div>
           <div>
-            <strong>${driver.name}</strong><br>
-            <small>${driver.xp_level}</small>
+            <strong>${escapeHtml(driver.name)}</strong><br>
+            <small>${escapeHtml(driver.xp_level)}</small>
           </div>
         </div>
       </td>
       <td>
-        <strong>${driver.moto_brand_model}</strong><br>
-        <small>Placa: ${driver.plate}</small>
+        <strong>${escapeHtml(driver.moto_brand_model)}</strong><br>
+        <small>Placa: ${escapeHtml(driver.plate)}</small>
       </td>
       <td>
         <span class="status-badge ${driver.is_available ? 'status-available' : 'status-busy'}">
@@ -120,8 +204,8 @@ function renderDrivers() {
 function renderRoutes() {
   routesList.innerHTML = state.routes.map(route => `
     <div class="route-card">
-      <strong>${route.origin} → ${route.destination}</strong>
-      <p>${route.tag || 'Ruta disponible'}</p>
+      <strong>${escapeHtml(route.origin)} → ${escapeHtml(route.destination)}</strong>
+      <p>${escapeHtml(route.tag || 'Ruta disponible')}</p>
       <p>Tarifa: $${route.fare_usd}</p>
       <p>Duración: ${route.estimated_minutes} min</p>
       <div class="action-group">
@@ -135,8 +219,8 @@ function renderRoutes() {
 function renderRewards() {
   rewardsList.innerHTML = state.rewards.map(reward => `
     <div class="reward-card">
-      <strong>${reward.title}</strong>
-      <p>${reward.description}</p>
+      <strong>${escapeHtml(reward.title)}</strong>
+      <p>${escapeHtml(reward.description)}</p>
       <p>Precio: ${reward.points_cost} Fe</p>
       <p>Descuento: ${reward.discount_percent}%</p>
       <div class="action-group">
@@ -167,10 +251,10 @@ function buildForm(type, payload) {
     return `
       <input type="hidden" name="type" value="driver">
       ${payload ? `<input type="hidden" name="entity_id" value="${payload.user_id || payload.id}">` : ''}
-      <label>Nombre<input name="name" value="${data.name || ''}"></label>
-      <label>Teléfono<input name="phone" value="${data.phone || ''}"></label>
-      <label>Modelo de moto<input name="moto_brand_model" value="${data.moto_brand_model || ''}"></label>
-      <label>Placa<input name="plate" value="${data.plate || ''}"></label>
+      <label>Nombre<input name="name" value="${escapeHtml(data.name)}"></label>
+      <label>Teléfono<input name="phone" value="${escapeHtml(data.phone)}"></label>
+      <label>Modelo de moto<input name="moto_brand_model" value="${escapeHtml(data.moto_brand_model)}"></label>
+      <label>Placa<input name="plate" value="${escapeHtml(data.plate)}"></label>
       <label>Estado
         <select name="is_available">
           <option value="true" ${data.is_available ? 'selected' : ''}>Disponible</option>
@@ -186,11 +270,11 @@ function buildForm(type, payload) {
     return `
       <input type="hidden" name="type" value="route">
       ${payload ? `<input type="hidden" name="entity_id" value="${payload.id}">` : ''}
-      <label>Origen<input name="origin" value="${data.origin || ''}"></label>
-      <label>Destino<input name="destination" value="${data.destination || ''}"></label>
+      <label>Origen<input name="origin" value="${escapeHtml(data.origin)}"></label>
+      <label>Destino<input name="destination" value="${escapeHtml(data.destination)}"></label>
       <label>Tarifa<input type="number" step="0.1" name="fare_usd" value="${data.fare_usd || 2.5}"></label>
       <label>Duración (min)<input type="number" name="estimated_minutes" value="${data.estimated_minutes || 12}"></label>
-      <label>Etiqueta<input name="tag" value="${data.tag || ''}"></label>
+      <label>Etiqueta<input name="tag" value="${escapeHtml(data.tag)}"></label>
       <button type="submit" class="primary-btn">Guardar</button>
     `;
   }
@@ -200,8 +284,8 @@ function buildForm(type, payload) {
     return `
       <input type="hidden" name="type" value="reward">
       ${payload ? `<input type="hidden" name="entity_id" value="${payload.id}">` : ''}
-      <label>Título<input name="title" value="${data.title || ''}"></label>
-      <label>Descripción<textarea name="description">${data.description || ''}</textarea></label>
+      <label>Título<input name="title" value="${escapeHtml(data.title)}"></label>
+      <label>Descripción<textarea name="description">${escapeHtml(data.description)}</textarea></label>
       <label>Coste en Fe<input type="number" name="points_cost" value="${data.points_cost || 100}"></label>
       <label>Descuento %<input type="number" name="discount_percent" value="${data.discount_percent || 20}"></label>
       <button type="submit" class="primary-btn">Guardar</button>
@@ -326,7 +410,7 @@ async function updateAdminProfile(event) {
   event.preventDefault();
   const form = new FormData(event.target);
   try {
-    const profile = await requestAdmin('/admin/profile/1', 'PUT', {
+    const profile = await requestAdmin(`/admin/profile/${state.admin.id}`, 'PUT', {
       name: form.get('name'),
       email: form.get('email'),
       phone: form.get('phone')
@@ -334,7 +418,8 @@ async function updateAdminProfile(event) {
     state.admin.name = profile.name;
     state.admin.email = profile.email;
     state.admin.phone = profile.phone;
-    state.admin.city = form.get('city');
+    renderAdminProfile(profile);
+    document.getElementById('profile-form').elements.city.value = form.get('city');
     renderStats();
     alert('Perfil actualizado correctamente');
   } catch (error) {
@@ -359,6 +444,14 @@ function bindEvents() {
   entityForm.addEventListener('submit', handleFormSubmit);
   document.addEventListener('click', handleActions);
   document.getElementById('profile-form').addEventListener('submit', updateAdminProfile);
+  document.getElementById('login-form').addEventListener('submit', handleLogin);
+  document.getElementById('logout-button').addEventListener('click', () => {
+    adminToken = null;
+    state.admin = null;
+    dashboardApp.classList.add('hidden');
+    authGate.classList.remove('hidden');
+    authStatus.textContent = '';
+  });
 
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
@@ -366,4 +459,6 @@ function bindEvents() {
 }
 
 bindEvents();
-fetchData();
+getFirebaseConfig().catch((error) => {
+  authStatus.textContent = error instanceof Error ? error.message : 'No se pudo cargar la configuración de acceso.';
+});

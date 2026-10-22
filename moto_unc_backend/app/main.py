@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import crypto
 from .database import engine, get_db, Base, SessionLocal
-from .models import User, DriverProfile, Ride, Review, Reward, Route
+from .models import User, DriverProfile, Ride, Review, Reward, Route, Coupon
 from .auth import (
     EMAIL_VERIFICATION_REQUIRED,
     FirebaseIdentity,
@@ -42,7 +42,7 @@ from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
 from .links_service import award_fe, level_for
-from .routers import driver_applications, links, quiz, wallet
+from .routers import driver_applications, fe_store, links, profile, quiz, wallet
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 VENEZUELA_TZ = config.VENEZUELA_TZ
@@ -83,6 +83,12 @@ app.include_router(wallet.router)
 app.include_router(links.router)
 app.include_router(quiz.router)
 app.include_router(driver_applications.router)
+app.include_router(profile.router)
+app.include_router(fe_store.router)
+
+# Fotos de perfil subidas por los usuarios.
+config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=config.MEDIA_DIR), name="media")
 
 app.add_middleware(
     CORSMiddleware,
@@ -967,7 +973,16 @@ async def request_ride(
         )
     if not is_approved(driver.driver_profile):
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
-    if ride_data.payment_method == "diamantes" and (passenger.diamonds_cents or 0) < wallet_service.to_cents(ride_data.fare_amount):
+    fare = ride_data.fare_amount
+    coupon = None
+    if ride_data.coupon_id is not None:
+        coupon = db.query(Coupon).filter(
+            Coupon.id == ride_data.coupon_id, Coupon.user_id == passenger.id, Coupon.status == "activo"
+        ).first()
+        if not coupon:
+            raise HTTPException(status_code=400, detail="Ese cupón no está disponible.")
+        fare = round(fare * (100 - coupon.percent) / 100, 2)
+    if ride_data.payment_method == "diamantes" and (passenger.diamonds_cents or 0) < wallet_service.to_cents(fare):
         raise HTTPException(status_code=400, detail="No tienes diamantes suficientes para este viaje. Recarga tu billetera.")
     if ride_data.is_scheduled:
         try:
@@ -992,11 +1007,14 @@ async def request_ride(
         status="solicitado",
         payment_method=ride_data.payment_method,
         payment_reference=ride_data.payment_reference,
-        fare_amount=ride_data.fare_amount,
+        fare_amount=fare,
         points_rewarded=35
     )
     db.add(new_ride)
     db.flush()
+    if coupon:
+        coupon.status = "usado"
+        coupon.ride_id = new_ride.id
     if new_ride.payment_method == "diamantes":
         # La tarifa queda retenida y se cobra al completar el viaje.
         wallet_service.hold_ride_payment(db, wallet_service.lock_user(db, passenger.id), new_ride)
@@ -1158,6 +1176,7 @@ def get_my_summary(
         "is_available": profile.is_available if profile else None,
         "has_driver_profile": profile is not None,
         "verification_status": profile.verification_status if profile else None,
+        "is_admin": is_admin(current_user),
     }
 
 
@@ -1211,6 +1230,8 @@ async def update_ride_status(
         availability_changed = True
     if update.status in {"cancelado", "rechazado"}:
         wallet_service.refund_ride_payment(db, ride)
+        # El cupón vuelve a estar disponible si el viaje no se hizo.
+        db.query(Coupon).filter(Coupon.ride_id == ride.id).update({"status": "activo", "ride_id": None})
 
     # Si se completa el viaje, sumar Fe al pasajero e incrementar contador del conductor
     if update.status == "completado" and old_status != "completado":

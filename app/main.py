@@ -1,19 +1,6 @@
-from fastapi import FastAPI
-from app.database import engine, Base
-from app.routers import rides
+"""The root-level API is retired; use moto_unc_backend instead."""
 
-# Crea las tablas automáticamente al iniciar si no existen
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(
-    title="MotoTaxi UNC & IVIC API",
-    description="Backend para el sistema de mototaxi enfocado en la comunidad estudiantil de la UNC, IVIC, San Antonio y Caracas.",
-    version="1.0.0"
+raise RuntimeError(
+    "The root-level API is retired because it has no authentication. "
+    "Start moto_unc_backend/app/main.py instead."
 )
-
-# Incluir las rutas de viajes y de usuarios
-app.include_router(rides.router)
-
-@app.get("/")
-def read_root():
-    return {"message": "¡Bienvenido a la API de MotoTaxi UNC/IVIC!", "developer": "Jairo Urdaneta"}

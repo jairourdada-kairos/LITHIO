@@ -29,7 +29,14 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LITHIO usa tus fotos para tu foto de perfil.",
+          "cameraPermission": "LITHIO usa la cámara para tomar tu foto de perfil."
+        }
+      ]
     ]
   }
 }

@@ -12,7 +12,28 @@
 <body>
     <div class="background-animation"></div>
 
-    <div class="dashboard-container">
+    <main id="auth-gate" class="auth-gate glass-panel">
+        <div class="logo-container">
+            <span class="logo-icon">◈</span>
+            <h1 class="logo-text">LITHIO</h1>
+        </div>
+        <h2>Acceso administrativo</h2>
+        <p>Inicia sesión con una cuenta autorizada para continuar.</p>
+        <form id="login-form" class="admin-form">
+            <label>
+                Correo electrónico
+                <input type="email" name="email" autocomplete="username" required>
+            </label>
+            <label>
+                Contraseña
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button id="login-button" type="submit" class="primary-btn">Iniciar sesión</button>
+            <p id="auth-status" class="auth-status" role="status"></p>
+        </form>
+    </main>
+
+    <div id="dashboard-app" class="dashboard-container hidden">
         <aside class="sidebar glass-panel">
             <div class="logo-container">
                 <span class="logo-icon">◈</span>
@@ -39,6 +60,7 @@
                         <span class="pulse-dot online"></span>
                         <span id="api-status">Sistema online</span>
                     </div>
+                    <button id="logout-button" class="small-btn" type="button">Cerrar sesión</button>
                 </div>
             </header>
 
@@ -47,7 +69,7 @@
                     <div class="stat-icon">👤</div>
                     <div class="stat-info">
                         <h3>Admin</h3>
-                        <p class="stat-value" id="stat-admin-name">Jairo</p>
+                        <p class="stat-value" id="stat-admin-name">Admin</p>
                     </div>
                 </div>
                 <div class="stat-card glass-panel">
@@ -118,28 +140,28 @@
 
                     <div class="profile-grid">
                         <div class="profile-card">
-                            <div class="avatar-large">J</div>
-                            <h4>Jairo Eduardo Urdaneta González</h4>
-                            <p>jairourdada@gmail.com</p>
-                            <p>04124091527</p>
+                            <div class="avatar-large">A</div>
+                            <h4 id="profile-name"></h4>
+                            <p id="profile-email"></p>
+                            <p id="profile-phone"></p>
                         </div>
 
                         <form id="profile-form" class="admin-form">
                             <label>
                                 Nombre completo
-                                <input type="text" name="name" value="Jairo Eduardo Urdaneta González">
+                                <input type="text" name="name" required>
                             </label>
                             <label>
                                 Email
-                                <input type="email" name="email" value="jairourdada@gmail.com">
+                                <input type="email" name="email" required>
                             </label>
                             <label>
                                 Teléfono
-                                <input type="text" name="phone" value="04124091527">
+                                <input type="text" name="phone" required>
                             </label>
                             <label>
                                 Ciudad principal
-                                <input type="text" name="city" value="Caracas">
+                                <input type="text" name="city">
                             </label>
                             <button type="submit" class="primary-btn">Guardar perfil</button>
                         </form>
@@ -159,6 +181,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

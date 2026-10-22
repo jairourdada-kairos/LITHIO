@@ -186,6 +186,7 @@ class RideCreate(BaseModel):
     payment_method: str = "efectivo"  # 'efectivo', 'pago_movil', 'puntos'
     payment_reference: Optional[str] = None
     fare_amount: float = 3.0
+    coupon_id: Optional[int] = None
 
 class RideStatusUpdate(BaseModel):
     status: str  # 'aceptado', 'rechazado', 'en_camino', 'en_curso', 'completado', 'cancelado'

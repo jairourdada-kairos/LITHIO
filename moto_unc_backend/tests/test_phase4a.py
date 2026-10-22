@@ -264,3 +264,48 @@ def test_quiz_correct_answer_position_varies():
     start = date(2026, 1, 1)
     positions = {quiz_module.question_for(start + timedelta(days=i))[2] for i in range(30)}
     assert len(positions) > 1
+
+
+# --- Foto de perfil, niveles y administrador -------------------------------------
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+def test_avatar_upload_replace_and_delete(client):
+    headers = auth_headers(4)
+    fake = client.post("/api/users/me/avatar", files={"photo": ("x.png", b"<script>", "image/png")}, headers=headers)
+    assert fake.status_code == 400  # Se valida la firma real del archivo
+
+    big = client.post("/api/users/me/avatar", files={"photo": ("x.png", PNG + b"0" * (2 * 1024 * 1024), "image/png")}, headers=headers)
+    assert big.status_code == 413
+
+    first = client.post("/api/users/me/avatar", files={"photo": ("a.png", PNG, "image/png")}, headers=headers).json()
+    assert first["avatar_url"].startswith("/media/avatars/4-") and first["avatar_url"].endswith(".png")
+    assert client.get(first["avatar_url"]).content == PNG
+
+    second = client.post("/api/users/me/avatar", files={"photo": ("b.png", PNG, "image/png")}, headers=headers).json()
+    assert client.get(first["avatar_url"]).status_code == 404  # La anterior se borra
+    assert client.get("/api/users/me", headers=headers).json()["avatar_url"] == second["avatar_url"]
+
+    assert client.delete("/api/users/me/avatar", headers=headers).json() == {"avatar_url": None}
+    assert client.get(second["avatar_url"]).status_code == 404
+    assert client.post("/api/users/me/avatar", files={"photo": ("a.png", PNG, "image/png")}).status_code == 401
+
+
+def test_levels_table_marks_progress_and_perks(client):
+    with client.session_factory() as db:
+        db.execute(text("UPDATE users SET fe_lifetime = 160 WHERE id = 4"))
+        db.commit()
+    table = client.get("/api/levels", headers=auth_headers(4)).json()
+    assert table["current"]["symbol"] == "Li"
+    assert table["current"]["next_perk"]["symbol"] == "C"
+    elements = table["elements"]
+    assert len(elements) == 36
+    assert [e["symbol"] for e in elements if e["unlocked"]] == ["H", "He", "Li"]
+    assert next(e for e in elements if e["current"])["symbol"] == "Li"
+    assert next(e for e in elements if e["symbol"] == "Fe")["perk"].startswith("10 %")
+
+
+def test_summary_flags_admins(client):
+    assert client.get("/api/users/me/summary", headers=auth_headers(4)).json()["is_admin"] is False
+    assert client.get("/api/users/me/summary", headers=ADMIN).json()["is_admin"] is True
