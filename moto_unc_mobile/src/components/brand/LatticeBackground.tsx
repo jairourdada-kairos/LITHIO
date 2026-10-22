@@ -8,7 +8,7 @@
 
 import React, { useMemo } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 const CELL = 44;
 
@@ -39,7 +39,7 @@ export const LatticeBackground: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   halo: {
     position: 'absolute',
     borderRadius: 9999,
@@ -57,6 +57,6 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(148, 163, 184, 0.16)',
+    backgroundColor: theme.colors.lattice,
   },
-});
+}));

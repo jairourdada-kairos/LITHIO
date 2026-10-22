@@ -8,11 +8,11 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { Easing, FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from '../components/brand/LithiumAtom';
 import { LatticeBackground } from '../components/brand/LatticeBackground';
 import { PressableScale } from '../components/brand/PressableScale';
@@ -38,7 +38,6 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
   const insets = useSafeAreaInsets();
   return (
   <View style={styles.root}>
-    <StatusBar barStyle="light-content" backgroundColor={theme.colors.bgDark} />
     <LatticeBackground />
 
     <ScrollView
@@ -154,7 +153,7 @@ const RoleCard: React.FC<RoleCardProps> = ({ title, description, icon, particle,
   </PressableScale>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -326,4 +325,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     paddingHorizontal: 16,
   },
-});
+}));

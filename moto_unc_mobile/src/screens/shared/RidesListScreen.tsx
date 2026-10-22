@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
@@ -19,9 +19,12 @@ interface Props {
   /** Cambia cuando hay que recargar (p. ej. tras un cambio de estado). */
   reloadKey: number;
   onPrimaryAction?: () => void;
+  /** Oculta el encabezado cuando la lista va dentro de otra pantalla. */
+  hideHeader?: boolean;
 }
 
-const STATUS: Record<string, { label: string; color: string }> = {
+// Función (no constante) para leer la paleta activa.
+const statusInfo = (): Record<string, { label: string; color: string }> => ({
   solicitado: { label: 'Pendiente', color: theme.colors.warning },
   aceptado: { label: 'Aceptado', color: theme.colors.primary },
   en_camino: { label: 'En camino', color: theme.colors.primary },
@@ -29,7 +32,7 @@ const STATUS: Record<string, { label: string; color: string }> = {
   completado: { label: 'Completado', color: theme.colors.success },
   cancelado: { label: 'Cancelado', color: theme.colors.error },
   rechazado: { label: 'Rechazado', color: theme.colors.error },
-};
+});
 
 function formatDate(ride: Ride) {
   if (ride.is_scheduled && ride.scheduled_time) return ride.scheduled_time;
@@ -39,7 +42,7 @@ function formatDate(ride: Ride) {
     : date.toLocaleDateString('es-VE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPrimaryAction }) => {
+export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPrimaryAction, hideHeader }) => {
   const [rides, setRides] = useState<Ride[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,7 +68,7 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title={title} />
+      {hideHeader ? null : <ScreenHeader title={title} />}
       {rides === null && !error ? (
         <ActivityIndicator style={styles.loading} color={theme.colors.primary} />
       ) : (
@@ -95,7 +98,7 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
             </View>
           }
           renderItem={({ item }) => {
-            const status = STATUS[item.status] || { label: item.status, color: theme.colors.textMuted };
+            const status = statusInfo()[item.status] || { label: item.status, color: theme.colors.textMuted };
             return (
               <View style={styles.card}>
                 <View style={styles.cardTop}>
@@ -128,7 +131,7 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
   },
@@ -223,4 +226,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.textSecondary,
   },
-});
+}));

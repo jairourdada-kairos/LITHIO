@@ -22,6 +22,10 @@ export type WSMessageType =
   | 'NEW_RIDE_REQUEST'
   | 'RIDE_STATUS_UPDATED'
   | 'DRIVER_AVAILABILITY_CHANGED'
+  | 'DRIVER_APPLICATION_UPDATED'
+  | 'WALLET_UPDATED'
+  | 'LINK_REQUEST'
+  | 'LINK_ACCEPTED'
   | 'PONG';
 
 export interface WSMessage {

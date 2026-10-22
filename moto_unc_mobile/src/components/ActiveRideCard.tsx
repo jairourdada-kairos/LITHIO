@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { Ride, RideStatus, UserRole } from '../types';
 
 interface ActiveRideCardProps {
@@ -223,7 +223,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     backgroundColor: theme.colors.cardBg,
     borderRadius: theme.radius.md,
@@ -366,4 +366,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   }
-});
+}));

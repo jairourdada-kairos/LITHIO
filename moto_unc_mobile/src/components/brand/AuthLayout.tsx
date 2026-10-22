@@ -15,11 +15,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StatusBar,
 } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import { LatticeBackground } from './LatticeBackground';
 import { PeriodicTile } from './PeriodicTile';
 
@@ -36,7 +35,6 @@ export const AuthLayout: React.FC<Props> = ({ title, subtitle, accent = theme.co
   const insets = useSafeAreaInsets();
   return (
   <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-    <StatusBar barStyle="light-content" backgroundColor={theme.colors.bgDark} />
     <LatticeBackground />
     <ScrollView
       contentContainerStyle={[
@@ -73,7 +71,7 @@ export const AuthLayout: React.FC<Props> = ({ title, subtitle, accent = theme.co
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -120,4 +118,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
-});
+}));

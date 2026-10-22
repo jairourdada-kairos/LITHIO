@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 interface Props {
   name: string;
@@ -37,7 +37,7 @@ export const Avatar: React.FC<Props> = ({ name, uri, size = 48, ringColor = them
   </View>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   ring: {
     borderWidth: 2,
     alignItems: 'center',
@@ -51,4 +51,4 @@ const styles = StyleSheet.create({
   initials: {
     fontFamily: theme.fonts.bold,
   },
-});
+}));

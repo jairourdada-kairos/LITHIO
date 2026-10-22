@@ -10,14 +10,15 @@ import { Text, StyleSheet, Pressable, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import type { RideNotice } from '../../hooks/useRideCenter';
 
-const TONES = {
+// Función (no constante) para leer la paleta activa en cada aviso.
+const tones = () => ({
   info: { color: theme.colors.primary, icon: 'bell-ring' as const },
   success: { color: theme.colors.success, icon: 'check-circle' as const },
   warning: { color: theme.colors.warning, icon: 'alert-circle' as const },
-};
+});
 
 interface Props {
   notice: RideNotice | null;
@@ -35,7 +36,7 @@ export const NoticeBanner: React.FC<Props> = ({ notice, onClose, onPress }) => {
   }, [notice, onClose]);
 
   if (!notice) return null;
-  const tone = TONES[notice.tone];
+  const tone = tones()[notice.tone];
 
   return (
     <Animated.View
@@ -62,7 +63,7 @@ export const NoticeBanner: React.FC<Props> = ({ notice, onClose, onPress }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrapper: {
     position: 'absolute',
     left: 12,
@@ -94,4 +95,4 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-});
+}));

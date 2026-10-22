@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 interface Props {
   title: string;
@@ -35,7 +35,7 @@ export const ScreenHeader: React.FC<Props> = ({ title, onBack, right }) => (
   </View>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,4 +61,4 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'center',
   },
-});
+}));

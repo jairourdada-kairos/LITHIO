@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { signUpPassenger, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
@@ -102,7 +102,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   bonusBadge: {
     backgroundColor: theme.colors.goldSoft,
     borderWidth: 1,
@@ -127,4 +127,4 @@ const styles = StyleSheet.create({
   submit: {
     marginTop: 8,
   },
-});
+}));

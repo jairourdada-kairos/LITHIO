@@ -1,17 +1,20 @@
 /**
- * AccountScreen.tsx — Cuenta: perfil, números y menú
+ * AccountScreen.tsx — Perfil (boceto v3)
  *
- * El rol se muestra como insignia fija (no se cambia aquí). Para usar el
- * otro rol se cierra sesión y se entra por la otra puerta.
+ * Tu nivel como elemento químico, el progreso hacia el siguiente, la
+ * apariencia de la app (claro, oscuro o automático) y el menú de cuenta.
+ * El rol se muestra pero no se cambia aquí: para eso se cierra sesión.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from '../../constants/theme';
-import { Avatar } from '../../components/ui/Avatar';
+import { theme, themed } from '../../constants/theme';
+import { ElementTile } from '../../components/brand/ElementTile';
 import { RoleBadge, roleColors } from '../../components/ui/RoleBadge';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
+import { ThemeMode, useThemeMode } from '../../theme/ThemeMode';
+import { electronConfiguration, FALLBACK_LEVEL, levelProgress } from '../../utils/elements';
 import type { AuthUser } from '../../services/auth';
 import type { AccountSummary } from '../../services/api';
 import type { SessionRole } from '../../services/session';
@@ -22,36 +25,44 @@ interface MenuItem {
   icon: IconName;
   label: string;
   onPress: () => void;
-  tint?: string;
+  danger?: boolean;
 }
 
 interface Props {
   user: AuthUser;
   role: SessionRole;
-  points: number;
   summary: AccountSummary | null;
   onOpenProfile: () => void;
-  onOpenHistory: () => void;
-  onOpenScheduled: () => void;
+  onOpenLinks: () => void;
   onOpenRewards?: () => void;
+  onOpenTutorial: () => void;
   onOpenAbout: () => void;
   onSignOut: () => void;
 }
 
+const APPEARANCE: { mode: ThemeMode; label: string; icon: IconName }[] = [
+  { mode: 'light', label: 'Claro', icon: 'white-balance-sunny' },
+  { mode: 'dark', label: 'Oscuro', icon: 'weather-night' },
+  { mode: 'system', label: 'Auto', icon: 'cellphone' },
+];
+
 export const AccountScreen: React.FC<Props> = ({
   user,
   role,
-  points,
   summary,
   onOpenProfile,
-  onOpenHistory,
-  onOpenScheduled,
+  onOpenLinks,
   onOpenRewards,
+  onOpenTutorial,
   onOpenAbout,
   onSignOut,
 }) => {
-  const colors = roleColors(role);
+  const { mode, setMode } = useThemeMode();
+  const accent = roleColors(role).accent;
+  const level = summary?.level ?? FALLBACK_LEVEL;
+  const progress = levelProgress(level);
   const fullName = [user.name, user.last_name].filter(Boolean).join(' ');
+  const missing = level.next_threshold ? level.next_threshold - level.fe_lifetime : 0;
 
   const confirmSignOut = () =>
     Alert.alert('Cerrar sesión', '¿Quieres cerrar tu sesión en este dispositivo?', [
@@ -60,30 +71,66 @@ export const AccountScreen: React.FC<Props> = ({
     ]);
 
   const items: MenuItem[] = [
-    { icon: 'account-circle-outline', label: 'Mis datos', onPress: onOpenProfile },
-    { icon: 'history', label: 'Historial', onPress: onOpenHistory },
-    { icon: 'calendar-month-outline', label: 'Agendados', onPress: onOpenScheduled },
-    ...(onOpenRewards ? [{ icon: 'star-four-points-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
+    { icon: 'card-account-details-outline', label: 'Mis datos', onPress: onOpenProfile },
+    { icon: 'account-multiple-outline', label: 'Enlaces', onPress: onOpenLinks },
+    ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
+    { icon: 'school-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
     { icon: 'atom', label: '¿Qué es LITHIO?', onPress: onOpenAbout },
-    { icon: 'logout', label: 'Cerrar sesión', onPress: confirmSignOut, tint: theme.colors.error },
+    { icon: 'logout', label: 'Cerrar sesión', onPress: confirmSignOut, danger: true },
   ];
 
   return (
-    <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 64 }]} showsVerticalScrollIndicator={false}>
-      <RoleBadge role={role} size="md" style={styles.roleBadge} />
+    <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 56 }]} showsVerticalScrollIndicator={false}>
+      <Text style={styles.screenTitle}>Perfil</Text>
 
-      <View style={styles.profile}>
-        <Avatar name={fullName} uri={user.avatar_url} size={72} ringColor={colors.accent} />
-        <View style={styles.profileText}>
+      <View style={styles.identity}>
+        <ElementTile z={level.z} symbol={level.symbol} name={level.name} size={72} accent={accent} />
+        <View style={styles.flex}>
           <Text style={styles.name} numberOfLines={2}>{fullName}</Text>
-          <Text style={[styles.rank, { color: colors.accent }]} numberOfLines={1}>{user.xp_level}</Text>
+          <RoleBadge role={role} style={styles.badge} />
         </View>
       </View>
 
-      <View style={styles.stats}>
-        <Stat icon="star-outline" value={summary?.rating_avg ? summary.rating_avg.toFixed(2) : '—'} label="Calificación" />
-        <Stat icon="motorbike" value={String(summary?.trips_completed ?? '—')} label="Viajes" />
-        <Stat icon="star-four-points-outline" value={String(points)} label="Fe" gold />
+      <View style={styles.card}>
+        <View style={styles.levelRow}>
+          <Text style={styles.levelTitle}>Nivel {level.name}</Text>
+          <Text style={[styles.config, { color: accent }]}>{electronConfiguration(level.z)}</Text>
+        </View>
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: accent }]} />
+        </View>
+        <Text style={styles.levelHint}>
+          {level.next_name
+            ? `${missing} Fe para llegar a ${level.next_name} (${level.next_symbol})`
+            : 'Alcanzaste el nivel máximo de la tabla.'}
+        </Text>
+        <View style={styles.stats}>
+          <Stat value={String(summary?.trips_completed ?? '—')} label="Viajes" />
+          <Stat value={`◆ ${(summary?.diamonds ?? 0).toFixed(2)}`} label="Diamantes" color={theme.colors.diamond} />
+          <Stat value={`Fe ${summary?.points ?? user.points}`} label="Hierro" color={theme.colors.gold} />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Apariencia</Text>
+        <View style={styles.segment} accessibilityRole="radiogroup">
+          {APPEARANCE.map((option) => {
+            const selected = option.mode === mode;
+            return (
+              <Pressable
+                key={option.mode}
+                onPress={() => setMode(option.mode)}
+                style={[styles.segmentItem, selected && styles.segmentItemActive]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`Apariencia ${option.label}`}
+              >
+                <MaterialCommunityIcons name={option.icon} size={16} color={selected ? theme.colors.textPrimary : theme.colors.textMuted} />
+                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <View style={styles.menu}>
@@ -94,9 +141,9 @@ export const AccountScreen: React.FC<Props> = ({
             style={({ pressed }) => [styles.item, index > 0 && styles.itemDivider, pressed && styles.itemPressed]}
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name={item.icon} size={24} color={item.tint || theme.colors.textSecondary} />
-            <Text style={[styles.itemLabel, item.tint ? { color: item.tint } : null]}>{item.label}</Text>
-            {!item.tint ? <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} /> : null}
+            <MaterialCommunityIcons name={item.icon} size={22} color={item.danger ? theme.colors.error : theme.colors.textSecondary} />
+            <Text style={[styles.itemLabel, item.danger && { color: theme.colors.error }]}>{item.label}</Text>
+            {!item.danger ? <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} /> : null}
           </Pressable>
         ))}
       </View>
@@ -110,67 +157,88 @@ export const AccountScreen: React.FC<Props> = ({
   );
 };
 
-const Stat: React.FC<{ icon: IconName; value: string; label: string; gold?: boolean }> = ({ icon, value, label, gold }) => (
+const Stat: React.FC<{ value: string; label: string; color?: string }> = ({ value, label, color }) => (
   <View style={styles.stat}>
-    <View style={[styles.statIcon, gold && { backgroundColor: theme.colors.goldSoft }]}>
-      <MaterialCommunityIcons name={icon} size={20} color={gold ? theme.colors.gold : theme.colors.textSecondary} />
-    </View>
-    <View>
-      <Text style={[styles.statValue, gold && { color: theme.colors.gold }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    <Text style={[styles.statValue, color ? { color } : null]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
   </View>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 20,
+    paddingTop: 12,
+    gap: 18,
   },
-  roleBadge: {
-    alignSelf: 'center',
+  flex: {
+    flex: 1,
   },
-  profile: {
+  screenTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 26,
+    color: theme.colors.textPrimary,
+  },
+  identity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  profileText: {
-    flex: 1,
-    gap: 4,
-  },
   name: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
+    fontSize: 21,
     color: theme.colors.textPrimary,
   },
-  rank: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 14,
+  badge: {
+    marginTop: 6,
+  },
+  card: {
+    padding: 18,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  levelTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+  },
+  config: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 13,
+  },
+  track: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.surfaceAlt,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  levelHint: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 8,
   },
   stats: {
     flexDirection: 'row',
-    gap: 8,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.glassBorder,
   },
   stat: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    backgroundColor: theme.colors.glassBg,
-  },
-  statIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.cardElevated,
   },
   statValue: {
     fontFamily: theme.fonts.bold,
@@ -179,22 +247,59 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontFamily: theme.fonts.regular,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textMuted,
+    marginTop: 2,
   },
-  menu: {
-    borderRadius: theme.radius.lg,
+  cardTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    marginBottom: 12,
+  },
+  segment: {
+    flexDirection: 'row',
+    padding: 4,
+    gap: 4,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  segmentItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
+    borderRadius: 10,
+  },
+  segmentItemActive: {
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
-    backgroundColor: theme.colors.glassBg,
+  },
+  segmentText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13.5,
+    color: theme.colors.textMuted,
+  },
+  segmentTextActive: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+  },
+  menu: {
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
     overflow: 'hidden',
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    minHeight: 58,
-    paddingHorizontal: 16,
+    minHeight: 56,
+    paddingHorizontal: 18,
   },
   itemDivider: {
     borderTopWidth: 1,
@@ -206,7 +311,7 @@ const styles = StyleSheet.create({
   itemLabel: {
     flex: 1,
     fontFamily: theme.fonts.semibold,
-    fontSize: 16,
+    fontSize: 15.5,
     color: theme.colors.textPrimary,
   },
   footnote: {
@@ -217,4 +322,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 12,
   },
-});
+}));

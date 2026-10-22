@@ -94,6 +94,8 @@ export interface DriverSignUpData extends IdentitySignUpData {
   moto_brand_model: string;
   moto_color: string;
   plate: string;
+  license_number: string;
+  moto_year: number;
   helmet_provided: boolean;
   binance_address?: string;
   mobile_payment_number?: string;

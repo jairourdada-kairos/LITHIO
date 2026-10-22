@@ -21,7 +21,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 interface Props {
   size?: number;
@@ -162,7 +162,7 @@ const Electron: React.FC<ElectronProps> = ({ progress, tilt, phase, majorAxis, m
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -192,4 +192,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     boxShadow: '0 0 12px rgba(69, 214, 197, 0.9)',
   },
-});
+}));

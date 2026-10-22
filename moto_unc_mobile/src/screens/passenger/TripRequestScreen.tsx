@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { PressableScale } from '../../components/brand/PressableScale';
@@ -249,7 +249,7 @@ const DriverOption: React.FC<{ driver: Driver; onChoose: () => void }> = ({ driv
   </PressableScale>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -491,4 +491,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.bgDark,
   },
-});
+}));

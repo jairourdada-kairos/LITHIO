@@ -1,16 +1,16 @@
 /**
- * DriverHome.tsx — Inicio del conductor
+ * DriverHome.tsx — Inicio del conductor (boceto v3)
  *
- * Estado de conexión, resumen, viaje en curso y bandeja de solicitudes que
- * llegan en tiempo real (NEW_RIDE_REQUEST) con Aceptar / Rechazar.
+ * Estado de conexión con un botón grande, el viaje en curso, una bandeja
+ * compacta de solicitudes (cada una se abre en la hoja inferior) y las
+ * ganancias en diamantes con acceso al taller aliado.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeInDown, LinearTransition, ReduceMotion } from 'react-native-reanimated';
-import { theme } from '../../constants/theme';
-import { HomeHeader } from '../../components/home/HomeHeader';
+import { theme, themed } from '../../constants/theme';
+import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { ActiveRideCard } from '../../components/ActiveRideCard';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
@@ -20,108 +20,53 @@ import type { Ride, RideStatus } from '../../types';
 
 interface Props {
   user: AuthUser;
-  points: number;
   summary: AccountSummary | null;
   isAvailable: boolean;
   togglingAvailability: boolean;
   connected: boolean;
   activeRide: Ride | null;
   requests: Ride[];
-  busyRideId: number | null;
   refreshing: boolean;
   onRefresh: () => void;
   onToggleAvailability: () => void;
-  onRespond: (ride: Ride, status: RideStatus) => void;
+  onOpenRequest: (ride: Ride) => void;
+  onUpdateActiveRide: (status: RideStatus) => void;
   onDismissCompleted: () => void;
-  onOpenAccount: () => void;
+  onOpenWallet: () => void;
+  onOpenProfile: () => void;
 }
-
-const PAYMENT_LABEL: Record<string, string> = { efectivo: 'Efectivo', pago_movil: 'Pago Móvil' };
 
 export const DriverHome: React.FC<Props> = ({
   user,
-  points,
   summary,
   isAvailable,
   togglingAvailability,
   connected,
   activeRide,
   requests,
-  busyRideId,
   refreshing,
   onRefresh,
   onToggleAvailability,
-  onRespond,
+  onOpenRequest,
+  onUpdateActiveRide,
   onDismissCompleted,
-  onOpenAccount,
+  onOpenWallet,
+  onOpenProfile,
 }) => {
   const online = isAvailable && !activeRide;
   const statusColor = activeRide ? theme.colors.warning : online ? theme.colors.success : theme.colors.textMuted;
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 64 }]}
+      contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 56 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.secondary} />}
     >
-      <HomeHeader
-        name={user.name}
-        avatarUrl={user.avatar_url}
-        role="conductor"
-        rank={user.xp_level}
-        points={points}
-        onPressAvatar={onOpenAccount}
-        onPressPoints={onOpenAccount}
-      />
+      <TopBar name={user.name} avatarUrl={user.avatar_url} accent={theme.colors.secondary} onPressAvatar={onOpenProfile} />
 
-      <View style={[styles.statusCard, { borderColor: `${statusColor}66` }]}>
-        <View style={styles.statusText}>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusTitle, { color: statusColor }]}>
-              {activeRide ? 'En un viaje' : online ? 'Conectado' : 'Desconectado'}
-            </Text>
-          </View>
-          <Text style={styles.statusBody}>
-            {activeRide
-              ? 'No apareces en el directorio hasta terminar este viaje.'
-              : online
-                ? 'Los pasajeros pueden elegirte. Las solicitudes llegan aquí.'
-                : 'Conéctate para aparecer en el directorio y recibir solicitudes.'}
-          </Text>
-          {!connected ? (
-            <Text style={styles.offline}>Reconectando con el servidor…</Text>
-          ) : null}
-        </View>
-        {!activeRide ? (
-          <PressableScale
-            onPress={onToggleAvailability}
-            disabled={togglingAvailability}
-            accessibilityLabel={online ? 'Desconectarme' : 'Conectarme'}
-            style={[
-              styles.power,
-              online
-                ? { backgroundColor: theme.colors.success, boxShadow: '0 0 24px rgba(16, 185, 129, 0.5)' }
-                : { backgroundColor: theme.colors.cardElevated, borderColor: theme.colors.cardBorder },
-            ]}
-          >
-            {togglingAvailability ? (
-              <ActivityIndicator color={theme.colors.textPrimary} />
-            ) : (
-              <MaterialCommunityIcons name="power" size={32} color={online ? theme.colors.bgDark : theme.colors.textSecondary} />
-            )}
-          </PressableScale>
-        ) : null}
-      </View>
-
-      <View style={styles.stats}>
-        <Stat value={String(summary?.trips_completed ?? '—')} label="Viajes" />
-        <Stat
-          value={summary?.rating_avg ? summary.rating_avg.toFixed(2) : 'Nuevo'}
-          label="Calificación"
-          icon="star"
-        />
-        <Stat value={String(points)} label="Fe" gold />
+      <View>
+        <Text style={styles.hello}>{greeting()}</Text>
+        <Text style={styles.name}>{user.name.split(' ')[0]}</Text>
       </View>
 
       {activeRide ? (
@@ -130,9 +75,9 @@ export const DriverHome: React.FC<Props> = ({
           <ActiveRideCard
             ride={activeRide}
             role="conductor"
-            onUpdateStatus={(status) => onRespond(activeRide, status)}
+            onUpdateStatus={onUpdateActiveRide}
             onOpenReview={() => {}}
-            onCancel={() => onRespond(activeRide, 'cancelado')}
+            onCancel={() => onUpdateActiveRide('cancelado')}
           />
           {activeRide.status === 'completado' ? (
             <PressableScale style={styles.doneButton} onPress={onDismissCompleted}>
@@ -140,125 +85,124 @@ export const DriverHome: React.FC<Props> = ({
             </PressableScale>
           ) : null}
         </View>
+      ) : (
+        <View style={styles.statusCard}>
+          <PressableScale
+            onPress={onToggleAvailability}
+            disabled={togglingAvailability}
+            accessibilityLabel={online ? 'Desconectarme' : 'Conectarme'}
+            style={[
+              styles.power,
+              online
+                ? { backgroundColor: theme.colors.success }
+                : { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.cardBorder },
+            ]}
+          >
+            {togglingAvailability ? (
+              <ActivityIndicator color={online ? '#FFFFFF' : theme.colors.textSecondary} />
+            ) : (
+              <MaterialCommunityIcons name="power" size={36} color={online ? '#FFFFFF' : theme.colors.textSecondary} />
+            )}
+          </PressableScale>
+          <Text style={[styles.statusTitle, { color: statusColor }]}>{online ? 'Conectado' : 'Desconectado'}</Text>
+          <Text style={styles.statusBody}>
+            {online
+              ? 'Los pasajeros pueden elegirte. Las solicitudes aparecerán aquí.'
+              : 'Toca el botón para aparecer en el directorio y recibir solicitudes.'}
+          </Text>
+          {!connected ? <Text style={styles.offline}>Reconectando con el servidor…</Text> : null}
+        </View>
+      )}
+
+      {requests.length > 0 ? (
+        <View>
+          <Text style={styles.sectionTitle}>Solicitudes pendientes</Text>
+          <View style={styles.list}>
+            {requests.map((ride, index) => (
+              <Pressable
+                key={ride.id}
+                onPress={() => onOpenRequest(ride)}
+                style={({ pressed }) => [styles.requestRow, index > 0 && styles.rowDivider, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver solicitud de ${ride.passenger_name}`}
+              >
+                <View style={styles.flex}>
+                  <Text style={styles.requestName} numberOfLines={1}>{ride.passenger_name || 'Pasajero'}</Text>
+                  <Text style={styles.requestRoute} numberOfLines={1}>{ride.origin} → {ride.destination}</Text>
+                </View>
+                <Text style={styles.requestFare}>
+                  {ride.payment_method === 'diamantes' ? '◆' : '$'} {ride.fare_amount.toFixed(2)}
+                </Text>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
       ) : null}
 
-      <View>
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Solicitudes</Text>
-          {requests.length ? <Text style={styles.count}>{requests.length}</Text> : null}
+      <View style={styles.quickRow}>
+        <PressableScale containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Ver ganancias">
+          <MaterialCommunityIcons name="wallet-outline" size={24} color={theme.colors.diamond} />
+          <Text style={styles.quickValue}>◆ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
+          <Text style={styles.quickLabel}>Ganancias</Text>
+        </PressableScale>
+        <PressableScale containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Taller aliado">
+          <MaterialCommunityIcons name="wrench-outline" size={24} color={theme.colors.secondary} />
+          <Text style={styles.quickValue}>Taller</Text>
+          <Text style={styles.quickLabel}>Canjea servicios</Text>
+        </PressableScale>
+        <View style={[styles.quick, styles.flex]}>
+          <MaterialCommunityIcons name="star-outline" size={24} color={theme.colors.gold} />
+          <Text style={styles.quickValue}>{summary?.rating_avg ? summary.rating_avg.toFixed(2) : 'Nuevo'}</Text>
+          <Text style={styles.quickLabel}>{summary?.trips_completed ?? 0} viajes</Text>
         </View>
-        {requests.length === 0 ? (
-          <View style={styles.radar}>
-            <MaterialCommunityIcons name="radar" size={36} color={online ? theme.colors.secondary : theme.colors.textMuted} />
-            <Text style={styles.radarTitle}>{online ? 'Esperando solicitudes' : 'Sin solicitudes'}</Text>
-            <Text style={styles.radarBody}>
-              Cuando un pasajero te elija, su solicitud aparecerá aquí al instante.
-            </Text>
-          </View>
-        ) : (
-          requests.map((ride) => (
-            <Animated.View
-              key={ride.id}
-              entering={FadeInDown.duration(240).reduceMotion(ReduceMotion.System)}
-              layout={LinearTransition.duration(200)}
-              style={styles.request}
-            >
-              <View style={styles.requestTop}>
-                <Text style={styles.requestPassenger} numberOfLines={1}>{ride.passenger_name || 'Pasajero'}</Text>
-                <Text style={styles.requestFare}>${ride.fare_amount.toFixed(2)}</Text>
-              </View>
-              <View style={styles.requestRoute}>
-                <View style={styles.routeStops}>
-                  <View style={[styles.stopDot, { backgroundColor: theme.colors.primary }]} />
-                  <View style={styles.stopLine} />
-                  <View style={[styles.stopDot, { backgroundColor: theme.colors.secondary }]} />
-                </View>
-                <View style={styles.requestPlaces}>
-                  <Text style={styles.place} numberOfLines={1}>{ride.origin}</Text>
-                  <Text style={styles.place} numberOfLines={1}>{ride.destination}</Text>
-                </View>
-              </View>
-              <View style={styles.requestMeta}>
-                <Tag icon={ride.is_scheduled ? 'calendar-clock' : 'lightning-bolt'} text={ride.is_scheduled ? ride.scheduled_time || 'Programado' : 'Ahora'} />
-                <Tag icon="cash" text={PAYMENT_LABEL[ride.payment_method] || ride.payment_method} />
-              </View>
-              <View style={styles.requestActions}>
-                <PressableScale
-                  containerStyle={styles.flex}
-                  style={styles.reject}
-                  disabled={busyRideId === ride.id}
-                  onPress={() => onRespond(ride, 'rechazado')}
-                >
-                  <Text style={styles.rejectText}>Rechazar</Text>
-                </PressableScale>
-                <PressableScale
-                  containerStyle={styles.flex2}
-                  style={styles.accept}
-                  disabled={busyRideId === ride.id || Boolean(activeRide)}
-                  onPress={() => onRespond(ride, 'aceptado')}
-                >
-                  {busyRideId === ride.id ? (
-                    <ActivityIndicator color={theme.colors.bgDark} />
-                  ) : (
-                    <Text style={styles.acceptText}>Aceptar viaje</Text>
-                  )}
-                </PressableScale>
-              </View>
-            </Animated.View>
-          ))
-        )}
       </View>
     </ScrollView>
   );
 };
 
-const Stat: React.FC<{ value: string; label: string; icon?: 'star'; gold?: boolean }> = ({ value, label, icon, gold }) => (
-  <View style={styles.stat}>
-    <View style={styles.statValueRow}>
-      {icon ? <MaterialCommunityIcons name={icon} size={16} color={theme.colors.gold} /> : null}
-      <Text style={[styles.statValue, gold && { color: theme.colors.gold }]}>{value}</Text>
-    </View>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-const Tag: React.FC<{ icon: React.ComponentProps<typeof MaterialCommunityIcons>['name']; text: string }> = ({ icon, text }) => (
-  <View style={styles.tag}>
-    <MaterialCommunityIcons name={icon} size={13} color={theme.colors.textSecondary} />
-    <Text style={styles.tagText}>{text}</Text>
-  </View>
-);
-
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 18,
+    paddingTop: 4,
+    gap: 20,
   },
-  flex: { flex: 1 },
-  flex2: { flex: 2 },
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 18,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    backgroundColor: theme.colors.glassBg,
-  },
-  statusText: {
+  flex: {
     flex: 1,
-    gap: 6,
   },
-  statusRow: {
-    flexDirection: 'row',
+  pressed: {
+    opacity: 0.7,
+  },
+  hello: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+  },
+  name: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 30,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  statusCard: {
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 26,
+    paddingHorizontal: 20,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    boxShadow: theme.glow.soft,
   },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  power: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
   },
   statusTitle: {
     fontFamily: theme.fonts.bold,
@@ -266,79 +210,28 @@ const styles = StyleSheet.create({
   },
   statusBody: {
     fontFamily: theme.fonts.regular,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 20,
     color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    maxWidth: 280,
   },
   offline: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12,
+    fontSize: 12.5,
     color: theme.colors.warning,
-  },
-  power: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stats: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    backgroundColor: theme.colors.glassBg,
-  },
-  statValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 20,
-    color: theme.colors.textPrimary,
-  },
-  statLabel: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12,
-    color: theme.colors.textMuted,
-    marginTop: 2,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    marginTop: 8,
   },
   sectionTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 17,
     color: theme.colors.textPrimary,
-    marginBottom: 10,
-  },
-  count: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: 12,
-    color: theme.colors.bgDark,
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 1,
-    overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   doneButton: {
-    marginTop: 10,
-    minHeight: 48,
+    marginTop: 12,
+    minHeight: 50,
     borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -351,127 +244,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.secondary,
   },
-  radar: {
-    alignItems: 'center',
-    gap: 6,
-    padding: 28,
+  list: {
     borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.cardBorder,
-  },
-  radarTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 16,
-    color: theme.colors.textPrimary,
-    marginTop: 4,
-  },
-  radarBody: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 13,
-    lineHeight: 19,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-  request: {
-    gap: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.secondaryLine,
-    backgroundColor: theme.colors.glassBgStrong,
+    overflow: 'hidden',
   },
-  requestTop: {
+  requestRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 8,
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    minHeight: 64,
   },
-  requestPassenger: {
-    flex: 1,
+  rowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.glassBorder,
+  },
+  requestName: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: 15,
     color: theme.colors.textPrimary,
+  },
+  requestRoute: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   requestFare: {
     fontFamily: theme.fonts.bold,
-    fontSize: 20,
+    fontSize: 16,
     color: theme.colors.secondary,
   },
-  requestRoute: {
+  quickRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  routeStops: {
-    alignItems: 'center',
-    paddingVertical: 5,
+  quick: {
+    alignItems: 'flex-start',
+    gap: 6,
+    padding: 14,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
   },
-  stopDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-  },
-  stopLine: {
-    width: 2,
-    height: 12,
-    backgroundColor: theme.colors.cardBorder,
-  },
-  requestPlaces: {
-    flex: 1,
-    gap: 4,
-  },
-  place: {
-    fontFamily: theme.fonts.semibold,
-    fontSize: 14,
+  quickValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
-  requestMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.cardElevated,
-  },
-  tagText: {
-    fontFamily: theme.fonts.medium,
+  quickLabel: {
+    fontFamily: theme.fonts.regular,
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textMuted,
   },
-  requestActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  reject: {
-    minHeight: 48,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
-  },
-  rejectText: {
-    fontFamily: theme.fonts.semibold,
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-  },
-  accept: {
-    minHeight: 48,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.secondary,
-  },
-  acceptText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 15,
-    color: theme.colors.bgDark,
-  },
-});
+}));

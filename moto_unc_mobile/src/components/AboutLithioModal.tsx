@@ -10,7 +10,7 @@ import React from 'react';
 import { Modal, View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from './brand/LithiumAtom';
 import { LatticeBackground } from './brand/LatticeBackground';
 import { PeriodicTile } from './brand/PeriodicTile';
@@ -29,12 +29,12 @@ const ACRONYM: { letter: string; word: string; meaning: string }[] = [
   { letter: 'O', word: 'Opportunities', meaning: 'Oportunidades' },
 ];
 
-const PRINCIPLES: {
+const principles = (): {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   title: string;
   body: string;
   color: string;
-}[] = [
+}[] => [ // Función: lee la paleta activa
   {
     icon: 'shield-account',
     title: 'Confianza verificada',
@@ -128,7 +128,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </View>
 
           <Text style={styles.sectionTitle}>Lo que nos mueve</Text>
-          {PRINCIPLES.map((principle) => (
+          {principles().map((principle) => (
             <View key={principle.title} style={[styles.card, styles.principle]}>
               <View style={[styles.principleIcon, { borderColor: principle.color }]}>
                 <MaterialCommunityIcons name={principle.icon} size={20} color={principle.color} />
@@ -155,7 +155,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -309,4 +309,4 @@ const styles = StyleSheet.create({
     color: theme.colors.bgDark,
     fontSize: 16,
   },
-});
+}));

@@ -1,15 +1,15 @@
 /**
  * PassengerApp.tsx — App del pasajero (sesión con rol fijo)
  *
- * Pestañas: Inicio · Historial · [Pedir viaje] · Agendados · Cuenta.
+ * Pestañas: Inicio · Viajes · Billetera · Perfil.
  * Pantallas superpuestas (pedir viaje, mi viaje, mis datos) con botón de
  * volver y soporte del botón atrás de Android.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, BackHandler, Text } from 'react-native';
+import { View, Alert, BackHandler, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { apiService, AccountSummary } from '../services/api';
 import { wsService } from '../services/websocket';
 import type { AuthUser } from '../services/auth';
@@ -22,14 +22,16 @@ import { RequestRideModal } from '../components/RequestRideModal';
 import { ReviewModal } from '../components/ReviewModal';
 import { RewardsStoreModal } from '../components/RewardsStoreModal';
 import { AboutLithioModal } from '../components/AboutLithioModal';
+import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { PassengerHome } from '../screens/passenger/PassengerHome';
 import { TripRequestScreen, TripSelection } from '../screens/passenger/TripRequestScreen';
-import { RidesListScreen } from '../screens/shared/RidesListScreen';
+import { TripsScreen } from '../screens/shared/TripsScreen';
+import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
 import type { Driver, PaymentMethod, PresetRoute, Reward, ReviewSubmission } from '../types';
 
-type Tab = 'home' | 'history' | 'scheduled' | 'account';
+type Tab = 'home' | 'trips' | 'wallet' | 'profile';
 type Overlay =
   | { type: 'trip'; route?: PresetRoute; scheduled?: boolean }
   | { type: 'ride' }
@@ -41,6 +43,10 @@ interface Props {
   onSignOut: () => void;
 }
 
+/** Secciones que llegan en la Fase 4C. */
+export const comingSoon = (title: string) =>
+  Alert.alert(title, 'Esta sección llega en la próxima entrega de LITHIO.');
+
 export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
   const [tab, setTab] = useState<Tab>('home');
   const [overlay, setOverlay] = useState<Overlay>(null);
@@ -48,15 +54,22 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
+  const [linksCount, setLinksCount] = useState<number | null>(null);
+  const [quizAnswered, setQuizAnswered] = useState<boolean | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState<{ driver: Driver; selection: TripSelection } | null>(null);
   const [reviewVisible, setReviewVisible] = useState(false);
   const [rewardsVisible, setRewardsVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
+  const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const rides = useRideCenter(user.id, 'pasajero');
   const points = summary?.points ?? user.points;
+
+  const loadSummary = useCallback(() => {
+    apiService.getSummary('pasajero').then(setSummary).catch(() => {});
+  }, []);
 
   const loadData = useCallback(async () => {
     setRefreshing(true);
@@ -71,6 +84,8 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
       setDrivers(driversData);
       setRewards(rewardsData);
       setSummary(summaryData);
+      apiService.getLinksCount().then(setLinksCount).catch(() => {});
+      apiService.getQuizToday().then((quiz) => setQuizAnswered(quiz.answered)).catch(() => {});
     } catch (error) {
       Alert.alert('No se pudieron cargar los datos', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
@@ -80,20 +95,24 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
 
   useEffect(() => {
     void loadData();
-    // El directorio se actualiza en vivo cuando un conductor se conecta o toma un viaje.
+    shouldShowTutorial(user.id, 'pasajero').then(setTutorialVisible);
+    // El directorio y la billetera se actualizan en vivo.
     return wsService.subscribe((msg) => {
       if (msg.type === 'DRIVER_AVAILABILITY_CHANGED') {
         setDrivers((prev) => prev.map((d) => (d.user_id === msg.driver_id ? { ...d, is_available: msg.is_available } : d)));
+      } else if (msg.type === 'WALLET_UPDATED') {
+        loadSummary();
+        setReloadKey((key) => key + 1);
       }
     });
-  }, [loadData]);
+  }, [loadData, loadSummary, user.id]);
 
-  // Cada cambio de estado del viaje puede sumar Fe o mover el historial.
+  // Cada cambio de estado del viaje puede sumar Fe, mover diamantes o el historial.
   const rideStatus = rides.activeRide?.status;
   useEffect(() => {
-    apiService.getSummary('pasajero').then(setSummary).catch(() => {});
+    loadSummary();
     setReloadKey((key) => key + 1);
-  }, [rideStatus]);
+  }, [rideStatus, loadSummary]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -171,7 +190,7 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
       setReviewVisible(false);
       rides.setActiveRide(null);
       setOverlay(null);
-      setSummary((prev) => (prev ? { ...prev, points: prev.points + result.points_earned } : prev));
+      loadSummary();
       Alert.alert('¡Gracias por tu reseña!', `Sumaste +${result.points_earned} Fe.`);
     } catch (error) {
       Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
@@ -184,11 +203,16 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
     return { discount_code: result.discount_code };
   };
 
-  const pasarCon20 = () =>
-    Alert.alert(
-      'Pasar con 20',
-      'Muy pronto podrás canjear 500 Fe por una carrera gratis subiendo la evidencia de tu 20. Sigue acumulando Fe.'
-    );
+  const onWalletAction = (action: WalletAction) => {
+    const titles: Record<WalletAction, string> = {
+      recargar: 'Recargar diamantes',
+      enviar: 'Enviar a un enlace',
+      donar: 'Donar al Fondo Solidario',
+      retirar: 'Retirar',
+      taller: 'Taller aliado',
+    };
+    comingSoon(titles[action]);
+  };
 
   const renderOverlay = () => {
     if (!overlay) return null;
@@ -228,64 +252,72 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <View style={styles.content}>
-        {overlay ? renderOverlay() : tab === 'home' ? (
+  const renderTab = () => {
+    switch (tab) {
+      case 'trips':
+        return (
+          <TripsScreen
+            role="pasajero"
+            reloadKey={reloadKey}
+            accent={theme.colors.primary}
+            onScheduleTrip={() => openTrip({ scheduled: true })}
+          />
+        );
+      case 'wallet':
+        return <WalletScreen role="pasajero" reloadKey={reloadKey} onAction={onWalletAction} />;
+      case 'profile':
+        return (
+          <AccountScreen
+            user={user}
+            role="pasajero"
+            summary={summary}
+            onOpenProfile={() => setOverlay({ type: 'profile' })}
+            onOpenLinks={() => comingSoon('Enlaces')}
+            onOpenRewards={() => setRewardsVisible(true)}
+            onOpenTutorial={() => setTutorialVisible(true)}
+            onOpenAbout={() => setAboutVisible(true)}
+            onSignOut={onSignOut}
+          />
+        );
+      default:
+        return (
           <PassengerHome
             user={user}
-            points={points}
+            summary={summary}
             routes={routes}
             activeRide={rides.activeRide}
+            linksCount={linksCount}
+            quizAnswered={quizAnswered}
             refreshing={refreshing}
             onRefresh={loadData}
             onRequestTrip={openTrip}
             onOpenActiveRide={() => setOverlay({ type: 'ride' })}
-            onOpenRewards={() => setRewardsVisible(true)}
-            onOpenAccount={() => setTab('account')}
-            onOpenAbout={() => setAboutVisible(true)}
-            onOpenPasarCon20={pasarCon20}
-          />
-        ) : tab === 'history' || tab === 'scheduled' ? (
-          <RidesListScreen
-            scope={tab}
-            role="pasajero"
-            reloadKey={reloadKey}
-            onPrimaryAction={() => openTrip({ scheduled: true })}
-          />
-        ) : (
-          <AccountScreen
-            user={user}
-            role="pasajero"
-            points={points}
-            summary={summary}
-            onOpenProfile={() => setOverlay({ type: 'profile' })}
-            onOpenHistory={() => setTab('history')}
-            onOpenScheduled={() => setTab('scheduled')}
+            onOpenWallet={() => setTab('wallet')}
+            onOpenProfile={() => setTab('profile')}
+            onOpenQuiz={() => comingSoon('Reacción del día')}
+            onOpenLinks={() => comingSoon('Enlaces')}
             onOpenRewards={() => setRewardsVisible(true)}
             onOpenAbout={() => setAboutVisible(true)}
-            onSignOut={onSignOut}
           />
-        )}
-      </View>
+        );
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+      <View style={styles.content}>{overlay ? renderOverlay() : renderTab()}</View>
 
       {!overlay ? (
         <BottomTabBar<Tab>
           tabs={[
             { key: 'home', label: 'Inicio', icon: 'home-variant-outline' },
-            { key: 'history', label: 'Historial', icon: 'history' },
-            { key: 'scheduled', label: 'Agendados', icon: 'calendar-month-outline', badge: summary?.scheduled_count },
-            { key: 'account', label: 'Cuenta', icon: 'account-outline' },
+            { key: 'trips', label: 'Viajes', icon: 'map-marker-path', badge: summary?.scheduled_count },
+            { key: 'wallet', label: 'Billetera', icon: 'wallet-outline' },
+            { key: 'profile', label: 'Perfil', icon: 'account-outline' },
           ]}
           active={tab}
           onChange={setTab}
-          center={{
-            icon: rides.activeRide ? 'map-marker-path' : 'motorbike',
-            label: rides.activeRide ? 'Ver mi viaje' : 'Pedir un viaje',
-            color: theme.colors.primary,
-            onPress: () => openTrip(),
-            live: Boolean(rides.activeRide),
-          }}
+          accent={theme.colors.primary}
         />
       ) : null}
 
@@ -327,11 +359,12 @@ export const PassengerApp: React.FC<Props> = ({ user, onSignOut }) => {
       />
 
       <AboutLithioModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <TutorialModal visible={tutorialVisible} role="pasajero" userId={user.id} onClose={() => setTutorialVisible(false)} />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -353,4 +386,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 48,
   },
-});
+}));

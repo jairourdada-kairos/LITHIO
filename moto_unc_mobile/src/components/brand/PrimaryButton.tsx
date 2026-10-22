@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Text, StyleSheet, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import { PressableScale } from './PressableScale';
 
 interface Props {
@@ -42,7 +42,7 @@ export const PrimaryButton: React.FC<Props> = ({
   </PressableScale>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   button: {
     minHeight: 52,
     borderRadius: theme.radius.md,
@@ -55,4 +55,4 @@ const styles = StyleSheet.create({
     color: theme.colors.bgDark,
     fontSize: 16,
   },
-});
+}));

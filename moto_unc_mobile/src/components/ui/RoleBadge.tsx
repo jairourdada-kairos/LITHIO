@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import type { SessionRole } from '../../services/session';
 
 export const roleColors = (role: SessionRole) =>
@@ -37,7 +37,7 @@ export const RoleBadge: React.FC<{ role: SessionRole; size?: 'sm' | 'md'; style?
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -67,4 +67,4 @@ const styles = StyleSheet.create({
   labelMd: {
     fontSize: 15,
   },
-});
+}));

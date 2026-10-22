@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { roleColors } from '../../components/ui/RoleBadge';
@@ -58,7 +58,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -107,4 +107,4 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     textAlign: 'center',
   },
-});
+}));

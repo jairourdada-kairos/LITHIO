@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { FormField, fieldStyles } from './FormField';
 import {
   CedulaNationality,
@@ -215,7 +215,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
   </>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -282,4 +282,4 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     marginTop: 6,
   },
-});
+}));

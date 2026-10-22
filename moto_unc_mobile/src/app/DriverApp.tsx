@@ -1,27 +1,34 @@
 /**
  * DriverApp.tsx — App del conductor (sesión con rol fijo)
  *
- * Pestañas: Inicio · Historial · [Conectarse] · Agendados · Cuenta.
- * El botón central conecta o desconecta al conductor del directorio.
+ * Mientras la postulación no esté aprobada se muestra "Tu postulación".
+ * Aprobado: Inicio · Viajes · Billetera · Perfil, y las solicitudes nuevas
+ * llegan como hoja inferior con 25 s para responder.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Alert, BackHandler } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Alert, BackHandler, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { apiService, AccountSummary } from '../services/api';
+import { wsService } from '../services/websocket';
 import type { AuthUser } from '../services/auth';
 import { useRideCenter } from '../hooks/useRideCenter';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
 import { AboutLithioModal } from '../components/AboutLithioModal';
+import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
+import { RequestSheet } from '../components/driver/RequestSheet';
 import { DriverHome } from '../screens/driver/DriverHome';
-import { RidesListScreen } from '../screens/shared/RidesListScreen';
+import { DriverApplicationScreen } from '../screens/driver/DriverApplicationScreen';
+import { TripsScreen } from '../screens/shared/TripsScreen';
+import { WalletScreen, WalletAction } from '../screens/shared/WalletScreen';
 import { AccountScreen } from '../screens/shared/AccountScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
+import { comingSoon } from './PassengerApp';
 import type { Ride, RideStatus } from '../types';
 
-type Tab = 'home' | 'history' | 'scheduled' | 'account';
+type Tab = 'home' | 'trips' | 'wallet' | 'profile';
 
 interface Props {
   user: AuthUser;
@@ -29,18 +36,9 @@ interface Props {
 }
 
 export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
-  const [tab, setTab] = useState<Tab>('home');
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [aboutVisible, setAboutVisible] = useState(false);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const [busyRideId, setBusyRideId] = useState<number | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const rides = useRideCenter(user.id, 'conductor');
-  const isAvailable = Boolean(summary?.is_available);
-  const points = summary?.points ?? user.points;
+  const [aboutVisible, setAboutVisible] = useState(false);
+  const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -50,21 +48,115 @@ export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
     }
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([loadSummary(), rides.refresh()]);
-    setRefreshing(false);
-  }, [loadSummary, rides.refresh]);
-
   useEffect(() => {
     void loadSummary();
-  }, [loadSummary]);
+    shouldShowTutorial(user.id, 'conductor').then(setTutorialVisible);
+  }, [loadSummary, user.id]);
+
+  const modals = (
+    <>
+      <AboutLithioModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <TutorialModal visible={tutorialVisible} role="conductor" userId={user.id} onClose={() => setTutorialVisible(false)} />
+    </>
+  );
+
+  if (!summary) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={theme.colors.secondary} />
+      </View>
+    );
+  }
+
+  if (summary.verification_status !== 'aprobado') {
+    return (
+      <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+        <DriverApplicationScreen
+          user={user}
+          onApproved={() => void loadSummary()}
+          onOpenTutorial={() => setTutorialVisible(true)}
+          onSignOut={onSignOut}
+        />
+        {modals}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <ApprovedDriverApp
+      user={user}
+      summary={summary}
+      setSummary={setSummary}
+      reloadSummary={loadSummary}
+      onOpenAbout={() => setAboutVisible(true)}
+      onOpenTutorial={() => setTutorialVisible(true)}
+      onSignOut={onSignOut}
+    >
+      {modals}
+    </ApprovedDriverApp>
+  );
+};
+
+interface ApprovedProps {
+  user: AuthUser;
+  summary: AccountSummary;
+  setSummary: React.Dispatch<React.SetStateAction<AccountSummary | null>>;
+  reloadSummary: () => Promise<void>;
+  onOpenAbout: () => void;
+  onOpenTutorial: () => void;
+  onSignOut: () => void;
+  children: React.ReactNode;
+}
+
+const ApprovedDriverApp: React.FC<ApprovedProps> = ({
+  user,
+  summary,
+  setSummary,
+  reloadSummary,
+  onOpenAbout,
+  onOpenTutorial,
+  onSignOut,
+  children,
+}) => {
+  const [tab, setTab] = useState<Tab>('home');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [sheetRide, setSheetRide] = useState<Ride | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const seenRequests = useRef<Set<number>>(new Set());
+
+  const rides = useRideCenter(user.id, 'conductor');
+  const isAvailable = Boolean(summary.is_available);
+
+  // Cada solicitud nueva sube la hoja una sola vez; después queda en la bandeja.
+  useEffect(() => {
+    const fresh = rides.requests.find((ride) => !seenRequests.current.has(ride.id));
+    rides.requests.forEach((ride) => seenRequests.current.add(ride.id));
+    if (fresh && !rides.activeRide) {
+      setSheetRide(fresh);
+      setTab('home');
+    }
+    if (sheetRide && !rides.requests.some((ride) => ride.id === sheetRide.id)) setSheetRide(null);
+  }, [rides.requests, rides.activeRide, sheetRide]);
 
   const rideStatus = rides.activeRide?.status;
   useEffect(() => {
-    void loadSummary();
+    void reloadSummary();
     setReloadKey((key) => key + 1);
-  }, [rideStatus, loadSummary]);
+  }, [rideStatus, reloadSummary]);
+
+  useEffect(
+    () =>
+      wsService.subscribe((msg) => {
+        if (msg.type === 'WALLET_UPDATED') {
+          void reloadSummary();
+          setReloadKey((key) => key + 1);
+        }
+      }),
+    [reloadSummary]
+  );
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -81,11 +173,13 @@ export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
     return () => sub.remove();
   }, [profileOpen, tab]);
 
+  const refreshAll = async () => {
+    setRefreshing(true);
+    await Promise.all([reloadSummary(), rides.refresh()]);
+    setRefreshing(false);
+  };
+
   const toggleAvailability = async () => {
-    if (rides.activeRide) {
-      Alert.alert('Tienes un viaje en curso', 'Termina el viaje para cambiar tu disponibilidad.');
-      return;
-    }
     setToggling(true);
     try {
       await apiService.toggleDriverAvailability(user.id, !isAvailable);
@@ -98,100 +192,120 @@ export const DriverApp: React.FC<Props> = ({ user, onSignOut }) => {
   };
 
   const respond = async (ride: Ride, status: RideStatus) => {
-    const run = async () => {
-      setBusyRideId(ride.id);
-      try {
-        await rides.updateStatus(ride, status);
-        if (status === 'aceptado') setTab('home');
-      } catch (error) {
-        Alert.alert('No se pudo actualizar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
-        void rides.refresh();
-      } finally {
-        setBusyRideId(null);
-      }
-    };
+    setBusy(true);
+    try {
+      await rides.updateStatus(ride, status);
+      setSheetRide(null);
+    } catch (error) {
+      Alert.alert('No se pudo actualizar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      void rides.refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateActiveRide = (status: RideStatus) => {
+    const ride = rides.activeRide;
+    if (!ride) return;
     if (status === 'cancelado') {
       Alert.alert('Cancelar viaje', '¿Seguro que quieres cancelar este viaje? El pasajero será notificado.', [
         { text: 'No', style: 'cancel' },
-        { text: 'Sí, cancelar', style: 'destructive', onPress: () => void run() },
+        { text: 'Sí, cancelar', style: 'destructive', onPress: () => void respond(ride, status) },
       ]);
       return;
     }
-    await run();
+    void respond(ride, status);
   };
 
-  const online = isAvailable && !rides.activeRide;
+  const onWalletAction = (action: WalletAction) => {
+    const titles: Record<WalletAction, string> = {
+      recargar: 'Recargar diamantes',
+      enviar: 'Enviar a un enlace',
+      donar: 'Donar al Fondo Solidario',
+      retirar: 'Retirar ganancias',
+      taller: 'Taller aliado',
+    };
+    comingSoon(titles[action]);
+  };
 
-  return (
-    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <View style={styles.content}>
-        {profileOpen ? (
-          <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} />
-        ) : tab === 'home' ? (
+  const renderTab = () => {
+    if (profileOpen) return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} />;
+    switch (tab) {
+      case 'trips':
+        return <TripsScreen role="conductor" reloadKey={reloadKey} accent={theme.colors.secondary} />;
+      case 'wallet':
+        return <WalletScreen role="conductor" reloadKey={reloadKey} onAction={onWalletAction} />;
+      case 'profile':
+        return (
+          <AccountScreen
+            user={user}
+            role="conductor"
+            summary={summary}
+            onOpenProfile={() => setProfileOpen(true)}
+            onOpenLinks={() => comingSoon('Enlaces')}
+            onOpenTutorial={onOpenTutorial}
+            onOpenAbout={onOpenAbout}
+            onSignOut={onSignOut}
+          />
+        );
+      default:
+        return (
           <DriverHome
             user={user}
-            points={points}
             summary={summary}
             isAvailable={isAvailable}
             togglingAvailability={toggling}
             connected={rides.connected}
             activeRide={rides.activeRide}
             requests={rides.requests}
-            busyRideId={busyRideId}
             refreshing={refreshing}
             onRefresh={refreshAll}
             onToggleAvailability={toggleAvailability}
-            onRespond={respond}
+            onOpenRequest={setSheetRide}
+            onUpdateActiveRide={updateActiveRide}
             onDismissCompleted={() => {
               rides.setActiveRide(null);
-              void loadSummary();
+              void reloadSummary();
             }}
-            onOpenAccount={() => setTab('account')}
+            onOpenWallet={() => setTab('wallet')}
+            onOpenProfile={() => setTab('profile')}
           />
-        ) : tab === 'history' || tab === 'scheduled' ? (
-          <RidesListScreen scope={tab} role="conductor" reloadKey={reloadKey} />
-        ) : (
-          <AccountScreen
-            user={user}
-            role="conductor"
-            points={points}
-            summary={summary}
-            onOpenProfile={() => setProfileOpen(true)}
-            onOpenHistory={() => setTab('history')}
-            onOpenScheduled={() => setTab('scheduled')}
-            onOpenAbout={() => setAboutVisible(true)}
-            onSignOut={onSignOut}
-          />
-        )}
-      </View>
+        );
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
+      <View style={styles.content}>{renderTab()}</View>
 
       {!profileOpen ? (
         <BottomTabBar<Tab>
           tabs={[
             { key: 'home', label: 'Inicio', icon: 'home-variant-outline', badge: rides.requests.length },
-            { key: 'history', label: 'Historial', icon: 'history' },
-            { key: 'scheduled', label: 'Agendados', icon: 'calendar-month-outline', badge: summary?.scheduled_count },
-            { key: 'account', label: 'Cuenta', icon: 'account-outline' },
+            { key: 'trips', label: 'Viajes', icon: 'map-marker-path', badge: summary.scheduled_count },
+            { key: 'wallet', label: 'Billetera', icon: 'wallet-outline' },
+            { key: 'profile', label: 'Perfil', icon: 'account-outline' },
           ]}
           active={tab}
           onChange={setTab}
-          center={{
-            icon: 'power',
-            label: online ? 'Desconectarme' : 'Conectarme',
-            color: online ? theme.colors.success : theme.colors.secondary,
-            onPress: () => void toggleAvailability(),
-            live: online,
-          }}
+          accent={theme.colors.secondary}
         />
       ) : null}
 
       <NoticeBanner notice={rides.notice} onClose={rides.clearNotice} onPress={() => setTab('home')} />
-      <AboutLithioModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <RequestSheet
+        ride={sheetRide}
+        busy={busy}
+        onAccept={(ride) => void respond(ride, 'aceptado')}
+        onReject={(ride) => void respond(ride, 'rechazado')}
+        onDismiss={() => setSheetRide(null)}
+      />
+      {children}
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -199,4 +313,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-});
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.bgDark,
+  },
+}));

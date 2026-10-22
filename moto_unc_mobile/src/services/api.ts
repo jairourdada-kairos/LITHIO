@@ -1,14 +1,62 @@
 import { Driver, Ride, RideStatus, Reward, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
 import { authenticatedFetch } from './firebase';
 import type { SessionRole } from './session';
+import type { Level } from '../utils/elements';
 
 export interface AccountSummary {
   trips_completed: number;
   scheduled_count: number;
   points: number;
+  diamonds: number;
+  friend_code: string | null;
+  level: Level;
   rating_avg: number | null;
   is_available: boolean | null;
   has_driver_profile: boolean;
+  verification_status: VerificationStatus | null;
+}
+
+export type VerificationStatus = 'pendiente' | 'en_revision' | 'inspeccion' | 'aprobado' | 'rechazado';
+
+export interface DriverApplication {
+  status: VerificationStatus;
+  message: string;
+  notes: string | null;
+  inspection_date: string | null;
+  submitted_at: string | null;
+  steps: { key: VerificationStatus; done: boolean }[];
+  moto: { brand_model: string; color: string; plate: string; year: number | null; helmet_provided: boolean };
+}
+
+export interface WalletTransaction {
+  id: number;
+  kind: string;
+  label: string;
+  amount: number;
+  status: 'pendiente' | 'aprobado' | 'rechazado';
+  counterpart_name: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface WalletInfo {
+  balance: number;
+  points: number;
+  friend_code: string | null;
+  transactions: WalletTransaction[];
+  fund: { donated: number; donors: number };
+}
+
+export interface QuizToday {
+  date: string;
+  question: string;
+  options: string[];
+  reward: number;
+  answered: boolean;
+  chosen?: number;
+  correct?: boolean;
+  correct_index?: number;
+  fact?: string;
 }
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
@@ -94,6 +142,31 @@ export const apiService = {
     const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/summary?role=${role}`);
     await assertOk(response);
     return response.json();
+  },
+
+  async getDriverApplication(): Promise<DriverApplication> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/drivers/me/application`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getWallet(): Promise<WalletInfo> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/wallet`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getQuizToday(): Promise<QuizToday> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/quiz/today`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getLinksCount(): Promise<number> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/links`);
+    await assertOk(response);
+    const body = await response.json();
+    return body.links.length;
   },
 
   async updateRideStatus(rideId: number, status: RideStatus): Promise<{ fe_awarded: number }> {

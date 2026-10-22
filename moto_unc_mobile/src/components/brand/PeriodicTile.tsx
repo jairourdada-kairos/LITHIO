@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 interface Props {
   size?: number;
@@ -38,7 +38,7 @@ export const PeriodicTile: React.FC<Props> = ({ size = 64, accent = theme.colors
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   tile: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -59,4 +59,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.mono,
     marginTop: -2,
   },
-});
+}));

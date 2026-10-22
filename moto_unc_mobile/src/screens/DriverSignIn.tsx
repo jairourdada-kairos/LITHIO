@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Text, StyleSheet, Alert, Pressable } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
 import { AuthLayout } from '../components/brand/AuthLayout';
@@ -127,7 +127,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   submit: {
     marginTop: 8,
     marginBottom: 20,
@@ -146,4 +146,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.secondary,
   },
-});
+}));

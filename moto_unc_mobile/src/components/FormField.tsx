@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TextInputProps, StyleProp, ViewStyle } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 
 interface Props extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -43,16 +43,16 @@ export const FormField: React.FC<Props> = ({ label, error, hint, required, prefi
   </View>
 );
 
-export const fieldStyles = StyleSheet.create({
+export const fieldStyles = themed(() => ({
   label: {
     fontFamily: theme.fonts.semibold,
     fontSize: 13,
     color: theme.colors.textSecondary,
     marginBottom: 8,
   },
-});
+}));
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   group: {
     marginBottom: 16,
   },
@@ -92,4 +92,4 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     marginTop: 6,
   },
-});
+}));

@@ -10,7 +10,8 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
-import { theme } from './src/constants/theme';
+import { ColorScheme, theme, themed } from './src/constants/theme';
+import { ThemeModeProvider } from './src/theme/ThemeMode';
 import { AuthUser } from './src/services/auth';
 import { restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
@@ -47,10 +48,13 @@ export default function App() {
   });
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: theme.colors.bgDark }}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.bgDark} />
+    <SafeAreaProvider>
       {/* Si las fuentes fallan se sigue con las del sistema en vez de bloquear la app. */}
-      {fontsLoaded || fontError ? <AppContent /> : <View style={styles.blank} />}
+      {fontsLoaded || fontError ? (
+        <ThemeModeProvider>{(scheme) => <AppContent scheme={scheme} />}</ThemeModeProvider>
+      ) : (
+        <View style={styles.blank} />
+      )}
     </SafeAreaProvider>
   );
 }
@@ -58,7 +62,7 @@ export default function App() {
 // ============================================================================
 // FLUJO DE SESIÓN — El rol se elige al entrar y queda fijo hasta cerrar sesión
 // ============================================================================
-function AppContent() {
+function AppContent({ scheme }: { scheme: ColorScheme }) {
   const [authStep, setAuthStep] = useState<AuthStep>('restoring');
   const [session, setSession] = useState<Session | null>(null);
   const [isAboutVisible, setIsAboutVisible] = useState(false);
@@ -92,66 +96,79 @@ function AppContent() {
     setAuthStep('welcome');
   }, []);
 
-  if (session) {
-    return session.role === 'conductor' ? (
-      <DriverApp key={`d-${session.user.id}`} user={session.user} onSignOut={endSession} />
-    ) : (
-      <PassengerApp key={`p-${session.user.id}`} user={session.user} onSignOut={endSession} />
-    );
-  }
+  const renderScreen = () => {
+    if (session) {
+      return session.role === 'conductor' ? (
+        <DriverApp key={`d-${session.user.id}`} user={session.user} onSignOut={endSession} />
+      ) : (
+        <PassengerApp key={`p-${session.user.id}`} user={session.user} onSignOut={endSession} />
+      );
+    }
 
-  if (authStep === 'restoring') {
+    if (authStep === 'restoring') {
+      return (
+        <View style={styles.restoring}>
+          <LithiumAtom size={120} />
+        </View>
+      );
+    }
+
+    if (authStep === 'driver-signin') {
+      return (
+        <DriverSignIn
+          onSuccess={startSession('conductor')}
+          onGoToSignUp={() => setAuthStep('driver-signup')}
+          onSwitchRole={() => setAuthStep('passenger-signin')}
+          onBack={() => setAuthStep('welcome')}
+        />
+      );
+    }
+
+    if (authStep === 'passenger-signin') {
+      return (
+        <PassengerSignIn
+          onSuccess={startSession('pasajero')}
+          onGoToSignUp={() => setAuthStep('passenger-signup')}
+          onSwitchRole={() => setAuthStep('driver-signin')}
+          onBack={() => setAuthStep('welcome')}
+        />
+      );
+    }
+
+    if (authStep === 'passenger-signup') {
+      return <PassengerSignUp onSuccess={startSession('pasajero')} onBack={() => setAuthStep('passenger-signin')} />;
+    }
+
+    if (authStep === 'driver-signup') {
+      return <DriverSignUp onSuccess={startSession('conductor')} onBack={() => setAuthStep('driver-signin')} />;
+    }
+
     return (
-      <View style={styles.restoring}>
-        <LithiumAtom size={120} />
-      </View>
+      <>
+        <AuthScreen
+          onSelectPassenger={() => setAuthStep('passenger-signin')}
+          onSelectDriver={() => setAuthStep('driver-signin')}
+          onSelectSignIn={() => setAuthStep('passenger-signin')}
+          onOpenAbout={() => setIsAboutVisible(true)}
+        />
+        <AboutLithioModal visible={isAboutVisible} onClose={() => setIsAboutVisible(false)} />
+      </>
     );
-  }
-
-  if (authStep === 'driver-signin') {
-    return (
-      <DriverSignIn
-        onSuccess={startSession('conductor')}
-        onGoToSignUp={() => setAuthStep('driver-signup')}
-        onSwitchRole={() => setAuthStep('passenger-signin')}
-        onBack={() => setAuthStep('welcome')}
-      />
-    );
-  }
-
-  if (authStep === 'passenger-signin') {
-    return (
-      <PassengerSignIn
-        onSuccess={startSession('pasajero')}
-        onGoToSignUp={() => setAuthStep('passenger-signup')}
-        onSwitchRole={() => setAuthStep('driver-signin')}
-        onBack={() => setAuthStep('welcome')}
-      />
-    );
-  }
-
-  if (authStep === 'passenger-signup') {
-    return <PassengerSignUp onSuccess={startSession('pasajero')} onBack={() => setAuthStep('passenger-signin')} />;
-  }
-
-  if (authStep === 'driver-signup') {
-    return <DriverSignUp onSuccess={startSession('conductor')} onBack={() => setAuthStep('driver-signin')} />;
-  }
+  };
 
   return (
-    <>
-      <AuthScreen
-        onSelectPassenger={() => setAuthStep('passenger-signin')}
-        onSelectDriver={() => setAuthStep('driver-signin')}
-        onSelectSignIn={() => setAuthStep('passenger-signin')}
-        onOpenAbout={() => setIsAboutVisible(true)}
+    // Al cambiar de tema se vuelve a montar la interfaz (no la sesión) con la paleta nueva.
+    <View key={scheme} style={[styles.blank, { backgroundColor: theme.colors.bgDark }]}>
+      <StatusBar
+        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.bgDark}
       />
-      <AboutLithioModal visible={isAboutVisible} onClose={() => setIsAboutVisible(false)} />
-    </>
+      {renderScreen()}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   blank: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -162,4 +179,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.bgDark,
   },
-});
+}));

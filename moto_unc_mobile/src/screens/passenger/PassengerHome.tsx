@@ -1,37 +1,43 @@
 /**
- * PassengerHome.tsx — Inicio del pasajero
+ * PassengerHome.tsx — Inicio del pasajero (boceto v3)
  *
- * Buscador "¿A dónde vamos?", servicios, rutas frecuentes de la comunidad
- * y el viaje en curso si lo hay. Sin mapas ni ubicación: al pedir el viaje
- * se eligen ruta y conductor.
+ * Una tarjeta protagonista para viajar, tus saldos en una sola tarjeta y un
+ * carrusel "Explora" con lo demás. Sin mapas: al pedir el viaje se eligen
+ * ruta y conductor de confianza.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { theme } from '../../constants/theme';
-import { HomeHeader } from '../../components/home/HomeHeader';
+import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
+import { theme, themed } from '../../constants/theme';
+import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { LithiumAtom } from '../../components/brand/LithiumAtom';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import type { AuthUser } from '../../services/auth';
+import type { AccountSummary } from '../../services/api';
 import type { PresetRoute, Ride } from '../../types';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Props {
   user: AuthUser;
-  points: number;
+  summary: AccountSummary | null;
   routes: PresetRoute[];
   activeRide: Ride | null;
+  linksCount: number | null;
+  quizAnswered: boolean | null;
   refreshing: boolean;
   onRefresh: () => void;
   onRequestTrip: (options?: { route?: PresetRoute; scheduled?: boolean }) => void;
   onOpenActiveRide: () => void;
+  onOpenWallet: () => void;
+  onOpenProfile: () => void;
+  onOpenQuiz: () => void;
+  onOpenLinks: () => void;
   onOpenRewards: () => void;
-  onOpenAccount: () => void;
   onOpenAbout: () => void;
-  onOpenPasarCon20: () => void;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,152 +48,195 @@ const STATUS_LABEL: Record<string, string> = {
   completado: 'Viaje completado · califícalo',
 };
 
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const enter = (index: number) =>
+  FadeInDown.duration(320).delay(index * 50).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
+
 export const PassengerHome: React.FC<Props> = ({
   user,
-  points,
+  summary,
   routes,
   activeRide,
+  linksCount,
+  quizAnswered,
   refreshing,
   onRefresh,
   onRequestTrip,
   onOpenActiveRide,
+  onOpenWallet,
+  onOpenProfile,
+  onOpenQuiz,
+  onOpenLinks,
   onOpenRewards,
-  onOpenAccount,
   onOpenAbout,
-  onOpenPasarCon20,
 }) => {
-  const frequent = [...routes].sort((a, b) => Number(b.popular) - Number(a.popular)).slice(0, 6);
+  const suggested = [...routes].sort((a, b) => Number(b.popular) - Number(a.popular)).slice(0, 2);
+  const diamonds = summary?.diamonds ?? 0;
+  const points = summary?.points ?? user.points;
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 64 }]}
+      contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 56 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
     >
-      <HomeHeader
-        name={user.name}
-        avatarUrl={user.avatar_url}
-        role="pasajero"
-        rank={user.xp_level}
-        points={points}
-        onPressAvatar={onOpenAccount}
-        onPressPoints={onOpenRewards}
-      />
+      <TopBar name={user.name} avatarUrl={user.avatar_url} accent={theme.colors.primary} onPressAvatar={onOpenProfile} />
+
+      <Animated.View entering={enter(0)}>
+        <Text style={styles.hello}>{greeting()}</Text>
+        <Text style={styles.name}>{user.name.split(' ')[0]}</Text>
+      </Animated.View>
 
       {activeRide ? (
-        <PressableScale style={styles.activeRide} onPress={onOpenActiveRide} accessibilityLabel="Ver mi viaje en curso">
-          <View style={styles.liveDot} />
-          <View style={styles.activeText}>
-            <Text style={styles.activeTitle}>{STATUS_LABEL[activeRide.status] || 'Viaje activo'}</Text>
-            <Text style={styles.activeRoute} numberOfLines={1}>
-              {activeRide.origin} → {activeRide.destination}
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.primary} />
+        <Animated.View entering={enter(1)}>
+          <PressableScale style={styles.activeRide} onPress={onOpenActiveRide} accessibilityLabel="Ver mi viaje en curso">
+            <View style={styles.liveDot} />
+            <View style={styles.flex}>
+              <Text style={styles.activeTitle}>{STATUS_LABEL[activeRide.status] || 'Viaje activo'}</Text>
+              <Text style={styles.activeRoute} numberOfLines={1}>
+                {activeRide.origin} → {activeRide.destination}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.primary} />
+          </PressableScale>
+        </Animated.View>
+      ) : null}
+
+      <Animated.View entering={enter(2)} style={styles.hero}>
+        {/* Órbitas decorativas: el átomo de la marca, sin cargar la tarjeta */}
+        <View style={[styles.orbit, styles.orbitLarge]} pointerEvents="none" />
+        <View style={[styles.orbit, styles.orbitSmall]} pointerEvents="none" />
+
+        <Text style={styles.heroTitle}>¿A dónde vas hoy?</Text>
+        <View style={styles.suggestions}>
+          {suggested.map((route, index) => (
+            <Pressable
+              key={route.id}
+              onPress={() => onRequestTrip({ route })}
+              style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`${route.origin} a ${route.destination}, ${route.fare_usd} dólares`}
+            >
+              <View style={[styles.dot, { backgroundColor: index === 0 ? theme.colors.primary : theme.colors.secondary }]} />
+              <Text style={styles.suggestionText} numberOfLines={1}>
+                {route.origin} → {route.destination}
+              </Text>
+              <Text style={styles.suggestionFare}>${route.fare_usd.toFixed(2)}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <PressableScale style={styles.primaryButton} onPress={() => onRequestTrip()} accessibilityLabel="Iniciar trayecto">
+          <Text style={styles.primaryButtonText}>Iniciar trayecto</Text>
         </PressableScale>
-      ) : null}
-
-      <PressableScale style={styles.search} onPress={() => onRequestTrip()} accessibilityLabel="¿A dónde vamos? Pedir un viaje">
-        <View style={styles.searchDot}>
-          <View style={styles.searchDotInner} />
-        </View>
-        <Text style={styles.searchText}>¿A dónde vamos?</Text>
-        <View style={styles.searchNow}>
-          <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textSecondary} />
-          <Text style={styles.searchNowText}>Ahora</Text>
-        </View>
-      </PressableScale>
-
-      <View style={styles.services}>
-        <ServiceTile icon="motorbike" label="Viaje ahora" accent={theme.colors.primary} onPress={() => onRequestTrip()} />
-        <ServiceTile
-          icon="calendar-clock"
-          label="Programar"
-          accent={theme.colors.primary}
+        <Pressable
           onPress={() => onRequestTrip({ scheduled: true })}
-        />
-        <ServiceTile icon="star-four-points" label="Tienda Fe" accent={theme.colors.gold} onPress={onOpenRewards} />
-      </View>
+          style={styles.scheduleLink}
+          hitSlop={8}
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons name="calendar-clock" size={16} color={theme.colors.primary} />
+          <Text style={styles.scheduleText}>Programar para después</Text>
+        </Pressable>
+      </Animated.View>
 
-      <PressableScale style={styles.voucher} onPress={onOpenPasarCon20} accessibilityLabel="Voucher Pasar con 20">
-        <View style={styles.voucherIcon}>
-          <Text style={styles.voucherGrade}>20</Text>
-        </View>
-        <View style={styles.voucherText}>
-          <Text style={styles.voucherTitle}>Pasar con 20</Text>
-          <Text style={styles.voucherBody}>¿Sacaste 20 en un examen? Canjea 500 Fe por una carrera gratis.</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.gold} />
-      </PressableScale>
+      <Animated.View entering={enter(3)}>
+        <PressableScale style={styles.energy} onPress={onOpenWallet} accessibilityLabel="Abrir billetera">
+          <View style={styles.flex}>
+            <Text style={styles.energyLabel}>Diamantes</Text>
+            <Text style={[styles.energyValue, { color: theme.colors.diamond }]}>◆ {diamonds.toFixed(2)}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={[styles.flex, styles.energyRight]}>
+            <Text style={styles.energyLabel}>Hierro</Text>
+            <Text style={[styles.energyValue, { color: theme.colors.gold }]}>Fe {points}</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
+        </PressableScale>
+      </Animated.View>
 
-      {frequent.length > 0 ? (
-        <>
-          <Text style={styles.sectionTitle}>Rutas frecuentes</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routes}>
-            {frequent.map((route) => (
-              <PressableScale
-                key={route.id}
-                style={styles.routeCard}
-                onPress={() => onRequestTrip({ route })}
-                accessibilityLabel={`${route.origin} a ${route.destination}, ${route.fare_usd} dólares`}
-              >
-                <Text style={styles.routeTag} numberOfLines={1}>{route.tag || 'Ruta LITHIO'}</Text>
-                <View style={styles.routeLine}>
-                  <View style={[styles.routeDot, { backgroundColor: theme.colors.primary }]} />
-                  <Text style={styles.routePlace} numberOfLines={1}>{route.origin}</Text>
-                </View>
-                <View style={styles.routeConnector} />
-                <View style={styles.routeLine}>
-                  <View style={[styles.routeDot, { backgroundColor: theme.colors.secondary }]} />
-                  <Text style={styles.routePlace} numberOfLines={1}>{route.destination}</Text>
-                </View>
-                <View style={styles.routeFooter}>
-                  <Text style={styles.routeFare}>${route.fare_usd.toFixed(2)}</Text>
-                  <Text style={styles.routeTime}>{route.estimated_minutes} min</Text>
-                </View>
-              </PressableScale>
-            ))}
-          </ScrollView>
-        </>
-      ) : null}
-
-      <Pressable style={styles.about} onPress={onOpenAbout} accessibilityRole="button">
-        <LithiumAtom size={56} animated={false} />
-        <View style={styles.aboutText}>
-          <Text style={styles.aboutTitle}>¿Qué es LITHIO?</Text>
-          <Text style={styles.aboutBody}>Movilidad comunitaria hecha por y para la universidad.</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textSecondary} />
-      </Pressable>
+      <Animated.View entering={enter(4)}>
+        <Text style={styles.sectionTitle}>Explora</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+          <ExploreCard
+            icon="flask-outline"
+            tint={theme.colors.primary}
+            title="Reacción del día"
+            caption={quizAnswered ? 'Respondida · vuelve mañana' : '+10 Fe si aciertas'}
+            onPress={onOpenQuiz}
+          />
+          <ExploreCard
+            icon="account-multiple-outline"
+            tint={theme.colors.secondary}
+            title="Tus enlaces"
+            caption={linksCount === null ? 'Amigos de viaje' : `${linksCount} ${linksCount === 1 ? 'enlace' : 'enlaces'}`}
+            onPress={onOpenLinks}
+          />
+          <ExploreCard
+            icon="school-outline"
+            tint={theme.colors.gold}
+            title="Pasar con 20"
+            caption="Carrera gratis por tu 20"
+            onPress={onOpenRewards}
+          />
+          <PressableScale style={[styles.exploreCard, { borderColor: theme.colors.glassBorder }]} onPress={onOpenAbout}>
+            <LithiumAtom size={40} animated={false} />
+            <Text style={styles.exploreTitle}>¿Qué es LITHIO?</Text>
+            <Text style={styles.exploreCaption}>Nuestro manifiesto</Text>
+          </PressableScale>
+        </ScrollView>
+      </Animated.View>
     </ScrollView>
   );
 };
 
-const ServiceTile: React.FC<{ icon: IconName; label: string; accent: string; onPress: () => void }> = ({
+const ExploreCard: React.FC<{ icon: IconName; tint: string; title: string; caption: string; onPress: () => void }> = ({
   icon,
-  label,
-  accent,
+  tint,
+  title,
+  caption,
   onPress,
 }) => (
-  <PressableScale containerStyle={styles.serviceCell} style={styles.service} onPress={onPress} accessibilityLabel={label}>
-    <View style={[styles.serviceIcon, { borderColor: `${accent}55`, backgroundColor: `${accent}1A` }]}>
-      <MaterialCommunityIcons name={icon} size={30} color={accent} />
+  <PressableScale
+    style={[styles.exploreCard, { backgroundColor: `${tint}14`, borderColor: `${tint}33` }]}
+    onPress={onPress}
+    accessibilityLabel={title}
+  >
+    <View style={[styles.exploreIcon, { backgroundColor: `${tint}22` }]}>
+      <MaterialCommunityIcons name={icon} size={22} color={tint} />
     </View>
-    <Text style={styles.serviceLabel}>{label}</Text>
+    <Text style={styles.exploreTitle}>{title}</Text>
+    <Text style={styles.exploreCaption}>{caption}</Text>
   </PressableScale>
 );
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 18,
+    paddingTop: 4,
+    gap: 20,
+  },
+  flex: {
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  hello: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+  },
+  name: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 30,
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
   },
   activeRide: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 14,
+    padding: 16,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.primaryLine,
@@ -198,10 +247,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: theme.colors.primary,
-    boxShadow: '0 0 10px rgba(69, 214, 197, 0.9)',
-  },
-  activeText: {
-    flex: 1,
   },
   activeTitle: {
     fontFamily: theme.fonts.bold,
@@ -214,206 +259,154 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 58,
-    paddingHorizontal: 16,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.glassBgStrong,
+  hero: {
+    padding: 20,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
+    overflow: 'hidden',
     boxShadow: theme.glow.soft,
   },
-  searchDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchDotInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.primary,
-  },
-  searchText: {
-    flex: 1,
-    fontFamily: theme.fonts.semibold,
-    fontSize: 17,
-    color: theme.colors.textPrimary,
-  },
-  searchNow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.cardElevated,
-  },
-  searchNowText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
-  services: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  serviceCell: {
-    flex: 1,
-  },
-  service: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.glassBg,
+  orbit: {
+    position: 'absolute',
     borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
+    borderColor: theme.colors.primaryLine,
+    borderRadius: 999,
+    opacity: 0.45,
   },
-  serviceIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orbitLarge: {
+    width: 190,
+    height: 190,
+    right: -70,
+    top: -80,
   },
-  serviceLabel: {
-    fontFamily: theme.fonts.semibold,
-    fontSize: 13,
-    color: theme.colors.textPrimary,
+  orbitSmall: {
+    width: 110,
+    height: 110,
+    right: -30,
+    top: -40,
   },
-  voucher: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 14,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 200, 87, 0.35)',
-    backgroundColor: theme.colors.goldSoft,
-  },
-  voucherIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: theme.colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voucherGrade: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: 20,
-    color: theme.colors.gold,
-  },
-  voucherText: {
-    flex: 1,
-  },
-  voucherTitle: {
+  heroTitle: {
     fontFamily: theme.fonts.bold,
+    fontSize: 21,
+    color: theme.colors.textPrimary,
+  },
+  suggestions: {
+    marginTop: 14,
+    marginBottom: 18,
+    gap: 4,
+  },
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 44,
+  },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  suggestionText: {
+    flex: 1,
+    fontFamily: theme.fonts.medium,
     fontSize: 15,
     color: theme.colors.textPrimary,
   },
-  voucherBody: {
+  suggestionFare: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  primaryButton: {
+    minHeight: 54,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+  },
+  primaryButtonText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
+    color: theme.colors.onPrimary,
+  },
+  scheduleLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 44,
+    marginTop: 6,
+  },
+  scheduleText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 14,
+    color: theme.colors.primary,
+  },
+  energy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  energyRight: {
+    paddingLeft: 2,
+  },
+  divider: {
+    width: 1,
+    height: 34,
+    backgroundColor: theme.colors.glassBorder,
+  },
+  energyLabel: {
     fontFamily: theme.fonts.regular,
     fontSize: 12.5,
-    lineHeight: 17,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textMuted,
+  },
+  energyValue: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 19,
     marginTop: 2,
   },
   sectionTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 17,
     color: theme.colors.textPrimary,
-    marginBottom: -6,
+    marginBottom: 12,
   },
-  routes: {
+  carousel: {
     gap: 12,
     paddingRight: 20,
   },
-  routeCard: {
-    width: 176,
+  exploreCard: {
+    width: 148,
+    minHeight: 132,
     padding: 14,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.glassBg,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-  },
-  routeTag: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  routeLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
-  },
-  routeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  routeConnector: {
-    width: 1,
-    height: 10,
-    marginLeft: 3.5,
-    backgroundColor: theme.colors.cardBorder,
-  },
-  routePlace: {
-    flex: 1,
-    fontFamily: theme.fonts.semibold,
-    fontSize: 13,
-    color: theme.colors.textPrimary,
-  },
-  routeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginTop: 12,
-  },
-  routeFare: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 17,
-    color: theme.colors.primary,
-  },
-  routeTime: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12,
-    color: theme.colors.textMuted,
-  },
-  about: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 12,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    backgroundColor: theme.colors.glassBg,
+    backgroundColor: theme.colors.surface,
   },
-  aboutText: {
-    flex: 1,
+  exploreIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  aboutTitle: {
+  exploreTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 15,
+    fontSize: 14.5,
     color: theme.colors.textPrimary,
   },
-  aboutBody: {
+  exploreCaption: {
     fontFamily: theme.fonts.regular,
     fontSize: 12.5,
     color: theme.colors.textSecondary,
-    marginTop: 2,
   },
-});
+}));

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View, Modal, TouchableOpacity, TextInput } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { ReviewSubmission } from '../types';
 
 interface ReviewModalProps {
@@ -133,7 +133,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -289,4 +289,4 @@ const styles = StyleSheet.create({
     color: '#0B0F19',
     fontSize: 13,
   }
-});
+}));

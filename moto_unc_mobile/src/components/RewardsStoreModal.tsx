@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Modal, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { Reward } from '../types';
 
 interface RewardsStoreModalProps {
@@ -108,7 +108,7 @@ export const RewardsStoreModal: React.FC<RewardsStoreModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -292,4 +292,4 @@ const styles = StyleSheet.create({
   redeemBtnTextDisabled: {
     color: '#94A3B8',
   }
-});
+}));

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
 
 interface RequestRideModalProps {
@@ -160,7 +160,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -420,4 +420,4 @@ const styles = StyleSheet.create({
     color: '#0B0F19',
     fontSize: 14,
   }
-});
+}));

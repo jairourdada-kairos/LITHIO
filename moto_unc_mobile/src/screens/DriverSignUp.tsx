@@ -17,7 +17,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { theme } from '../constants/theme';
+import { theme, themed } from '../constants/theme';
 import { signUpDriver, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
@@ -45,6 +45,8 @@ interface DriverForm {
   moto_brand_model: string;
   moto_color: string;
   plate: string;
+  license_number: string;
+  moto_year: string;
   helmet_provided: boolean;
   // Pagos
   binance_address: string;
@@ -58,6 +60,8 @@ interface FormErrors extends IdentityErrors {
   age?: string;
   password?: string;
   plate?: string;
+  license_number?: string;
+  moto_year?: string;
 }
 
 export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
@@ -69,6 +73,8 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
     moto_brand_model: 'Bera SBR 150',
     moto_color: 'Negro',
     plate: '',
+    license_number: '',
+    moto_year: '',
     helmet_provided: true,
     binance_address: '',
     mobile_payment_number: '',
@@ -107,6 +113,16 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
     const newErrors: FormErrors = {};
     const plate = form.plate.replace(/[\s-]/g, '');
     if (plate.length < 5 || plate.length > 10) newErrors.plate = 'Placa inválida (5 a 10 caracteres)';
+    const license = form.license_number.trim();
+    if (license.length < 5 || license.length > 20) newErrors.license_number = 'Escribe el número de tu licencia de conducir';
+    const year = Number(form.moto_year);
+    if (!form.moto_year || !Number.isInteger(year) || year < 1990 || year > new Date().getFullYear() + 1) {
+      newErrors.moto_year = 'Año de la moto no válido';
+    }
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
+      return false;
+    }
     if (!form.binance_address && !form.mobile_payment_number && !form.bank_account_number) {
       Alert.alert(
         'Método de pago requerido',
@@ -133,6 +149,8 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         moto_brand_model: form.moto_brand_model.trim() || 'Bera SBR 150',
         moto_color: form.moto_color.trim() || 'Negro',
         plate: form.plate.trim().toUpperCase(),
+        license_number: form.license_number.trim().toUpperCase(),
+        moto_year: Number(form.moto_year),
         helmet_provided: form.helmet_provided,
         binance_address: form.binance_address.trim() || undefined,
         mobile_payment_number: form.mobile_payment_number.trim() || undefined,
@@ -142,9 +160,9 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
       }, form.password);
 
       Alert.alert(
-        '🛵 ¡Bienvenido, Conductor!',
-        `Tu cuenta fue creada exitosamente, ${user.name}. Ya puedes empezar a recibir solicitudes de viaje.`,
-        [{ text: '¡Arrancar!', onPress: () => onSuccess(user) }]
+        'Postulación enviada',
+        `Gracias, ${user.name}. Revisaremos tus datos y te contactaremos para inspeccionar tu moto. Podrás seguir el avance desde la app.`,
+        [{ text: 'Ver mi postulación', onPress: () => onSuccess(user) }]
       );
     } catch (e: any) {
       Alert.alert('Error al registrarse', e.message || 'Inténtalo de nuevo.');
@@ -241,6 +259,33 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
             autoCapitalize="characters"
           />
           {errors.plate && <Text style={styles.errorText}>{errors.plate}</Text>}
+        </View>
+      </View>
+
+      <View style={styles.row}>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Licencia de conducir *</Text>
+          <TextInput
+            style={[styles.input, errors.license_number ? styles.inputError : null]}
+            value={form.license_number}
+            onChangeText={(v) => updateField('license_number', v)}
+            placeholder="Nº de licencia"
+            placeholderTextColor={theme.colors.textMuted}
+            autoCapitalize="characters"
+          />
+          {errors.license_number && <Text style={styles.errorText}>{errors.license_number}</Text>}
+        </View>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Año de la moto *</Text>
+          <TextInput
+            style={[styles.input, errors.moto_year ? styles.inputError : null]}
+            value={form.moto_year}
+            onChangeText={(v) => updateField('moto_year', v.replace(/\D/g, '').slice(0, 4))}
+            placeholder="2021"
+            placeholderTextColor={theme.colors.textMuted}
+            keyboardType="number-pad"
+          />
+          {errors.moto_year && <Text style={styles.errorText}>{errors.moto_year}</Text>}
         </View>
       </View>
 
@@ -367,7 +412,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -468,4 +513,4 @@ const styles = StyleSheet.create({
   btnSecondaryText: { fontFamily: theme.fonts.semibold, color: theme.colors.textSecondary, fontSize: 15 },
   btnFlex: { flex: 1 },
   submit: { marginTop: 8 },
-});
+}));
