@@ -2,7 +2,8 @@
  * DriverSignUp.tsx — Registro de Conductor
  *
  * Formulario en dos secciones:
- * 1. Datos personales (nombre, apellido, edad, teléfono, email)
+ * 1. Datos personales (nombres, apellidos, cédula, correo, carrera / semestre,
+ *    teléfono, edad y contraseña)
  * 2. Datos de la moto + métodos de pago (Binance, pago móvil, banco)
  */
 
@@ -22,6 +23,16 @@ import {
 } from 'react-native';
 import { theme } from '../constants/theme';
 import { signUpDriver, AuthUser } from '../services/auth';
+import { FormField } from '../components/FormField';
+import {
+  EMPTY_IDENTITY,
+  IdentityErrors,
+  IdentityFields,
+  IdentityForm,
+  toIdentityPayload,
+  validateIdentity,
+} from '../components/IdentityFields';
+import { validatePassword } from '../utils/validation';
 
 interface Props {
   onSuccess: (user: AuthUser) => void;
@@ -29,12 +40,9 @@ interface Props {
 }
 
 interface DriverForm {
-  // Datos personales
-  name: string;
-  last_name: string;
+  // Datos personales (los de identidad viven en IdentityForm)
   age: string;
-  phone: string;
-  email: string;
+  password: string;
   // Moto
   moto_brand_model: string;
   moto_color: string;
@@ -43,32 +51,31 @@ interface DriverForm {
   // Pagos
   binance_address: string;
   mobile_payment_number: string;
+  mobile_payment_bank: string;
+  mobile_payment_id: string;
   bank_account_number: string;
 }
 
-interface FormErrors {
-  name?: string;
-  last_name?: string;
+interface FormErrors extends IdentityErrors {
   age?: string;
-  phone?: string;
-  email?: string;
+  password?: string;
   plate?: string;
 }
 
 export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   const [step, setStep] = useState<1 | 2>(1);
+  const [identity, setIdentity] = useState<IdentityForm>(EMPTY_IDENTITY);
   const [form, setForm] = useState<DriverForm>({
-    name: '',
-    last_name: '',
     age: '',
-    phone: '',
-    email: '',
+    password: '',
     moto_brand_model: 'Bera SBR 150',
     moto_color: 'Negro',
     plate: '',
     helmet_provided: true,
     binance_address: '',
     mobile_payment_number: '',
+    mobile_payment_bank: '',
+    mobile_payment_id: '',
     bank_account_number: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -81,27 +88,27 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
     }
   };
 
+  const updateIdentity = <K extends keyof IdentityForm>(field: K, value: IdentityForm[K]) => {
+    setIdentity((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
   const validateStep1 = (): boolean => {
-    const newErrors: FormErrors = {};
-    if (!form.name.trim()) newErrors.name = 'El nombre es requerido';
-    if (!form.last_name.trim()) newErrors.last_name = 'El apellido es requerido';
-    const age = parseInt(form.age, 10);
-    if (!form.age || isNaN(age) || age < 18 || age > 70) {
-      newErrors.age = 'Edad debe estar entre 18 y 70 años';
+    const newErrors: FormErrors = { ...validateIdentity(identity) };
+    const age = Number(form.age);
+    if (!form.age || !Number.isInteger(age) || age < 18 || age > 80) {
+      newErrors.age = 'Debes tener entre 18 y 80 años para conducir';
     }
-    if (!form.phone.trim() || form.phone.length < 7) {
-      newErrors.phone = 'Teléfono inválido';
-    }
-    if (!form.email.trim() || !form.email.includes('@')) {
-      newErrors.email = 'Correo inválido';
-    }
+    const passwordError = validatePassword(form.password);
+    if (passwordError) newErrors.password = passwordError;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateStep2 = (): boolean => {
     const newErrors: FormErrors = {};
-    if (!form.plate.trim()) newErrors.plate = 'La placa es requerida';
+    const plate = form.plate.replace(/[\s-]/g, '');
+    if (plate.length < 5 || plate.length > 10) newErrors.plate = 'Placa inválida (5 a 10 caracteres)';
     if (!form.binance_address && !form.mobile_payment_number && !form.bank_account_number) {
       Alert.alert(
         'Método de pago requerido',
@@ -123,23 +130,22 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
     setLoading(true);
     try {
       const user = await signUpDriver({
-        name: form.name.trim(),
-        last_name: form.last_name.trim(),
-        age: parseInt(form.age, 10),
-        phone: form.phone.trim(),
-        email: form.email.trim().toLowerCase(),
+        ...toIdentityPayload(identity),
+        age: Number(form.age),
         moto_brand_model: form.moto_brand_model.trim() || 'Bera SBR 150',
         moto_color: form.moto_color.trim() || 'Negro',
         plate: form.plate.trim().toUpperCase(),
         helmet_provided: form.helmet_provided,
         binance_address: form.binance_address.trim() || undefined,
         mobile_payment_number: form.mobile_payment_number.trim() || undefined,
+        mobile_payment_bank: form.mobile_payment_bank.trim() || undefined,
+        mobile_payment_id: form.mobile_payment_id.trim() || undefined,
         bank_account_number: form.bank_account_number.trim() || undefined,
-      });
+      }, form.password);
 
       Alert.alert(
         '🛵 ¡Bienvenido, Conductor!',
-        `Tu cuenta fue creada exitosamente, ${form.name}. Ya puedes empezar a recibir solicitudes de viaje.`,
+        `Tu cuenta fue creada exitosamente, ${user.name}. Ya puedes empezar a recibir solicitudes de viaje.`,
         [{ text: '¡Arrancar!', onPress: () => onSuccess(user) }]
       );
     } catch (e: any) {
@@ -154,66 +160,37 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   // --------------------------------------------------------------------------
   const renderStep1 = () => (
     <>
-      <View style={styles.row}>
-        <View style={styles.halfField}>
-          <Text style={styles.label}>Nombre *</Text>
-          <TextInput
-            style={[styles.input, errors.name ? styles.inputError : null]}
-            value={form.name}
-            onChangeText={(v) => updateField('name', v)}
-            placeholder="José"
-            placeholderTextColor={theme.colors.textMuted}
-            autoCapitalize="words"
-          />
-          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-        </View>
-        <View style={styles.halfField}>
-          <Text style={styles.label}>Apellido *</Text>
-          <TextInput
-            style={[styles.input, errors.last_name ? styles.inputError : null]}
-            value={form.last_name}
-            onChangeText={(v) => updateField('last_name', v)}
-            placeholder="Rodríguez"
-            placeholderTextColor={theme.colors.textMuted}
-            autoCapitalize="words"
-          />
-          {errors.last_name && <Text style={styles.errorText}>{errors.last_name}</Text>}
-        </View>
-      </View>
+      <IdentityFields
+        form={identity}
+        errors={errors}
+        onChange={updateIdentity}
+        accent={theme.colors.secondary}
+      />
 
-      <Text style={styles.label}>Edad * (mínimo 18 años)</Text>
-      <TextInput
-        style={[styles.input, errors.age ? styles.inputError : null]}
+      <FormField
+        label="Edad (mínimo 18 años)"
+        required
         value={form.age}
-        onChangeText={(v) => updateField('age', v)}
+        onChangeText={(v) => updateField('age', v.replace(/\D/g, '').slice(0, 2))}
         placeholder="25"
-        placeholderTextColor={theme.colors.textMuted}
-        keyboardType="numeric"
+        keyboardType="number-pad"
+        error={errors.age}
       />
-      {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
 
-      <Text style={styles.label}>Teléfono *</Text>
-      <TextInput
-        style={[styles.input, errors.phone ? styles.inputError : null]}
-        value={form.phone}
-        onChangeText={(v) => updateField('phone', v)}
-        placeholder="+58 414 1234567"
-        placeholderTextColor={theme.colors.textMuted}
-        keyboardType="phone-pad"
-      />
-      {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-
-      <Text style={styles.label}>Correo electrónico *</Text>
-      <TextInput
-        style={[styles.input, errors.email ? styles.inputError : null]}
-        value={form.email}
-        onChangeText={(v) => updateField('email', v)}
-        placeholder="conductor@correo.com"
-        placeholderTextColor={theme.colors.textMuted}
-        keyboardType="email-address"
+      <FormField
+        label="Contraseña"
+        required
+        value={form.password}
+        onChangeText={(v) => updateField('password', v)}
+        placeholder="Mínimo 6 caracteres"
+        secureTextEntry
         autoCapitalize="none"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        error={errors.password}
       />
-      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+      <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
       <TouchableOpacity style={styles.btnPrimary} onPress={handleNext} activeOpacity={0.85}>
         <Text style={styles.btnPrimaryText}>Siguiente: Moto y Pagos →</Text>
@@ -301,10 +278,35 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         style={styles.input}
         value={form.mobile_payment_number}
         onChangeText={(v) => updateField('mobile_payment_number', v)}
-        placeholder="0412-1234567 · Banco Mercantil"
+        placeholder="0412-1234567"
         placeholderTextColor={theme.colors.textMuted}
         keyboardType="phone-pad"
       />
+
+      <View style={styles.row}>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Banco del Pago Móvil</Text>
+          <TextInput
+            style={styles.input}
+            value={form.mobile_payment_bank}
+            onChangeText={(v) => updateField('mobile_payment_bank', v)}
+            placeholder="Banco de Venezuela"
+            placeholderTextColor={theme.colors.textMuted}
+            autoCapitalize="words"
+          />
+        </View>
+        <View style={styles.halfField}>
+          <Text style={styles.label}>Cédula del titular</Text>
+          <TextInput
+            style={styles.input}
+            value={form.mobile_payment_id}
+            onChangeText={(v) => updateField('mobile_payment_id', v)}
+            placeholder="V-12345678"
+            placeholderTextColor={theme.colors.textMuted}
+            autoCapitalize="characters"
+          />
+        </View>
+      </View>
 
       <Text style={styles.label}>Número de Cuenta Bancaria</Text>
       <TextInput
@@ -474,6 +476,7 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
   switchDesc: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   sectionHeader: { marginBottom: 12 },
+  requiredNote: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 12 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',

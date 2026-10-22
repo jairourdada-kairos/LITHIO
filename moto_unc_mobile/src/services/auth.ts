@@ -1,13 +1,9 @@
-/**
- * auth.ts — Servicio de Autenticación
- *
- * Abstrae el registro e inicio de sesión de usuarios.
- * Actualmente usa la API REST propia; los comentarios indican
- * dónde integrar Firebase Auth (Google / Facebook) en el futuro.
- */
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from '@firebase/auth';
+import { authenticatedFetch, getFirebaseAuth } from './firebase';
 
-// En Expo Go usa la IP LAN real del PC en la misma red Wi‑Fi.
-// Cambia este valor solo si la IP de tu red Wi‑Fi cambia.
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -15,15 +11,27 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await authenticatedFetch(url, { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('El servidor no responde. Comprueba que el backend esté iniciado y que el teléfono esté en la misma Wi-Fi.');
     }
-    throw new Error('No se pudo conectar con el servidor. Comprueba la red del teléfono.');
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function readError(response: Response): Promise<string> {
+  const body = await response.json().catch(() => ({}));
+  // Los errores de validación (422) llegan como lista: [{ msg: 'Value error, ...' }]
+  if (Array.isArray(body.detail)) {
+    const messages = body.detail
+      .map((item: { msg?: string }) => (item.msg || '').replace(/^Value error, /, ''))
+      .filter(Boolean);
+    if (messages.length) return messages.join('\n');
+  }
+  return typeof body.detail === 'string' ? body.detail : `La solicitud falló (${response.status}).`;
 }
 
 export interface AuthUser {
@@ -32,113 +40,97 @@ export interface AuthUser {
   last_name?: string;
   email: string;
   phone: string;
-  role: 'pasajero' | 'conductor' | 'ambos';
+  /** Llega enmascarada desde el backend: V-****5678 */
+  cedula?: string;
+  career?: string;
+  semester?: string;
+  role: 'pasajero' | 'conductor' | 'ambos' | 'admin';
   avatar_url?: string;
   points: number;
   xp_level: string;
-  firebase_uid?: string;
 }
 
-export interface PassengerSignUpData {
+/** Campos obligatorios para pasajeros y conductores (ver backend schemas.RegistrationFields). */
+export interface IdentitySignUpData {
   name: string;
   last_name: string;
-  age: number;
-  phone: string;
+  cedula: string;
   email: string;
-  firebase_uid?: string;
+  career: string;
+  semester: string;
+  phone: string;
   avatar_url?: string;
 }
 
-export interface DriverSignUpData {
-  name: string;
-  last_name: string;
+export interface PassengerSignUpData extends IdentitySignUpData {
+  age?: number;
+}
+
+export interface DriverSignUpData extends IdentitySignUpData {
   age: number;
-  phone: string;
-  email: string;
-  firebase_uid?: string;
-  avatar_url?: string;
-  // Moto
   moto_brand_model: string;
   moto_color: string;
   plate: string;
   helmet_provided: boolean;
-  // Pagos
   binance_address?: string;
   mobile_payment_number?: string;
+  mobile_payment_bank?: string;
+  mobile_payment_id?: string;
   bank_account_number?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Registro de Pasajero
-// ---------------------------------------------------------------------------
-export async function signUpPassenger(data: PassengerSignUpData): Promise<AuthUser> {
-  const res = await fetch(`${API_BASE}/api/passengers/register`, {
+async function createFirebaseAccount(email: string, password: string) {
+  const auth = getFirebaseAuth();
+  try {
+    return await createUserWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'auth/email-already-in-use'
+    ) {
+      return signInWithEmailAndPassword(auth, email, password);
+    }
+    throw error;
+  }
+}
+
+async function register(
+  path: string,
+  data: PassengerSignUpData | DriverSignUpData,
+  password: string
+): Promise<AuthUser> {
+  await createFirebaseAccount(data.email, password);
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || 'Error al registrar pasajero');
+  if (!response.ok) {
+    throw new Error(await readError(response));
   }
-
-  return res.json();
+  return response.json();
 }
 
-// ---------------------------------------------------------------------------
-// Registro de Conductor
-// ---------------------------------------------------------------------------
-export async function signUpDriver(data: DriverSignUpData): Promise<AuthUser> {
-  const res = await fetch(`${API_BASE}/api/drivers/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || 'Error al registrar conductor');
-  }
-
-  return res.json();
+export function signUpPassenger(
+  data: PassengerSignUpData,
+  password: string
+): Promise<AuthUser> {
+  return register('/api/passengers/register', data, password);
 }
 
-// ---------------------------------------------------------------------------
-// Login por Email (busca el usuario por email en la API, simulado)
-// En producción: verificar con Firebase Auth y luego consultar la API
-// ---------------------------------------------------------------------------
-export async function signInWithEmail(email: string): Promise<AuthUser | null> {
-  // TODO: Integrar Firebase signInWithEmailAndPassword aquí
-  // Ejemplo con Firebase:
-  //   const credential = await signInWithEmailAndPassword(auth, email, password);
-  //   const idToken = await credential.user.getIdToken();
-  //   → enviar idToken al backend para verificar y obtener el perfil
-
-  // Por ahora: busca el usuario por email consultando /api/users (no es seguro para producción)
-  const res = await fetchWithTimeout(`${API_BASE}/api/users/by-email?email=${encodeURIComponent(email)}`);
-  if (!res.ok) return null;
-  return res.json();
+export function signUpDriver(
+  data: DriverSignUpData,
+  password: string
+): Promise<AuthUser> {
+  return register('/api/drivers/register', data, password);
 }
 
-// ---------------------------------------------------------------------------
-// Sign In con Google
-// Requiere: expo-auth-session + Firebase Auth o @react-native-google-signin
-// ---------------------------------------------------------------------------
-export async function signInWithGoogle(): Promise<AuthUser | null> {
-  // TODO: Implementar con expo-auth-session:
-  // import * as Google from 'expo-auth-session/providers/google';
-  // const [request, response, promptAsync] = Google.useIdTokenAuthRequest({...});
-  // Cuando response?.type === 'success' → enviar response.params.id_token al backend
-  throw new Error('Google Sign-In: configura expo-auth-session y tus Client IDs de Firebase');
-}
-
-// ---------------------------------------------------------------------------
-// Sign In con Facebook
-// Requiere: expo-auth-session + Firebase Auth o expo-facebook
-// ---------------------------------------------------------------------------
-export async function signInWithFacebook(): Promise<AuthUser | null> {
-  // TODO: Implementar con expo-auth-session:
-  // import * as Facebook from 'expo-auth-session/providers/facebook';
-  throw new Error('Facebook Sign-In: configura expo-auth-session y tu App ID de Meta');
+export async function signInWithEmail(email: string, password: string): Promise<AuthUser | null> {
+  await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+  const response = await fetchWithTimeout(`${API_BASE}/api/users/me`);
+  if (response.status === 404 || response.status === 403) return null;
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
 }

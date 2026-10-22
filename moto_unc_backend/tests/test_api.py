@@ -121,7 +121,9 @@ def client(monkeypatch):
 
     def verify_test_token(token: str) -> FirebaseIdentity:
         if token == "test-new-user":
-            return FirebaseIdentity("uid-new-user", "new@example.test", False)
+            return FirebaseIdentity("uid-new-user", "nueva@unc.edu.ve", False)
+        if token == "test-other-user":
+            return FirebaseIdentity("uid-other-user", "otro@unc.edu.ve", False)
         if token == "test-wrong-email":
             return FirebaseIdentity("uid-wrong-email", "other@example.test", False)
         if token == "test-admin":
@@ -223,33 +225,168 @@ def test_profile_and_financial_data_are_owner_only(client):
     assert passenger_finances.status_code == 404
 
 
+VALID_REGISTRATION = {
+    "name": "  María   José ",
+    "last_name": "Pérez D'Ambrosio",
+    "cedula": "v-12.345.678",
+    "email": "Nueva@UNC.edu.ve",
+    "career": "Ingeniería en Computación",
+    "semester": "5",
+    "phone": "0412-1234567",
+}
+
+
 def test_registration_requires_firebase_identity_and_uses_claimed_uid(client):
-    payload = {
-        "name": "New",
-        "last_name": "Passenger",
-        "age": 22,
-        "phone": "new-phone",
-        "email": "new@example.test",
-        "firebase_uid": "attacker-controlled-uid",
-    }
-    no_auth = client.post("/api/passengers/register", json=payload)
+    no_auth = client.post("/api/passengers/register", json=VALID_REGISTRATION)
     assert no_auth.status_code == 401
 
     mismatch = client.post(
         "/api/passengers/register",
-        json={**payload, "email": "new@example.test"},
+        json=VALID_REGISTRATION,
         headers={"Authorization": "Bearer test-wrong-email"},
     )
     assert mismatch.status_code == 403
 
+    # Un UID enviado en el cuerpo se rechaza: solo vale el del token.
+    injected_uid = client.post(
+        "/api/passengers/register",
+        json={**VALID_REGISTRATION, "firebase_uid": "attacker-controlled-uid"},
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert injected_uid.status_code == 422
+
     created = client.post(
+        "/api/passengers/register",
+        json=VALID_REGISTRATION,
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert created.status_code == 201
+    body = created.json()
+    assert "firebase_uid" not in body
+    assert body["email"] == "nueva@unc.edu.ve"
+    assert body["name"] == "María José"
+    assert body["phone"] == "+58 412 1234567"
+    assert body["career"] == "Ingeniería en Computación"
+    assert body["semester"] == "5"
+    # La cédula nunca vuelve completa.
+    assert body["cedula"] == "V-****5678"
+
+    with client.session_factory() as db:
+        raw_cedula, cedula_hash = db.execute(
+            text("SELECT cedula, cedula_hash FROM users WHERE email = 'nueva@unc.edu.ve'")
+        ).one()
+    assert "12345678" not in raw_cedula
+    assert crypto.decrypt(raw_cedula) == "V12345678"
+    assert cedula_hash == crypto.blind_index("V12345678")
+
+
+def test_registration_rejects_duplicate_cedula(client):
+    first = client.post(
+        "/api/passengers/register",
+        json=VALID_REGISTRATION,
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert first.status_code == 201
+
+    # Misma cédula escrita de otra forma, desde otra cuenta.
+    duplicate = client.post(
+        "/api/drivers/register",
+        json={
+            **VALID_REGISTRATION,
+            "cedula": "12345678",
+            "email": "otro@unc.edu.ve",
+            "age": 25,
+            "plate": "AB123CD",
+            "mobile_payment_number": "04141234567",
+        },
+        headers={"Authorization": "Bearer test-other-user"},
+    )
+    assert duplicate.status_code == 409
+    assert "cédula" in duplicate.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("name", ""),
+        ("name", "J"),
+        ("name", "Juan123"),
+        ("last_name", "<script>"),
+        ("cedula", "12345"),
+        ("cedula", "X12345678"),
+        ("cedula", "V1234567890"),
+        ("cedula", "V-000000"),
+        ("email", "no-es-correo"),
+        ("career", "AB"),
+        ("career", "12345"),
+        ("semester", "13"),
+        ("semester", "quinto"),
+        ("phone", "1234567"),
+        ("phone", "0212-1234567"),
+        ("phone", "0412-123456"),
+    ],
+)
+def test_registration_field_validation(client, field, value):
+    response = client.post(
+        "/api/passengers/register",
+        json={**VALID_REGISTRATION, field: value},
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("missing", ["name", "last_name", "cedula", "email", "career", "semester", "phone"])
+def test_registration_fields_are_required(client, missing):
+    payload = {key: value for key, value in VALID_REGISTRATION.items() if key != missing}
+    response = client.post(
         "/api/passengers/register",
         json=payload,
         headers={"Authorization": "Bearer test-new-user"},
     )
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("phone", ["04121234567", "0412 123 4567", "+58 412-1234567", "584121234567", "4121234567"])
+def test_phone_formats_are_normalized(client, phone):
+    response = client.post(
+        "/api/passengers/register",
+        json={**VALID_REGISTRATION, "phone": phone},
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert response.status_code == 201
+    assert response.json()["phone"] == "+58 412 1234567"
+
+
+def test_driver_registration_requires_adult_and_stores_payment_data_encrypted(client):
+    driver_payload = {
+        **VALID_REGISTRATION,
+        "plate": "ab-123cd",
+        "mobile_payment_number": "0414-7654321",
+        "mobile_payment_bank": "Banco de Venezuela",
+        "mobile_payment_id": "V12345678",
+    }
+    minor = client.post(
+        "/api/drivers/register",
+        json={**driver_payload, "age": 17},
+        headers={"Authorization": "Bearer test-new-user"},
+    )
+    assert minor.status_code == 422
+
+    created = client.post(
+        "/api/drivers/register",
+        json={**driver_payload, "age": 21},
+        headers={"Authorization": "Bearer test-new-user"},
+    )
     assert created.status_code == 201
-    assert created.json()["email"] == "new@example.test"
-    assert "firebase_uid" not in created.json()
+    assert created.json()["role"] == "conductor"
+
+    with client.session_factory() as db:
+        plate, bank = db.execute(text(
+            "SELECT plate, mobile_payment_bank FROM driver_profiles dp "
+            "JOIN users u ON u.id = dp.user_id WHERE u.email = 'nueva@unc.edu.ve'"
+        )).one()
+    assert plate == "AB123CD"
+    assert crypto.decrypt(bank) == "Banco de Venezuela"
 
 
 def test_driver_availability_requires_owner(client):

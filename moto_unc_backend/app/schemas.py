@@ -1,6 +1,9 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
+
+from . import validation
+from .crypto import mask
 
 # --- USUARIOS & AUTENTICACIÓN ---
 class UserBase(BaseModel):
@@ -12,27 +15,67 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: Optional[str] = "123456"
 
+# --- REGISTRO: CAMPOS COMUNES A PASAJERO Y CONDUCTOR ---
+class RegistrationFields(BaseModel):
+    """Datos obligatorios de identidad. Ver reglas en validation.py."""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    name: str = Field(description="Nombres")
+    last_name: str = Field(description="Apellidos")
+    cedula: str = Field(description="Cédula de identidad, p. ej. V-12345678")
+    email: EmailStr
+    career: str = Field(description="Carrera universitaria")
+    semester: str = Field(description="1 a 12, Egresado o Personal / Docente")
+    phone: str = Field(description="Celular venezolano")
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value: str) -> str:
+        return validation.normalize_person_name(value, "El nombre")
+
+    @field_validator("last_name")
+    @classmethod
+    def _last_name(cls, value: str) -> str:
+        return validation.normalize_person_name(value, "El apellido")
+
+    @field_validator("cedula")
+    @classmethod
+    def _cedula(cls, value: str) -> str:
+        return validation.normalize_cedula(value)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, value: str) -> str:
+        return value.lower()
+
+    @field_validator("career")
+    @classmethod
+    def _career(cls, value: str) -> str:
+        return validation.normalize_career(value)
+
+    @field_validator("semester")
+    @classmethod
+    def _semester(cls, value: str) -> str:
+        return validation.normalize_semester(value)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, value: str) -> str:
+        return validation.normalize_phone(value)
+
+
 # --- REGISTRO DE PASAJERO ---
-class PassengerRegisterRequest(BaseModel):
-    name: str
-    last_name: str
-    age: int
-    phone: str
-    email: str
-    avatar_url: Optional[str] = None
+class PassengerRegisterRequest(RegistrationFields):
+    age: Optional[int] = Field(default=None, ge=16, le=100)
 
 # --- REGISTRO DE CONDUCTOR ---
-class DriverRegisterRequest(BaseModel):
-    name: str
-    last_name: str
-    age: int
-    phone: str
-    email: str
-    avatar_url: Optional[str] = None
+class DriverRegisterRequest(RegistrationFields):
+    age: int = Field(ge=18, le=80, description="Los conductores deben ser mayores de edad")
     # Datos de la moto
-    moto_brand_model: str = "Bera SBR 150"
-    moto_color: str = "Negro"
-    plate: str
+    moto_brand_model: str = Field(default="Bera SBR 150", min_length=2, max_length=60)
+    moto_color: str = Field(default="Negro", min_length=2, max_length=30)
+    plate: str = Field(min_length=5, max_length=10)
     helmet_provided: bool = True
     # Métodos de pago (al menos uno recomendado)
     binance_address: Optional[str] = None
@@ -41,11 +84,27 @@ class DriverRegisterRequest(BaseModel):
     mobile_payment_id: Optional[str] = None
     bank_account_number: Optional[str] = None
 
+    @field_validator("plate")
+    @classmethod
+    def _plate(cls, value: str) -> str:
+        return value.replace(" ", "").replace("-", "").upper()
+
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     last_name: Optional[str] = None
     age: Optional[int] = None
+    # La cédula solo se devuelve enmascarada (V-****5678), nunca completa.
+    cedula: Optional[str] = None
+    career: Optional[str] = None
+    semester: Optional[str] = None
+
+    @field_validator("cedula")
+    @classmethod
+    def _mask_cedula(cls, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return value
+        return f"{value[0]}-{mask(value[1:])}"
     avatar_url: Optional[str] = None
     points: int
     xp_level: str

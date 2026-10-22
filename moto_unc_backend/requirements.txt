@@ -10,3 +10,5 @@ firebase-admin>=6.0.0
 cryptography>=42.0.0
 # Driver de PostgreSQL para la base de datos en la nube
 psycopg[binary]>=3.1.18
+# Validación de correos en el registro (pydantic EmailStr)
+email-validator>=2.1.0

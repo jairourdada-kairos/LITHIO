@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List, Dict, Set
 import json
@@ -744,6 +745,35 @@ def switch_user_role(
 # -------------------------------------------------------------
 # REGISTRO DE NUEVOS USUARIOS (PASAJERO Y CONDUCTOR)
 # -------------------------------------------------------------
+def ensure_cedula_available(db: Session, cedula: str, owner_id: int | None = None) -> str:
+    """Devuelve el índice ciego de la cédula o 409 si ya pertenece a otra cuenta."""
+    cedula_hash = crypto.blind_index(cedula)
+    holder = db.query(User.id).filter(User.cedula_hash == cedula_hash).first()
+    if holder and holder.id != owner_id:
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta registrada con esa cédula.")
+    return cedula_hash
+
+
+def fill_missing_identity(user: User, data: PassengerRegisterRequest | DriverRegisterRequest, db: Session):
+    """Completa cédula, carrera y semestre de cuentas creadas antes de estos campos."""
+    if not user.cedula_hash:
+        user.cedula_hash = ensure_cedula_available(db, data.cedula, owner_id=user.id)
+        user.cedula = data.cedula
+    user.career = user.career or data.career
+    user.semester = user.semester or data.semester
+
+
+def commit_registration(db: Session, user: User) -> User:
+    try:
+        db.commit()
+    except IntegrityError:
+        # Dos registros simultáneos con la misma cédula o correo.
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con esa cédula o correo.")
+    db.refresh(user)
+    return user
+
+
 @app.post("/api/passengers/register", response_model=UserResponse, status_code=201)
 def register_passenger(
     data: PassengerRegisterRequest,
@@ -751,11 +781,11 @@ def register_passenger(
     db: Session = Depends(get_db),
 ):
     """
-    Registra un nuevo pasajero. Acepta datos extra (last_name, age) y
-    opcionalmente el UID de Firebase para usuarios que se autentican
-    con Google o Facebook.
+    Registra un nuevo pasajero con nombres, apellidos, cédula, correo,
+    carrera, semestre y teléfono (validados en schemas.RegistrationFields).
+    La cuenta queda vinculada al UID de Firebase del token, nunca a uno enviado.
     """
-    email = data.email.strip().lower()
+    email = data.email
     if not identity.email or identity.email != email:
         raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
     existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
@@ -771,17 +801,21 @@ def register_passenger(
             and existing_email.role in {"pasajero", "ambos"}
         ):
             existing_email.firebase_uid = identity.uid
-            db.commit()
-            db.refresh(existing_email)
-            return existing_email
+            fill_missing_identity(existing_email, data, db)
+            return commit_registration(db, existing_email)
         raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
+    cedula_hash = ensure_cedula_available(db, data.cedula)
     new_user = User(
         name=data.name,
         last_name=data.last_name,
         age=data.age,
         email=email,
         phone=data.phone,
+        cedula=data.cedula,
+        cedula_hash=cedula_hash,
+        career=data.career,
+        semester=data.semester,
         role="pasajero",
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
@@ -789,9 +823,7 @@ def register_passenger(
         xp_level="Pasajero Novato"
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    return commit_registration(db, new_user)
 
 
 @app.post("/api/drivers/register", response_model=UserResponse, status_code=201)
@@ -804,7 +836,7 @@ def register_driver(
     Registra un nuevo conductor con datos personales, de la moto y
     métodos de pago (Binance, pago móvil, cuenta bancaria).
     """
-    email = data.email.strip().lower()
+    email = data.email
     if not identity.email or identity.email != email:
         raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
     existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
@@ -821,17 +853,21 @@ def register_driver(
             and existing_email.driver_profile
         ):
             existing_email.firebase_uid = identity.uid
-            db.commit()
-            db.refresh(existing_email)
-            return existing_email
+            fill_missing_identity(existing_email, data, db)
+            return commit_registration(db, existing_email)
         raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
+    cedula_hash = ensure_cedula_available(db, data.cedula)
     new_user = User(
         name=data.name,
         last_name=data.last_name,
         age=data.age,
         email=email,
         phone=data.phone,
+        cedula=data.cedula,
+        cedula_hash=cedula_hash,
+        career=data.career,
+        semester=data.semester,
         role="conductor",
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
@@ -853,12 +889,12 @@ def register_driver(
         current_location_tag="Entrada UNC - Altos Mirandinos",
         binance_address=data.binance_address,
         mobile_payment_number=data.mobile_payment_number,
+        mobile_payment_bank=data.mobile_payment_bank,
+        mobile_payment_id=data.mobile_payment_id,
         bank_account_number=data.bank_account_number
     )
     db.add(driver_profile)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    return commit_registration(db, new_user)
 
 
 # -------------------------------------------------------------
