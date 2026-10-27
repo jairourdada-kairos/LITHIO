@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
@@ -30,6 +31,12 @@ export function getFirebaseAuth(): Auth {
   }
 
   const app = getApps().length > 0 ? getApp() : initializeApp(config);
+  // getReactNativePersistence solo existe en la versión de Firebase para iOS y
+  // Android. En el navegador, getAuth ya recuerda la sesión (IndexedDB).
+  if (Platform.OS === 'web') {
+    auth = getAuth(app);
+    return auth;
+  }
   try {
     auth = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
