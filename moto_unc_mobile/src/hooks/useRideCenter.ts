@@ -37,6 +37,7 @@ export function useRideCenter(userId: number, role: SessionRole) {
   const [notice, setNotice] = useState<RideNotice | null>(null);
   const [connected, setConnected] = useState(wsService.isConnected());
   const activeRef = useRef<Ride | null>(null);
+  const updatingRef = useRef(false);
   activeRef.current = activeRide;
 
   const refresh = useCallback(async () => {
@@ -107,7 +108,20 @@ export function useRideCenter(userId: number, role: SessionRole) {
 
   const updateStatus = useCallback(
     async (ride: Ride, status: RideStatus) => {
-      const result = await apiService.updateRideStatus(ride.id, status);
+      // Un toque repetido mientras viaja la respuesta enviaría un cambio ya aplicado.
+      if (updatingRef.current) return { fe_awarded: 0 };
+      updatingRef.current = true;
+      let result;
+      try {
+        result = await apiService.updateRideStatus(ride.id, status);
+      } catch (error) {
+        // El servidor rechazó el cambio: la tarjeta puede estar desactualizada
+        // (otro dispositivo o una respuesta perdida). Se vuelve a leer el estado real.
+        await refresh();
+        throw error;
+      } finally {
+        updatingRef.current = false;
+      }
       setRequests((prev) => prev.filter((r) => r.id !== ride.id));
       if (TERMINAL.includes(status)) {
         if (activeRef.current?.id === ride.id) setActiveRide(null);
@@ -116,7 +130,7 @@ export function useRideCenter(userId: number, role: SessionRole) {
       }
       return result;
     },
-    []
+    [refresh]
   );
 
   return {
