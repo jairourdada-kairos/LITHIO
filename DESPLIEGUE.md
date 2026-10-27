@@ -77,14 +77,12 @@ FIREBASE_SERVICE_ACCOUNT_JSON=   (ver abajo)
 ADMIN_FIREBASE_UIDS=      (la misma de tu .env)
 MEDIA_DIR=/data/media
 EVIDENCE_DIR=/data/evidence
-RAILWAY_RUN_UID=0
 CORS_ALLOWED_ORIGINS=https://TU-DOMINIO.up.railway.app
 ```
 
    - **`FIREBASE_SERVICE_ACCOUNT_JSON`**: abre `C:\secure\lithio-firebase.json`
      en el Bloc de notas y pega **todo** su contenido. Nunca lo subas a GitHub
      ni lo compartas por chat.
-   - **`RAILWAY_RUN_UID=0`**: permite al servidor escribir en el volumen `/data`.
 4. **Settings → Networking → Generate Domain.** Copia la dirección
    (`https://lithio-production-xxxx.up.railway.app`) y ponla también en
    `CORS_ALLOWED_ORIGINS`.

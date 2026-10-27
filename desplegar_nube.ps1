@@ -90,7 +90,6 @@ $vars = @(
   'DATABASE_URL=${{Postgres.DATABASE_URL}}',
   'MEDIA_DIR=/data/media',
   'EVIDENCE_DIR=/data/evidence',
-  'RAILWAY_RUN_UID=0',
   "FIREBASE_PROJECT_ID=$($cfg['FIREBASE_PROJECT_ID'])",
   "ADMIN_FIREBASE_UIDS=$($cfg['ADMIN_FIREBASE_UIDS'])"
 )

@@ -9,6 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /srv/moto_unc_backend
 
+# gosu: el arranque baja de root al usuario "lithio" (ver docker-entrypoint.sh).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY moto_unc_backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -16,7 +21,11 @@ COPY moto_unc_backend/app ./app
 COPY moto_unc_dashboard /srv/moto_unc_dashboard
 
 RUN useradd --create-home lithio && chown -R lithio /srv
-USER lithio
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# Quita finales de línea de Windows (CR) por si el archivo se editó en Windows.
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+# Arranca como root solo para preparar el volumen /data; el servidor corre como "lithio".
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 8000
 # Una sola instancia: el gestor de WebSockets vive en memoria del proceso.
