@@ -63,8 +63,8 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSw
 
   const handleSocialLogin = (provider: string) => {
     Alert.alert(
-      `${provider} Sign-In`,
-      `Para habilitar ${provider}, configura Firebase Auth y expo-auth-session con tu App ID.\n\nPor ahora usa tu correo electrónico.`,
+      `Entrar con ${provider}`,
+      `Muy pronto podrás entrar con ${provider}. Por ahora usa tu correo electrónico.`,
       [{ text: 'Entendido' }]
     );
   };

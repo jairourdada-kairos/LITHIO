@@ -1,4 +1,4 @@
-import './src/utils/webAlert'; // Debe ir primero: muestra los Alert también en el navegador
+import { FeedbackHost, installAlertBridge } from './src/components/ui/Feedback';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, Alert, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,6 +24,9 @@ import { DriverSignIn } from './src/screens/DriverSignIn';
 import { DriverSignUp } from './src/screens/DriverSignUp';
 import { PassengerApp } from './src/shells/PassengerApp';
 import { DriverApp } from './src/shells/DriverApp';
+
+// Ningún mensaje usa alertas nativas: Alert.alert abre el diálogo de LITHIO.
+installAlertBridge();
 
 type AuthStep = 'restoring' | 'welcome' | 'passenger-signin' | 'passenger-signup' | 'driver-signin' | 'driver-signup';
 
@@ -164,6 +167,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
       />
       {renderScreen()}
+      <FeedbackHost />
     </View>
   );
 }
