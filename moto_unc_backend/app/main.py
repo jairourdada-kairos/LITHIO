@@ -98,7 +98,10 @@ app.add_middleware(
     allow_origins=cors_origins,
     # En local, la versión web publicada con iniciar_publico.bat usa un túnel de
     # Cloudflare cuya dirección cambia en cada arranque.
-    allow_origin_regex=None if config.IS_PRODUCTION else r"https://[a-z0-9-]+\.trycloudflare\.com",
+    # También la web de Expo abierta por la IP local de la PC, que cambia según la red.
+    allow_origin_regex=None
+    if config.IS_PRODUCTION
+    else r"https://[a-z0-9-]+\.trycloudflare\.com|http://(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3}):80(8[0-2]|00)",
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Session-Id"],

@@ -10,8 +10,8 @@
 
 import { getFirebaseIdToken } from './firebase';
 import { getDeviceSession, notifySessionReplaced } from './deviceSession';
+import { WS_BASE } from '../config/api';
 
-const WS_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000').replace(/^http/, 'ws');
 
 const HEARTBEAT_MS = 25_000;
 const HEARTBEAT_TIMEOUT_MS = 10_000;

@@ -4,6 +4,7 @@ import { authenticatedFetch, getFirebaseIdToken } from './firebase';
 import { getDeviceSession } from './deviceSession';
 import type { SessionRole } from './session';
 import type { Level, LevelElement } from '../utils/elements';
+import { API_BASE } from '../config/api';
 
 export interface AccountSummary {
   trips_completed: number;
@@ -203,7 +204,7 @@ export interface QuizToday {
   fact?: string;
 }
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
+const BACKEND_URL = API_BASE;
 
 async function postJson<T = unknown>(path: string, body: unknown): Promise<T> {
   const response = await authenticatedFetch(`${BACKEND_URL}${path}`, {

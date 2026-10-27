@@ -4,8 +4,8 @@ import {
   signInWithEmailAndPassword,
 } from '@firebase/auth';
 import { authenticatedFetch, getFirebaseAuth } from './firebase';
+import { API_BASE } from '../config/api';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
 const REQUEST_TIMEOUT_MS = 8000;
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {

@@ -6,8 +6,9 @@
  */
 
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../config/api';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
+const BACKEND_URL = API_BASE;
 
 export interface BcvRate {
   rate: number;

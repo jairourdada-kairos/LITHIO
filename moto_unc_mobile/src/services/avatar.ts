@@ -9,8 +9,9 @@ import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { authenticatedFetch } from './firebase';
+import { API_BASE } from '../config/api';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
+const BACKEND_URL = API_BASE;
 
 /** Las fotos subidas a LITHIO llegan como ruta relativa (/media/...). */
 export function resolveMediaUrl(url?: string | null): string | undefined {

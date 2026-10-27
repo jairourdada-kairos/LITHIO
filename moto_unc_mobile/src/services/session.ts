@@ -12,11 +12,11 @@ import { getFirebaseAuth, authenticatedFetch } from './firebase';
 import { wsService } from './websocket';
 import { loadDeviceSession, setDeviceSession } from './deviceSession';
 import type { AuthUser } from './auth';
+import { API_BASE } from '../config/api';
 
 export type SessionRole = 'pasajero' | 'conductor';
 
 const ROLE_KEY = 'lithio.sessionRole';
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000';
 
 /** Devuelve un mensaje si la cuenta no puede usar ese rol, o null si puede. */
 export function roleAccessError(user: AuthUser, role: SessionRole): string | null {
