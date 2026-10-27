@@ -13,6 +13,7 @@ from ..drivers import VERIFICATION_STATUSES, application_payload, driver_profile
 from ..models import DriverProfile, User
 from ..realtime import manager
 from .. import push_service
+from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["postulación de conductores"])
 
@@ -65,7 +66,7 @@ async def review_application(user_id: int, data: ApplicationReviewIn, db: Sessio
         profile.verification_notes = data.notes
     if data.inspection_date is not None:
         profile.inspection_date = data.inspection_date
-    profile.reviewed_at = datetime.utcnow()
+    profile.reviewed_at = utcnow()
     if data.status != "aprobado":
         profile.is_available = False
     db.commit()

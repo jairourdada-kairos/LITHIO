@@ -19,6 +19,7 @@ from ..models import User
 from ..realtime import manager
 from ..validation import normalize_person_name, normalize_phone
 from .. import push_service
+from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["perfil"])
 
@@ -150,7 +151,7 @@ def profile_payload(user: User) -> dict:
         "email": user.email,
         "phone": user.phone,
         "profile_updated_at": user.profile_updated_at.isoformat() if user.profile_updated_at else None,
-        "next_edit_at": next_edit.isoformat() if next_edit and next_edit > datetime.utcnow() else None,
+        "next_edit_at": next_edit.isoformat() if next_edit and next_edit > utcnow() else None,
     }
 
 
@@ -161,7 +162,7 @@ def my_profile(user: User = Depends(get_current_user)):
 
 @router.put("/users/me/profile")
 def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.profile_updated_at and datetime.utcnow() < user.profile_updated_at + PROFILE_EDIT_COOLDOWN:
+    if user.profile_updated_at and utcnow() < user.profile_updated_at + PROFILE_EDIT_COOLDOWN:
         available = (user.profile_updated_at + PROFILE_EDIT_COOLDOWN).replace(tzinfo=timezone.utc).astimezone(VENEZUELA_TZ)
         raise HTTPException(
             status_code=429,
@@ -193,7 +194,7 @@ def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user)
 
     for field, value in changes.items():
         setattr(user, field, value)
-    user.profile_updated_at = datetime.utcnow()
+    user.profile_updated_at = utcnow()
     db.commit()
     return profile_payload(user)
 

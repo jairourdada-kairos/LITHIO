@@ -50,6 +50,7 @@ from .drivers import is_approved, require_approved_driver
 from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
 from . import push_service
 from .routers import driver_applications, fe_store, links, profile, quiz, rates, ride_details, wallet
+from .timeutil import utcnow
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 VENEZUELA_TZ = config.VENEZUELA_TZ
@@ -1268,7 +1269,7 @@ def push_ride_status(db: Session, ride: Ride, status: str, actor: User, fe_award
 def log_status(ride: Ride, status: str) -> None:
     """Agrega el cambio de estado a la línea de tiempo del viaje."""
     entries = json.loads(ride.status_log) if ride.status_log else []
-    entries.append({"status": status, "at": datetime.utcnow().isoformat()})
+    entries.append({"status": status, "at": utcnow().isoformat()})
     ride.status_log = json.dumps(entries)
 
 @app.put("/api/rides/{ride_id}/status")

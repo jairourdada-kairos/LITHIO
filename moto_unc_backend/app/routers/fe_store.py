@@ -21,6 +21,7 @@ from ..models import Coupon, GradeVoucher, PerkGrant, User
 from ..realtime import manager
 from .. import push_service
 from .profile import _detect_format, commit_or_discard
+from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["tienda-fe"])
 
@@ -173,7 +174,7 @@ async def review_voucher(voucher_id: int, data: VoucherReviewIn, db: Session = D
         raise HTTPException(status_code=409, detail="Este vale ya fue revisado.")
     voucher.status = "aprobado" if data.action == "aprobar" else "rechazado"
     voucher.review_note = (data.note or "").strip() or None
-    voucher.reviewed_at = datetime.utcnow()
+    voucher.reviewed_at = utcnow()
     if voucher.status == "rechazado":
         owner = db.get(User, voucher.user_id)
         owner.points = (owner.points or 0) + voucher.fe_cost  # Se devuelve el Fe retenido

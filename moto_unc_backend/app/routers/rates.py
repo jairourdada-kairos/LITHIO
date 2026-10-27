@@ -20,6 +20,7 @@ from ..auth import require_admin
 from ..config import VENEZUELA_TZ
 from ..database import get_db
 from ..models import ExchangeRate
+from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["tasa-bcv"])
 logger = logging.getLogger(__name__)
@@ -87,6 +88,6 @@ def set_bcv_rate(data: RateIn, db: Session = Depends(get_db)):
         db.add(row)
     row.rate = round(data.rate, 4)
     row.source = "manual"
-    row.updated_at = datetime.utcnow()
+    row.updated_at = utcnow()
     db.commit()
     return payload(row, today)

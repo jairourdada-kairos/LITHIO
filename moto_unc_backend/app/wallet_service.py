@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .models import Ride, User, WalletTransaction
+from .timeutil import utcnow
 
 # Límites para envíos y donaciones entre usuarios.
 MAX_TRANSFER_CENTS = 5_000          # 50 ◆ por envío
@@ -70,7 +71,7 @@ def approve(db: Session, tx: WalletTransaction) -> None:
         user = lock_user(db, tx.user_id)
         user.diamonds_cents = (user.diamonds_cents or 0) + tx.amount_cents
     tx.status = "aprobado"
-    tx.reviewed_at = datetime.utcnow()
+    tx.reviewed_at = utcnow()
 
 
 def reject(db: Session, tx: WalletTransaction) -> None:
@@ -80,11 +81,11 @@ def reject(db: Session, tx: WalletTransaction) -> None:
         user = lock_user(db, tx.user_id)
         user.diamonds_cents = (user.diamonds_cents or 0) - tx.amount_cents  # Devuelve lo retenido
     tx.status = "rechazado"
-    tx.reviewed_at = datetime.utcnow()
+    tx.reviewed_at = utcnow()
 
 
 def outgoing_today_cents(db: Session, user_id: int) -> int:
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     rows = db.query(WalletTransaction.amount_cents).filter(
         WalletTransaction.user_id == user_id,
         WalletTransaction.kind.in_(["envio", "donacion"]),

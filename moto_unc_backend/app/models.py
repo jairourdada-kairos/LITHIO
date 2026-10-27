@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from .crypto import EncryptedString
 from .database import Base
+from .timeutil import utcnow
 
 # Las columnas EncryptedString se guardan cifradas en la base de datos (ver crypto.py).
 
@@ -35,7 +36,7 @@ class User(Base):
     # Fe ganado en total (no baja al canjear): define el nivel por elemento químico.
     fe_lifetime = Column(Integer, default=0, nullable=False)
     friend_code = Column(String(12), nullable=True, unique=True, index=True)  # Código de enlace, p. ej. Li-4F7Q
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     # Relaciones
     driver_profile = relationship("DriverProfile", back_populates="user", uselist=False)
@@ -62,7 +63,7 @@ class DriverProfile(Base):
     inspection_date = Column(String, nullable=True)  # Cita para la inspección de la moto
     license_number = Column(EncryptedString, nullable=True)
     moto_year = Column(Integer, nullable=True)
-    submitted_at = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
     # Campos de pago del conductor
     binance_address = Column(EncryptedString, nullable=True)
@@ -102,7 +103,7 @@ class Ride(Base):
     payment_reference = Column(EncryptedString, nullable=True)
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
     points_rewarded = Column(Integer, default=50)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     # Línea de tiempo: JSON [{"status": "...", "at": "ISO"}] con cada cambio de estado.
     status_log = Column(Text, nullable=True)
     # Comprobante de pago (captura): archivo privado en EVIDENCE_DIR/receipts.
@@ -126,7 +127,7 @@ class Review(Base):
     badges = Column(String, default="Manejo seguro,Casco limpio")  # Etiquetas seleccionadas
     comment = Column(Text, nullable=True)
     points_earned = Column(Integer, default=20)  # Puntos ganados por dejar feedback
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     ride = relationship("Ride", back_populates="review")
 
@@ -160,7 +161,7 @@ class WalletTransaction(Base):
     reward_id = Column(Integer, ForeignKey("workshop_rewards.id"), nullable=True)
     reference = Column(EncryptedString, nullable=True)  # Referencia de Pago Móvil o datos de retiro
     note = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 
 
@@ -185,7 +186,7 @@ class Link(Base):
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     addressee_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(String, default="pendiente", nullable=False)  # pendiente, aceptado
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class QuizAnswer(Base):
@@ -198,7 +199,7 @@ class QuizAnswer(Base):
     quiz_date = Column(Date, nullable=False)
     option_index = Column(Integer, nullable=False)
     correct = Column(Boolean, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class Coupon(Base):
@@ -211,7 +212,7 @@ class Coupon(Base):
     fe_cost = Column(Integer, nullable=False)
     status = Column(String, default="activo", nullable=False)  # activo, usado
     ride_id = Column(Integer, ForeignKey("rides.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class GradeVoucher(Base):
@@ -226,7 +227,7 @@ class GradeVoucher(Base):
     fe_cost = Column(Integer, nullable=False)
     status = Column(String, default="pendiente", nullable=False)  # pendiente, aprobado, rechazado
     review_note = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 
 
@@ -238,7 +239,7 @@ class ExchangeRate(Base):
     rate_date = Column(Date, nullable=False, unique=True)
     rate = Column(Float, nullable=False)
     source = Column(String, nullable=False)  # dolarapi o manual
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow)
 
 
 class PerkGrant(Base):
@@ -249,4 +250,4 @@ class PerkGrant(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     z = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)

@@ -96,7 +96,9 @@ def test_ride_detail_shows_timeline_receipt_and_review(client):
 # --- 2. Edición de perfil cada 7 días ------------------------------------------------
 
 def test_profile_edit_once_every_seven_days_photo_unlimited(client, monkeypatch):
-    from datetime import datetime, timedelta
+    from datetime import timedelta
+
+    from app.timeutil import utcnow
 
     from app import auth as auth_module
     from app.database import get_db
@@ -129,7 +131,7 @@ def test_profile_edit_once_every_seven_days_photo_unlimited(client, monkeypatch)
     assert photo.status_code == 200
 
     db.expire_all()
-    db.get(User, 4).profile_updated_at = datetime.utcnow() - timedelta(days=8)
+    db.get(User, 4).profile_updated_at = utcnow() - timedelta(days=8)
     db.commit()
     assert client.put("/api/users/me/profile", json={"name": "Sofi"}, headers=auth_headers(4)).status_code == 200
 
