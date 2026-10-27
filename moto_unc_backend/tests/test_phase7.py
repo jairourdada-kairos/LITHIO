@@ -91,3 +91,44 @@ def test_ride_detail_shows_timeline_receipt_and_review(client):
 
     history = client.get("/api/rides/mine?scope=history&role=pasajero", headers=auth_headers(4)).json()
     assert history[0]["id"] == ride["id"] and history[0]["has_receipt"]
+
+
+# --- 2. Edición de perfil cada 7 días ------------------------------------------------
+
+def test_profile_edit_once_every_seven_days_photo_unlimited(client, monkeypatch):
+    from datetime import datetime, timedelta
+
+    from app import auth as auth_module
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+
+    firebase_calls = []
+    monkeypatch.setattr(auth_module, "update_firebase_email", lambda uid, email: firebase_calls.append((uid, email)))
+    db = next(app.dependency_overrides[get_db]())
+    db.get(User, 2).email = "carlos@lithio-demo.com"
+    db.commit()
+
+    assert client.put("/api/users/me/profile", json={"cedula": "V1"}, headers=auth_headers(4)).status_code == 422
+    assert client.put("/api/users/me/profile", json={"phone": "0212-1234567"}, headers=auth_headers(4)).status_code == 422
+    assert client.put("/api/users/me/profile", json={"email": "Carlos@lithio-demo.com"}, headers=auth_headers(4)).status_code == 409
+
+    updated = client.put(
+        "/api/users/me/profile",
+        json={"name": "Sofía", "phone": "0414-7654321", "email": "Sofia.Nueva@lithio-demo.com"},
+        headers=auth_headers(4),
+    ).json()
+    assert updated["phone"] == "+58 414 7654321" and updated["email"] == "sofia.nueva@lithio-demo.com"
+    assert updated["next_edit_at"] and firebase_calls == [("uid-user-4", "sofia.nueva@lithio-demo.com")]
+
+    blocked = client.put("/api/users/me/profile", json={"name": "Sofi"}, headers=auth_headers(4))
+    assert blocked.status_code == 429 and "7 días" in blocked.json()["detail"]
+
+    # La foto se puede cambiar en cualquier momento.
+    photo = client.post("/api/users/me/avatar", files={"photo": ("a.png", PNG, "image/png")}, headers=auth_headers(4))
+    assert photo.status_code == 200
+
+    db.expire_all()
+    db.get(User, 4).profile_updated_at = datetime.utcnow() - timedelta(days=8)
+    db.commit()
+    assert client.put("/api/users/me/profile", json={"name": "Sofi"}, headers=auth_headers(4)).status_code == 200

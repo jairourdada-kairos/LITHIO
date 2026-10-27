@@ -88,6 +88,7 @@ ADDED_COLUMNS = {
         "fe_lifetime": "INTEGER NOT NULL DEFAULT 0",
         "friend_code": "VARCHAR(12)",
         "active_session_id": "VARCHAR(64)",
+        "profile_updated_at": "TIMESTAMP",
     },
     "rides": {
         "status_log": "TEXT",

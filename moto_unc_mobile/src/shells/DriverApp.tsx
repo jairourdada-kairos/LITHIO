@@ -93,6 +93,7 @@ export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => 
     <ApprovedDriverApp
       user={user}
       onAvatarChanged={(avatarUrl) => setUser((prev) => ({ ...prev, avatar_url: avatarUrl ?? undefined }))}
+      onUserChanged={(changes) => setUser((prev) => ({ ...prev, ...changes }))}
       summary={summary}
       setSummary={setSummary}
       reloadSummary={loadSummary}
@@ -108,6 +109,7 @@ export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => 
 interface ApprovedProps {
   user: AuthUser;
   onAvatarChanged: (avatarUrl: string | null) => void;
+  onUserChanged: (changes: Partial<AuthUser>) => void;
   summary: AccountSummary;
   setSummary: React.Dispatch<React.SetStateAction<AccountSummary | null>>;
   reloadSummary: () => Promise<void>;
@@ -120,6 +122,7 @@ interface ApprovedProps {
 const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   user,
   onAvatarChanged,
+  onUserChanged,
   summary,
   setSummary,
   reloadSummary,
@@ -248,7 +251,9 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     if (overlay === 'levels') return <LevelsTableScreen accent={theme.colors.secondary} onBack={() => setOverlay('level')} />;
     if (overlay === 'admin') return <AdminScreen onBack={() => setOverlay(null)} />;
     if (overlay === 'links') return <LinksScreen accent={theme.colors.secondary} onBack={() => setOverlay(null)} />;
-    if (profileOpen) return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} />;
+    if (profileOpen) {
+      return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} onUserChanged={onUserChanged} />;
+    }
     switch (tab) {
       case 'trips':
         return <TripsScreen role="conductor" reloadKey={reloadKey} accent={theme.colors.secondary} />;

@@ -24,6 +24,8 @@ class User(Base):
     points = Column(Integer, default=100)  # Bono de bienvenida de 100 puntos
     # Sesión única: solo el dispositivo con este identificador puede usar la cuenta.
     active_session_id = Column(String(64), nullable=True)
+    # Última edición de datos personales (límite de una cada 7 días; la foto no cuenta).
+    profile_updated_at = Column(DateTime, nullable=True)
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
     # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.

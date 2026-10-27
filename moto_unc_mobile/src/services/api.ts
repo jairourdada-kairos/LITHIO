@@ -78,6 +78,16 @@ export interface RideDetail {
   viewer_role: 'pasajero' | 'conductor' | 'admin';
 }
 
+export interface MyProfile {
+  name: string;
+  last_name: string | null;
+  email: string;
+  phone: string;
+  profile_updated_at: string | null;
+  /** Si está, aún no se puede editar: fecha (UTC) desde la que se podrá. */
+  next_edit_at: string | null;
+}
+
 export interface FeCoupon {
   id: number;
   percent: number;
@@ -321,6 +331,22 @@ export const apiService = {
 
   async getPendingWallet(): Promise<AdminWalletItem[]> {
     const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/pending`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async getMyProfile(): Promise<MyProfile> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/profile`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async updateMyProfile(changes: Partial<Pick<MyProfile, 'name' | 'last_name' | 'email' | 'phone'>>): Promise<MyProfile> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    });
     await assertOk(response);
     return response.json();
   },

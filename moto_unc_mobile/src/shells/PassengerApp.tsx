@@ -234,7 +234,14 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
       );
     }
     if (overlay.type === 'profile') {
-      return <ProfileScreen user={user} role="pasajero" onBack={() => setOverlay(null)} />;
+      return (
+        <ProfileScreen
+          user={user}
+          role="pasajero"
+          onBack={() => setOverlay(null)}
+          onUserChanged={(changes) => setUser((prev) => ({ ...prev, ...changes }))}
+        />
+      );
     }
     if (overlay.type === 'level') {
       return (

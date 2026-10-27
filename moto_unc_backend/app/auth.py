@@ -61,6 +61,17 @@ def _get_firebase_app():
         ) from None
 
 
+def update_firebase_email(uid: str, email: str) -> None:
+    """Cambia el correo de inicio de sesión en Firebase (queda sin verificar)."""
+    try:
+        firebase_auth.update_user(uid, email=email, email_verified=False, app=_get_firebase_app())
+    except firebase_auth.EmailAlreadyExistsError:
+        raise HTTPException(status_code=409, detail="Ese correo ya lo usa otra cuenta.") from None
+    except (ValueError, FirebaseError):
+        logger.exception("Firebase email update failed.")
+        raise HTTPException(status_code=503, detail="No se pudo cambiar el correo en este momento. Intenta más tarde.") from None
+
+
 def verify_firebase_token(token: str) -> FirebaseIdentity:
     try:
         claims = firebase_auth.verify_id_token(

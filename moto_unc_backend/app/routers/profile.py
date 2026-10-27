@@ -1,16 +1,22 @@
 """Foto de perfil y tabla de niveles."""
 import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel, ConfigDict, EmailStr
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from .. import auth as auth_module
 from ..auth import get_current_user, get_current_user_any_session
-from ..config import MEDIA_DIR
+from ..config import MEDIA_DIR, VENEZUELA_TZ
 from ..database import get_db
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import User
 from ..realtime import manager
+from ..validation import normalize_person_name, normalize_phone
 
 router = APIRouter(prefix="/api", tags=["perfil"])
 
@@ -105,3 +111,72 @@ async def start_session(user: User = Depends(get_current_user_any_session), db: 
     db.commit()
     await manager.close_other_sessions(user.id, user.active_session_id)
     return {"session_id": user.active_session_id}
+
+
+# ---------------- Datos personales (una edición cada 7 días) ----------------
+
+PROFILE_EDIT_COOLDOWN = timedelta(days=7)
+
+
+class ProfileUpdateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # La cédula y el rol no se editan aquí.
+    name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
+def profile_payload(user: User) -> dict:
+    next_edit = user.profile_updated_at + PROFILE_EDIT_COOLDOWN if user.profile_updated_at else None
+    return {
+        "name": user.name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "phone": user.phone,
+        "profile_updated_at": user.profile_updated_at.isoformat() if user.profile_updated_at else None,
+        "next_edit_at": next_edit.isoformat() if next_edit and next_edit > datetime.utcnow() else None,
+    }
+
+
+@router.get("/users/me/profile")
+def my_profile(user: User = Depends(get_current_user)):
+    return profile_payload(user)
+
+
+@router.put("/users/me/profile")
+def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.profile_updated_at and datetime.utcnow() < user.profile_updated_at + PROFILE_EDIT_COOLDOWN:
+        available = (user.profile_updated_at + PROFILE_EDIT_COOLDOWN).replace(tzinfo=timezone.utc).astimezone(VENEZUELA_TZ)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Solo puedes cambiar tus datos una vez cada 7 días. Podrás hacerlo de nuevo el {available:%d/%m/%Y a las %I:%M %p}.",
+        )
+
+    changes = {}
+    try:
+        if data.name is not None:
+            changes["name"] = normalize_person_name(data.name, "El nombre")
+        if data.last_name is not None:
+            changes["last_name"] = normalize_person_name(data.last_name, "El apellido")
+        if data.phone is not None:
+            changes["phone"] = normalize_phone(data.phone)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    if data.email is not None:
+        changes["email"] = str(data.email).strip().lower()
+    changes = {field: value for field, value in changes.items() if value != getattr(user, field)}
+    if not changes:
+        raise HTTPException(status_code=400, detail="No cambiaste ningún dato.")
+
+    if "email" in changes:
+        taken = db.query(User).filter(func.lower(User.email) == changes["email"], User.id != user.id).first()
+        if taken:
+            raise HTTPException(status_code=409, detail="Ese correo ya lo usa otra cuenta.")
+        if user.firebase_uid:
+            auth_module.update_firebase_email(user.firebase_uid, changes["email"])
+
+    for field, value in changes.items():
+        setattr(user, field, value)
+    user.profile_updated_at = datetime.utcnow()
+    db.commit()
+    return profile_payload(user)
