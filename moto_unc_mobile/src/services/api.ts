@@ -84,6 +84,10 @@ export interface MyProfile {
   last_name: string | null;
   email: string;
   phone: string;
+  /** Completa (solo la recibe el dueño). */
+  cedula: string | null;
+  career: string | null;
+  semester: string | null;
   profile_updated_at: string | null;
   /** Si está, aún no se puede editar: fecha (UTC) desde la que se podrá. */
   next_edit_at: string | null;

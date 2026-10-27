@@ -266,3 +266,22 @@ def test_failed_save_keeps_old_photo_and_leaves_no_orphan(client, monkeypatch):
 
     assert set(profile_module.AVATAR_DIR.iterdir()) == before  # Sin archivo huérfano
     assert client.get(first["avatar_url"]).content == PNG       # La foto anterior sigue ahí
+
+
+# --- Datos personales completos ---------------------------------------------------
+
+def test_owner_sees_full_cedula_others_only_masked(client):
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+
+    db = next(app.dependency_overrides[get_db]())
+    user = db.get(User, 4)
+    user.cedula, user.career, user.semester = "V12345678", "Ingeniería en Informática", "5"
+    db.commit()
+
+    mine = client.get("/api/users/me/profile", headers=auth_headers(4)).json()
+    assert mine["cedula"] == "V-12345678"
+    assert mine["career"] == "Ingeniería en Informática" and mine["semester"] == "5"
+    # En las demás respuestas sigue enmascarada.
+    assert "****" in client.get("/api/users/me", headers=auth_headers(4)).json()["cedula"]

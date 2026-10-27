@@ -31,6 +31,11 @@ interface Props {
 type Draft = { name: string; last_name: string; email: string; phone: string };
 type Errors = Partial<Record<keyof Draft, string>>;
 
+function semesterLabel(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  return /^\d+$/.test(value) ? `${value}.º semestre` : value;
+}
+
 function formatWhen(iso: string): string {
   const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`);
   return date.toLocaleString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -44,6 +49,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
   const [draft, setDraft] = useState<Draft>({ name: '', last_name: '', email: '', phone: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [showCedula, setShowCedula] = useState(false);
 
   useEffect(() => {
     apiService.getMyProfile().then(setProfile).catch(() => setProfile(null));
@@ -127,9 +133,8 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
     ['Apellidos', current.last_name],
     ['Correo electrónico', current.email],
     ['Teléfono', current.phone],
-    ['Cédula', user.cedula],
-    ['Carrera', user.career],
-    ['Semestre', user.semester],
+    ['Carrera', profile?.career ?? user.career],
+    ['Semestre', semesterLabel(profile?.semester ?? user.semester)],
   ];
 
   return (
@@ -186,6 +191,24 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                     </Text>
                   </View>
                 ))}
+                <View style={[styles.row, styles.divider, styles.cedulaRow]}>
+                  <View style={styles.flex}>
+                    <Text style={styles.label}>Cédula</Text>
+                    <Text style={[styles.value, !user.cedula && styles.missing]} numberOfLines={1}>
+                      {showCedula && profile?.cedula ? profile.cedula : user.cedula || 'Sin registrar'}
+                    </Text>
+                  </View>
+                  {profile?.cedula ? (
+                    <Pressable
+                      onPress={() => setShowCedula((value) => !value)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={showCedula ? 'Ocultar cédula' : 'Mostrar cédula completa'}
+                    >
+                      <Text style={[styles.edit, { color: accent }]}>{showCedula ? 'Ocultar' : 'Mostrar'}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
               <Text style={styles.note}>
                 {profile?.next_edit_at
@@ -233,6 +256,11 @@ const styles = themed(() => ({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 2,
+  },
+  cedulaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   divider: {
     borderTopWidth: 1,

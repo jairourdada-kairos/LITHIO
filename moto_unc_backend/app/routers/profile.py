@@ -17,7 +17,7 @@ from ..database import get_db
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import User
 from ..realtime import manager
-from ..validation import normalize_person_name, normalize_phone
+from ..validation import format_cedula, normalize_person_name, normalize_phone
 from .. import push_service
 from ..timeutil import utcnow
 
@@ -150,6 +150,10 @@ def profile_payload(user: User) -> dict:
         "last_name": user.last_name,
         "email": user.email,
         "phone": user.phone,
+        # Solo el dueño ve su cédula completa (la app la muestra tras tocar "Mostrar").
+        "cedula": format_cedula(user.cedula) if user.cedula else None,
+        "career": user.career,
+        "semester": user.semester,
         "profile_updated_at": user.profile_updated_at.isoformat() if user.profile_updated_at else None,
         "next_edit_at": next_edit.isoformat() if next_edit and next_edit > utcnow() else None,
     }
