@@ -89,6 +89,7 @@ ADDED_COLUMNS = {
         "friend_code": "VARCHAR(12)",
         "active_session_id": "VARCHAR(64)",
         "profile_updated_at": "TIMESTAMP",
+        "push_token": "VARCHAR",
     },
     "rides": {
         "status_log": "TEXT",

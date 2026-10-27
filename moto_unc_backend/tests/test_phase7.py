@@ -132,3 +132,41 @@ def test_profile_edit_once_every_seven_days_photo_unlimited(client, monkeypatch)
     db.get(User, 4).profile_updated_at = datetime.utcnow() - timedelta(days=8)
     db.commit()
     assert client.put("/api/users/me/profile", json={"name": "Sofi"}, headers=auth_headers(4)).status_code == 200
+
+
+# --- Notificaciones push -------------------------------------------------------------
+
+TOKEN_DRIVER = "ExponentPushToken[conductor-1]"
+TOKEN_PASSENGER = "ExponentPushToken[pasajera-4]"
+
+
+def test_push_notifications_reach_the_other_side_of_the_ride(client, push_outbox):
+    assert client.put("/api/users/me/push-token", json={"token": "hola"}, headers=auth_headers(1)).status_code == 422
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(1))
+    client.put("/api/users/me/push-token", json={"token": TOKEN_PASSENGER}, headers=auth_headers(4))
+
+    ride = make_ride(client)
+    assert push_outbox[-1]["to"] == TOKEN_DRIVER and push_outbox[-1]["title"] == "Nueva solicitud de viaje"
+    assert push_outbox[-1]["data"]["ride_id"] == ride["id"]
+
+    client.put(f"/api/rides/{ride['id']}/status", json={"status": "aceptado"}, headers=auth_headers(1))
+    assert push_outbox[-1]["to"] == TOKEN_PASSENGER and push_outbox[-1]["title"] == "Tu viaje fue aceptado"
+
+    client.put(f"/api/rides/{ride['id']}/status", json={"status": "cancelado"}, headers=auth_headers(4))
+    assert push_outbox[-1]["to"] == TOKEN_DRIVER and push_outbox[-1]["title"] == "Viaje cancelado"
+
+
+def test_new_device_takes_over_notifications(client, push_outbox):
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(1))
+    client.post("/api/sessions", headers=auth_headers(1))  # Entró en otro teléfono
+    make_ride(client)
+    assert push_outbox == []  # El teléfono anterior ya no recibe avisos
+
+    # El mismo teléfono con otra cuenta: solo la última recibe.
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(4))
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(1))
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+    db = next(app.dependency_overrides[get_db]())
+    assert db.get(User, 4).push_token is None and db.get(User, 1).push_token == TOKEN_DRIVER

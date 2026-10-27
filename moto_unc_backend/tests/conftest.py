@@ -9,3 +9,16 @@ os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["LITHIO_ENCRYPTION_KEYS"] = Fernet.generate_key().decode()
 os.environ["LITHIO_HASH_KEY"] = Fernet.generate_key().decode()
 os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="lithio-media-")
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def push_outbox(monkeypatch):
+    """Las pruebas nunca envían notificaciones reales: quedan en esta lista."""
+    from app import push_service
+
+    sent = []
+    monkeypatch.setattr(push_service, "dispatch", sent.extend)
+    return sent

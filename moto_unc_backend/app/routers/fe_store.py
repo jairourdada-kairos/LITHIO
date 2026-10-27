@@ -18,6 +18,7 @@ from ..database import get_db
 from ..links_service import GIFT_COUPONS, STORE_DISCOUNT_LEVEL, user_z
 from ..models import Coupon, GradeVoucher, PerkGrant, User
 from ..realtime import manager
+from .. import push_service
 from .profile import _detect_format
 
 router = APIRouter(prefix="/api", tags=["tienda-fe"])
@@ -178,4 +179,8 @@ async def review_voucher(voucher_id: int, data: VoucherReviewIn, db: Session = D
     db.commit()
     payload = voucher_payload(voucher)
     await manager.send_personal_message({"type": "VOUCHER_UPDATED", "voucher": payload}, user_id=voucher.user_id)
+    if voucher.status == "aprobado":
+        push_service.notify(db, voucher.user_id, "Vale aprobado", f"Tu vale «Pasar con 20» de {voucher.subject} está listo: {payload['code']}.", {"type": "VOUCHER_UPDATED"})
+    else:
+        push_service.notify(db, voucher.user_id, "Vale rechazado", voucher.review_note or "Te devolvimos el Fe.", {"type": "VOUCHER_UPDATED"})
     return payload

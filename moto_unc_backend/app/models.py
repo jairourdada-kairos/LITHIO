@@ -26,6 +26,8 @@ class User(Base):
     active_session_id = Column(String(64), nullable=True)
     # Última edición de datos personales (límite de una cada 7 días; la foto no cuenta).
     profile_updated_at = Column(DateTime, nullable=True)
+    # Token de notificaciones push del dispositivo con la sesión activa.
+    push_token = Column(String, nullable=True)
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
     # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.

@@ -43,6 +43,7 @@ from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
 from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
+from . import push_service
 from .routers import driver_applications, fe_store, links, profile, quiz, rates, ride_details, wallet
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
@@ -1040,6 +1041,13 @@ async def request_ride(
 
     whatsapp_status = await notify_driver_whatsapp(driver, new_ride)
 
+    when = f" · programado {new_ride.scheduled_time}" if new_ride.is_scheduled else ""
+    push_service.notify(
+        db, driver.id, "Nueva solicitud de viaje",
+        f"{passenger.name}: {new_ride.origin} → {new_ride.destination}{when}",
+        {"type": "NEW_RIDE_REQUEST", "ride_id": new_ride.id},
+    )
+
     # Notificar al conductor por WebSocket
     await manager.send_personal_message(
         {
@@ -1201,6 +1209,29 @@ def get_my_summary(
 
 
 
+def push_ride_status(db: Session, ride: Ride, status: str, actor: User, fe_awarded: int) -> None:
+    """Notificación push a la otra persona del viaje cuando cambia su estado."""
+    driver, passenger = ride.driver.name, ride.passenger.name
+    data = {"type": "RIDE_STATUS_UPDATED", "ride_id": ride.id, "status": status}
+    to_passenger = {
+        "aceptado": ("Tu viaje fue aceptado", f"{driver} va por ti. Prepárate en {ride.origin}."),
+        "rechazado": ("Tu solicitud no fue aceptada", f"{driver} no puede tomarla. Elige otro conductor."),
+        "en_camino": ("Tu conductor va en camino", f"{driver} se dirige a {ride.origin}."),
+        "en_curso": ("Viaje iniciado", f"Rumbo a {ride.destination}. ¡Buen viaje!"),
+        "completado": (
+            "Llegaste a tu destino",
+            f"Ganaste +{fe_awarded} Fe. Califica a {driver}." if fe_awarded else f"Califica a {driver}.",
+        ),
+    }
+    if status == "cancelado":
+        other_id = ride.driver_id if actor.id == ride.passenger_id else ride.passenger_id
+        who = passenger if actor.id == ride.passenger_id else driver
+        push_service.notify(db, other_id, "Viaje cancelado", f"{who} canceló el viaje a {ride.destination}.", data)
+    elif status in to_passenger:
+        title, body = to_passenger[status]
+        push_service.notify(db, ride.passenger_id, title, body, data)
+
+
 def log_status(ride: Ride, status: str) -> None:
     """Agrega el cambio de estado a la línea de tiempo del viaje."""
     entries = json.loads(ride.status_log) if ride.status_log else []
@@ -1288,6 +1319,7 @@ async def update_ride_status(
     }
     for participant_id in {ride.passenger_id, ride.driver_id}:
         await manager.send_personal_message(status_message, user_id=participant_id)
+    push_ride_status(db, ride, update.status, current_user, fe_awarded)
 
     if availability_changed and driver_profile:
         await manager.broadcast({

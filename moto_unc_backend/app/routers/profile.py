@@ -17,6 +17,7 @@ from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import User
 from ..realtime import manager
 from ..validation import normalize_person_name, normalize_phone
+from .. import push_service
 
 router = APIRouter(prefix="/api", tags=["perfil"])
 
@@ -108,6 +109,8 @@ async def start_session(user: User = Depends(get_current_user_any_session), db: 
     sus peticiones con el identificador viejo responden 401.
     """
     user.active_session_id = secrets.token_urlsafe(24)
+    # El teléfono anterior deja de recibir notificaciones; el nuevo registra su token.
+    user.push_token = None
     db.commit()
     await manager.close_other_sessions(user.id, user.active_session_id)
     return {"session_id": user.active_session_id}
@@ -180,3 +183,23 @@ def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user)
     user.profile_updated_at = datetime.utcnow()
     db.commit()
     return profile_payload(user)
+
+
+# ---------------- Notificaciones push ----------------
+
+class PushTokenIn(BaseModel):
+    token: Optional[str] = None
+
+
+@router.put("/users/me/push-token")
+def set_push_token(data: PushTokenIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Registra (o borra, con token vacío) el dispositivo que recibe las notificaciones."""
+    token = (data.token or "").strip() or None
+    if token and not push_service.is_valid_token(token):
+        raise HTTPException(status_code=422, detail="Token de notificaciones no válido.")
+    if token:
+        # Un mismo teléfono con otra cuenta: solo la última cuenta recibe sus avisos.
+        db.query(User).filter(User.push_token == token, User.id != user.id).update({"push_token": None})
+    user.push_token = token
+    db.commit()
+    return {"registered": bool(token)}

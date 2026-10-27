@@ -9,6 +9,7 @@ from ..database import get_db
 from ..links_service import bond_type, level_for, link_between, rides_together
 from ..models import Link, User
 from ..realtime import manager
+from .. import push_service
 
 router = APIRouter(prefix="/api/links", tags=["enlaces"])
 
@@ -79,6 +80,7 @@ async def request_link(data: LinkRequestIn, me: User = Depends(get_current_user)
     db.commit()
     db.refresh(link)
     await manager.send_personal_message({"type": "LINK_REQUEST", "from": me.name, "link_id": link.id}, user_id=other.id)
+    push_service.notify(db, other.id, "Nueva solicitud de enlace", f"{me.name} quiere ser tu enlace de viaje.", {"type": "LINK_REQUEST"})
     return person(db, me, other, link)
 
 
@@ -90,6 +92,7 @@ async def accept_link(link_id: int, me: User = Depends(get_current_user), db: Se
     link.status = "aceptado"
     db.commit()
     await manager.send_personal_message({"type": "LINK_ACCEPTED", "by": me.name}, user_id=link.requester_id)
+    push_service.notify(db, link.requester_id, "Enlace aceptado", f"{me.name} aceptó tu solicitud. Ya son enlaces.", {"type": "LINK_ACCEPTED"})
     return person(db, me, db.get(User, link.requester_id), link)
 
 

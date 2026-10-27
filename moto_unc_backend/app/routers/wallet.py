@@ -14,6 +14,7 @@ from ..drivers import require_approved_driver
 from ..links_service import are_linked
 from ..models import DriverProfile, User, WalletTransaction, WorkshopReward
 from ..realtime import manager
+from .. import push_service
 
 router = APIRouter(prefix="/api", tags=["billetera"])
 
@@ -140,6 +141,11 @@ async def transfer(data: TransferIn, user: User = Depends(get_current_user), db:
         {"type": "WALLET_UPDATED", "reason": "recepcion", "amount": wallet.as_diamonds(cents), "from": sender.name},
         user_id=receiver.id,
     )
+    push_service.notify(
+        db, receiver.id, f"Recibiste ◆ {wallet.as_diamonds(cents):.2f}",
+        f"{sender.name} te envió diamantes." + (f" «{data.note}»" if data.note else ""),
+        {"type": "WALLET_UPDATED"},
+    )
     return serialize(db, sent)
 
 
@@ -226,6 +232,15 @@ async def review_transaction(tx_id: int, data: ReviewIn, db: Session = Depends(g
         {"type": "WALLET_UPDATED", "reason": tx.kind, "status": tx.status, "amount": wallet.as_diamonds(tx.amount_cents)},
         user_id=tx.user_id,
     )
+    label = {"recarga": "Recarga", "retiro": "Retiro", "taller": "Canje del taller"}[tx.kind]
+    amount = f"◆ {abs(wallet.as_diamonds(tx.amount_cents)):.2f}"
+    if tx.status == "aprobado":
+        push_service.notify(db, tx.user_id, f"{label} aprobado", f"Tu {label.lower()} de {amount} fue aprobado.", {"type": "WALLET_UPDATED"})
+    else:
+        push_service.notify(
+            db, tx.user_id, f"{label} rechazado",
+            data.note or f"Tu {label.lower()} de {amount} no fue aprobado.", {"type": "WALLET_UPDATED"},
+        )
     return serialize(db, tx)
 
 

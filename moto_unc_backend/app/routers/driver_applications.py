@@ -12,6 +12,7 @@ from ..database import get_db
 from ..drivers import VERIFICATION_STATUSES, application_payload, driver_profile
 from ..models import DriverProfile, User
 from ..realtime import manager
+from .. import push_service
 
 router = APIRouter(prefix="/api", tags=["postulación de conductores"])
 
@@ -71,6 +72,15 @@ async def review_application(user_id: int, data: ApplicationReviewIn, db: Sessio
     payload = application_payload(profile.user, profile)
     # El conductor ve el cambio al instante si tiene la app abierta.
     await manager.send_personal_message({"type": "DRIVER_APPLICATION_UPDATED", "application": payload}, user_id=user_id)
+    messages = {
+        "en_revision": ("Revisamos tu postulación", "Estamos verificando tus datos de conductor."),
+        "inspeccion": ("Cita de inspección", f"Revisaremos tu moto: {profile.inspection_date or 'te contactaremos'}."),
+        "aprobado": ("¡Luz verde, conductor!", "Tu cuenta está activa. Ya puedes recibir viajes en LITHIO."),
+        "rechazado": ("Tu postulación necesita cambios", profile.verification_notes or "Revisa la nota en la app."),
+    }
+    if data.status in messages:
+        title, body = messages[data.status]
+        push_service.notify(db, user_id, title, body, {"type": "DRIVER_APPLICATION_UPDATED"})
     return payload
 
 

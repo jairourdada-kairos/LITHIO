@@ -16,6 +16,7 @@ from ..config import EVIDENCE_DIR
 from ..database import get_db
 from ..models import Coupon, Ride, User
 from ..realtime import manager
+from .. import push_service
 from .profile import _detect_format
 
 router = APIRouter(prefix="/api/rides", tags=["historial"])
@@ -112,6 +113,11 @@ async def upload_receipt(
             old_path.unlink()
     await manager.send_personal_message(
         {"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id}, user_id=ride.driver_id
+    )
+    push_service.notify(
+        db, ride.driver_id, "Comprobante de pago recibido",
+        f"{ride.passenger.name} adjuntó la captura del Pago Móvil del viaje #{ride.id}.",
+        {"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id},
     )
     return {"has_receipt": True, "receipt_uploaded_at": ride.receipt_uploaded_at.isoformat()}
 
