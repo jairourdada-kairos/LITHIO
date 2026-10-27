@@ -33,6 +33,8 @@ from .auth import (
     verify_firebase_token,
 )
 from .schemas import (
+    AdminDriverCreate, AdminDriverUpdate, AdminProfileUpdate, AdminRewardIn, AdminRewardUpdate,
+    AdminRouteIn, AdminRouteUpdate,
     UserResponse, SwitchRoleRequest, DriverCardItem, DriverFinancialResponse,
     AdminProfileResponse, AdminDriverResponse, AdminRouteResponse,
     AdminRewardResponse,
@@ -433,7 +435,8 @@ def get_preset_routes(db: Session = Depends(get_db)):
     response_model=AdminRouteResponse,
     dependencies=[Depends(require_admin)],
 )
-def create_route_admin(payload: dict, db: Session = Depends(get_db)):
+def create_route_admin(data: AdminRouteIn, db: Session = Depends(get_db)):
+    payload = data.model_dump()
     route = Route(
         origin=payload.get("origin", ""),
         destination=payload.get("destination", ""),
@@ -461,7 +464,8 @@ def create_route_admin(payload: dict, db: Session = Depends(get_db)):
     response_model=AdminRouteResponse,
     dependencies=[Depends(require_admin)],
 )
-def update_route_admin(route_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_route_admin(route_id: int, data: AdminRouteUpdate, db: Session = Depends(get_db)):
+    payload = data.model_dump(exclude_unset=True)
     route = db.query(Route).filter(Route.id == route_id).first()
     if not route:
         raise HTTPException(status_code=404, detail="Ruta no encontrada")
@@ -505,7 +509,8 @@ def delete_route_admin(route_id: int, db: Session = Depends(get_db)):
     response_model=AdminDriverResponse,
     dependencies=[Depends(require_admin)],
 )
-def create_admin_driver(payload: dict, db: Session = Depends(get_db)):
+def create_admin_driver(data: AdminDriverCreate, db: Session = Depends(get_db)):
+    payload = data.model_dump()
     email = payload.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="El correo es obligatorio")
@@ -557,7 +562,8 @@ def create_admin_driver(payload: dict, db: Session = Depends(get_db)):
     response_model=AdminProfileResponse,
     dependencies=[Depends(require_admin)],
 )
-def update_admin_profile(user_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_admin_profile(user_id: int, data: AdminProfileUpdate, db: Session = Depends(get_db)):
+    payload = data.model_dump(exclude_unset=True)
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not is_admin(user):
         raise HTTPException(status_code=404, detail="Administrador no encontrado")
@@ -587,7 +593,8 @@ def delete_admin_driver(driver_id: int, db: Session = Depends(get_db)):
     response_model=AdminDriverResponse,
     dependencies=[Depends(require_admin)],
 )
-def update_admin_driver(driver_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_admin_driver(driver_id: int, data: AdminDriverUpdate, db: Session = Depends(get_db)):
+    payload = data.model_dump(exclude_unset=True)
     user = db.query(User).filter(User.id == driver_id).first()
     profile = db.query(DriverProfile).filter(DriverProfile.user_id == driver_id).first()
     if not user or not profile:
@@ -628,7 +635,8 @@ def update_admin_driver(driver_id: int, payload: dict, db: Session = Depends(get
     response_model=AdminRewardResponse,
     dependencies=[Depends(require_admin)],
 )
-def create_admin_reward(payload: dict, db: Session = Depends(get_db)):
+def create_admin_reward(data: AdminRewardIn, db: Session = Depends(get_db)):
+    payload = data.model_dump()
     reward = Reward(
         title=payload.get("title", "Recompensa"),
         description=payload.get("description", ""),
@@ -656,7 +664,8 @@ def create_admin_reward(payload: dict, db: Session = Depends(get_db)):
     response_model=AdminRewardResponse,
     dependencies=[Depends(require_admin)],
 )
-def update_admin_reward(reward_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_admin_reward(reward_id: int, data: AdminRewardUpdate, db: Session = Depends(get_db)):
+    payload = data.model_dump(exclude_unset=True)
     reward = db.query(Reward).filter(Reward.id == reward_id).first()
     if not reward:
         raise HTTPException(status_code=404, detail="Recompensa no encontrada")

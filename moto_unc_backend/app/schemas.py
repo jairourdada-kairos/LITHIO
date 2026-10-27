@@ -136,6 +136,86 @@ class AdminDriverResponse(BaseModel):
     trips_count: Optional[int] = None
     xp_level: Optional[str] = None
 
+# --- ENTRADAS DEL PANEL DE ADMINISTRACIÓN (validadas: un dato inválido da 422, no 500) ---
+_EMAIL = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+
+class AdminRouteIn(BaseModel):
+    origin: str = Field(min_length=2, max_length=120)
+    destination: str = Field(min_length=2, max_length=120)
+    fare_usd: float = Field(default=2.5, gt=0, le=100)
+    estimated_minutes: int = Field(default=10, ge=1, le=600)
+    popular: bool = True
+    tag: Optional[str] = Field(default=None, max_length=60)
+
+
+class AdminRouteUpdate(BaseModel):
+    origin: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    destination: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    fare_usd: Optional[float] = Field(default=None, gt=0, le=100)
+    estimated_minutes: Optional[int] = Field(default=None, ge=1, le=600)
+    popular: Optional[bool] = None
+    tag: Optional[str] = Field(default=None, max_length=60)
+
+
+class AdminDriverUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    last_name: Optional[str] = Field(default=None, max_length=60)
+    phone: Optional[str] = Field(default=None, max_length=30)
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
+    xp_level: Optional[str] = Field(default=None, max_length=60)
+    moto_brand_model: Optional[str] = Field(default=None, max_length=80)
+    moto_color: Optional[str] = Field(default=None, max_length=40)
+    plate: Optional[str] = Field(default=None, max_length=12)
+    current_location_tag: Optional[str] = Field(default=None, max_length=80)
+    is_available: Optional[bool] = None
+    helmet_provided: Optional[bool] = None
+    rating_avg: Optional[float] = Field(default=None, ge=0, le=5)
+    trips_count: Optional[int] = Field(default=None, ge=0)
+
+
+class AdminDriverCreate(BaseModel):
+    email: str = Field(pattern=_EMAIL, max_length=254)
+    name: str = Field(default="Conductor", min_length=1, max_length=60)
+    last_name: Optional[str] = Field(default=None, max_length=60)
+    age: Optional[int] = Field(default=None, ge=18, le=80)
+    phone: str = Field(default="", max_length=30)
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
+    xp_level: str = Field(default="Conductor UNC", max_length=60)
+    moto_brand_model: str = Field(default="Bera SBR 150", max_length=80)
+    moto_color: str = Field(default="Negro", max_length=40)
+    plate: str = Field(default="ABC123", max_length=12)
+    current_location_tag: str = Field(default="Campus UNC", max_length=80)
+    helmet_provided: bool = True
+    is_available: bool = True
+    rating_avg: float = Field(default=0.0, ge=0, le=5)
+    trips_count: int = Field(default=0, ge=0)
+
+
+class AdminProfileUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    email: Optional[str] = Field(default=None, pattern=_EMAIL, max_length=254)
+    phone: Optional[str] = Field(default=None, max_length=30)
+
+
+class AdminRewardIn(BaseModel):
+    title: str = Field(default="Recompensa", min_length=1, max_length=80)
+    description: str = Field(default="", max_length=300)
+    points_cost: int = Field(default=100, ge=0, le=100_000)
+    discount_percent: int = Field(default=0, ge=0, le=100)
+    icon: str = Field(default="star-circle", max_length=40)
+    is_active: bool = True
+
+
+class AdminRewardUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    description: Optional[str] = Field(default=None, max_length=300)
+    points_cost: Optional[int] = Field(default=None, ge=0, le=100_000)
+    discount_percent: Optional[int] = Field(default=None, ge=0, le=100)
+    icon: Optional[str] = Field(default=None, max_length=40)
+    is_active: Optional[bool] = None
+
+
 class AdminRouteResponse(BaseModel):
     id: int
     origin: str

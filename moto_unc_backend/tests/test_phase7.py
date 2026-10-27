@@ -222,3 +222,17 @@ def test_switch_to_driver_requires_approved_application(client):
     profile.verification_status = "aprobado"
     db.commit()
     assert client.post("/api/users/1/switch-role", json={"new_role": "conductor"}, headers=auth_headers(1)).status_code == 200
+
+
+# --- Auditoría: prioridad 2 --------------------------------------------------------
+
+def test_admin_endpoints_reject_invalid_data_with_422(client):
+    bad_route = client.post("/api/admin/routes", json={"origin": "UNC", "destination": "IVIC", "fare_usd": "gratis"}, headers=ADMIN)
+    assert bad_route.status_code == 422
+    assert client.post("/api/admin/routes", json={"origin": "UNC", "destination": "IVIC", "fare_usd": -1}, headers=ADMIN).status_code == 422
+    route = client.post("/api/admin/routes", json={"origin": "UNC", "destination": "IVIC", "fare_usd": 3}, headers=ADMIN)
+    assert route.status_code == 201
+    assert client.put(f"/api/admin/routes/{route.json()['id']}", json={"estimated_minutes": "mucho"}, headers=ADMIN).status_code == 422
+    assert client.put("/api/admin/drivers/1", json={"rating_avg": 9}, headers=ADMIN).status_code == 422
+    assert client.post("/api/admin/drivers", json={"email": "no-es-correo"}, headers=ADMIN).status_code == 422
+    assert client.post("/api/admin/rewards", json={"discount_percent": 150}, headers=ADMIN).status_code == 422
