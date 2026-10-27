@@ -1,8 +1,9 @@
-# Genera el instalable de Android (APK) de LITHIO apuntando al servidor en la nube.
+# Genera el instalable de Android (APK) de LITHIO con notificaciones push.
 #
-# Uso: doble clic en generar_apk.bat (despues de desplegar_nube.bat).
+# Uso: doble clic en generar_apk.bat.
 # La compilacion se hace en los servidores de Expo (EAS), no en esta PC.
-# Lo unico manual: iniciar sesion en tu cuenta de Expo la primera vez.
+# El APK no lleva una direccion fija: al abrirse lee de Firebase la direccion
+# que publica iniciar_publico.bat (ver DESPLIEGUE.md, seccion APK).
 
 # 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
 $ErrorActionPreference = 'Continue'
@@ -16,26 +17,37 @@ function Eas {
   if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: eas $($Rest -join ' ') fallo" -ForegroundColor Red; exit 1 }
 }
 
-$apiLine = Get-Content '.env' -Encoding UTF8 | Where-Object { $_ -like 'EXPO_PUBLIC_API_URL=*' } | Select-Object -First 1
-if (-not $apiLine -or $apiLine -notlike 'EXPO_PUBLIC_API_URL=https://*') {
-  Write-Host 'ERROR: moto_unc_mobile\.env todavia apunta a esta PC. Ejecuta primero desplegar_nube.bat.' -ForegroundColor Red
+if (-not (Test-Path 'google-services.json')) {
+  Write-Host 'ERROR: falta moto_unc_mobile\google-services.json (Firebase para Android).' -ForegroundColor Red
+  Write-Host 'Descargalo desde la consola de Firebase: ver DESPLIEGUE.md, seccion APK, paso 1.'
   exit 1
 }
-Write-Host "Servidor de la app: $($apiLine.Substring('EXPO_PUBLIC_API_URL='.Length))" -ForegroundColor Cyan
 
 Write-Host ''
-Write-Host '==> 1/3 Cuenta de Expo' -ForegroundColor Cyan
+Write-Host '==> 1/4 Cuenta de Expo' -ForegroundColor Cyan
 & npx -y 'eas-cli@latest' whoami 2>$null
 if ($LASTEXITCODE -ne 0) { Eas login }
 
 Write-Host ''
-Write-Host '==> 2/3 Enviar la configuracion publica de la app (direccion del servidor y Firebase web)' -ForegroundColor Cyan
+Write-Host '==> 2/4 Configuracion de la app (Firebase web y Firebase Android)' -ForegroundColor Cyan
 Eas env:push preview --path .env --force
+Eas env:create preview --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --force --non-interactive
 
 Write-Host ''
-Write-Host '==> 3/3 Compilar el APK (unos 15 minutos; la primera vez acepta crear la firma de Android)' -ForegroundColor Cyan
+Write-Host '==> 3/4 Credencial de notificaciones (FCM V1)' -ForegroundColor Cyan
+$answer = Read-Host 'Ya subiste antes la clave FCM V1 a Expo? (s/n)'
+if ($answer -notmatch '^[sS]') {
+  Write-Host 'En el menu que se abre elige: Android > preview > Google Service Account >'
+  Write-Host '"Manage your Google Service Account Key for Push Notifications (FCM V1)" > Upload,'
+  Write-Host 'y selecciona el archivo JSON de la cuenta de servicio de Firebase (C:\secure\...).'
+  & npx -y 'eas-cli@latest' credentials --platform android
+}
+
+Write-Host ''
+Write-Host '==> 4/4 Compilar el APK (unos 15 minutos; la primera vez acepta crear la firma de Android)' -ForegroundColor Cyan
 Eas build --platform android --profile preview
 
 Write-Host ''
 Write-Host 'LISTO: arriba esta el enlace para descargar el .apk.' -ForegroundColor Green
 Write-Host 'Compartelo por WhatsApp; al instalar, Android pedira permitir "origenes desconocidos".'
+Write-Host 'Recuerda: el APK funciona mientras iniciar_publico.bat este abierto en esta PC.'

@@ -126,3 +126,57 @@ un enlace para descargar el `.apk` e instalarlo en cualquier Android.
   `moto_unc_backend/media/avatars`. Si no las copias al volumen, esos usuarios
   verán sus iniciales hasta subir la foto de nuevo.
 - **Respaldo:** en la base de Railway → **Backups** puedes programar copias.
+
+---
+
+# APK con notificaciones push (gratis, con la PC encendida)
+
+El APK recibe notificaciones aunque la app esté cerrada. No lleva una
+dirección fija: al abrirse lee de Firebase la dirección que publica
+`iniciar_publico.bat` en cada arranque. Funciona mientras esa ventana esté
+abierta en la PC.
+
+## 1. Firebase para Android (una sola vez)
+
+1. Entra a <https://console.firebase.google.com> → proyecto **lithio-app**.
+2. **Agregar app → Android**. Nombre del paquete: `com.motounc.mobile`.
+   Registra la app y **descarga `google-services.json`**.
+3. Guárdalo en `moto_unc_mobile\google-services.json` (no se sube a GitHub).
+
+## 2. Firestore para la dirección del servidor (una sola vez)
+
+1. En la consola: **Compilación → Firestore Database → Crear base de datos**
+   (modo producción; ubicación `nam5` o la más cercana).
+2. Pestaña **Reglas**, reemplaza todo por esto y pulsa **Publicar**:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /config/server {
+      allow read: if true;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+3. Abre `iniciar_publico.bat`: debe decir **"Dirección publicada para el APK"**.
+
+## 3. Generar el APK
+
+Doble clic en **`generar_apk.bat`**. Te pedirá:
+
+- Iniciar sesión en tu cuenta de Expo (la primera vez).
+- Subir la clave de notificaciones **FCM V1** (la primera vez): en el menú
+  elige *Android → preview → Google Service Account → Manage your Google
+  Service Account Key for Push Notifications (FCM V1) → Upload* y selecciona el
+  JSON de la cuenta de servicio de Firebase (`C:\secure\...`).
+- Aceptar crear la firma de Android (la primera vez).
+
+Al terminar (≈15 min) te da el enlace del `.apk` para compartir.
+
+Si dice que el proyecto pertenece a otra cuenta de Expo, ejecuta en
+`moto_unc_mobile`: `npx eas-cli@latest init --force` y vuelve a intentarlo.

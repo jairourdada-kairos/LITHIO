@@ -204,10 +204,9 @@ export interface QuizToday {
   fact?: string;
 }
 
-const BACKEND_URL = API_BASE;
 
 async function postJson<T = unknown>(path: string, body: unknown): Promise<T> {
-  const response = await authenticatedFetch(`${BACKEND_URL}${path}`, {
+  const response = await authenticatedFetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -227,19 +226,19 @@ async function assertOk(response: Response): Promise<void> {
 
 export const apiService = {
   async getPresetRoutes(): Promise<PresetRoute[]> {
-    const response = await fetch(`${BACKEND_URL}/api/routes`);
+    const response = await fetch(`${API_BASE}/api/routes`);
     await assertOk(response);
     return response.json();
   },
 
   async getDrivers(): Promise<Driver[]> {
-    const response = await fetch(`${BACKEND_URL}/api/drivers`);
+    const response = await fetch(`${API_BASE}/api/drivers`);
     await assertOk(response);
     return response.json();
   },
 
   async toggleDriverAvailability(driverId: number, isAvailable: boolean): Promise<boolean> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/drivers/${driverId}/availability`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/drivers/${driverId}/availability`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_available: isAvailable }),
@@ -263,7 +262,7 @@ export const apiService = {
     }
   ): Promise<Ride> {
     const response = await authenticatedFetch(
-      `${BACKEND_URL}/api/rides?passenger_id=${passengerId}`,
+      `${API_BASE}/api/rides?passenger_id=${passengerId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -276,44 +275,44 @@ export const apiService = {
 
   async getActiveRide(userId: number, role?: SessionRole): Promise<Ride | null> {
     const query = role ? `?role=${role}` : '';
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/active/${userId}${query}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/active/${userId}${query}`);
     if (response.status === 404) return null;
     await assertOk(response);
     return response.json();
   },
 
   async getPendingRequests(driverId: number): Promise<Ride[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/driver/${driverId}/pending`);
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/driver/${driverId}/pending`);
     await assertOk(response);
     return response.json();
   },
 
   async getMyRides(scope: 'history' | 'scheduled', role: SessionRole): Promise<Ride[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/mine?scope=${scope}&role=${role}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/mine?scope=${scope}&role=${role}`);
     await assertOk(response);
     return response.json();
   },
 
   async getSummary(role: SessionRole): Promise<AccountSummary> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/summary?role=${role}`);
+    const response = await authenticatedFetch(`${API_BASE}/api/users/me/summary?role=${role}`);
     await assertOk(response);
     return response.json();
   },
 
   async getDriverApplication(): Promise<DriverApplication> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/drivers/me/application`);
+    const response = await authenticatedFetch(`${API_BASE}/api/drivers/me/application`);
     await assertOk(response);
     return response.json();
   },
 
   async getLevels(): Promise<{ current: Level; elements: LevelElement[] }> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/levels`);
+    const response = await authenticatedFetch(`${API_BASE}/api/levels`);
     await assertOk(response);
     return response.json();
   },
 
   async getDriverApplications(): Promise<AdminApplication[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/driver-applications`);
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/driver-applications`);
     await assertOk(response);
     return response.json();
   },
@@ -322,7 +321,7 @@ export const apiService = {
     userId: number,
     data: { status: VerificationStatus; notes?: string; inspection_date?: string }
   ): Promise<void> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/driver-applications/${userId}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/driver-applications/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -331,19 +330,19 @@ export const apiService = {
   },
 
   async getPendingWallet(): Promise<AdminWalletItem[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/pending`);
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/wallet/pending`);
     await assertOk(response);
     return response.json();
   },
 
   async getMyProfile(): Promise<MyProfile> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/profile`);
+    const response = await authenticatedFetch(`${API_BASE}/api/users/me/profile`);
     await assertOk(response);
     return response.json();
   },
 
   async updateMyProfile(changes: Partial<Pick<MyProfile, 'name' | 'last_name' | 'email' | 'phone'>>): Promise<MyProfile> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/profile`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/users/me/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
@@ -353,7 +352,7 @@ export const apiService = {
   },
 
   async getRideDetail(rideId: number): Promise<RideDetail> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/${rideId}/detail`);
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/${rideId}/detail`);
     await assertOk(response);
     return response.json();
   },
@@ -361,7 +360,7 @@ export const apiService = {
   async uploadRideReceipt(rideId: number, photo: Blob): Promise<void> {
     const form = new FormData();
     form.append('photo', photo);
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/${rideId}/receipt`, { method: 'POST', body: form });
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/${rideId}/receipt`, { method: 'POST', body: form });
     await assertOk(response);
   },
 
@@ -370,7 +369,7 @@ export const apiService = {
    * navegador se descarga con el token y se muestra como blob.
    */
   async rideReceiptSource(rideId: number): Promise<{ uri: string; headers?: Record<string, string> }> {
-    const uri = `${BACKEND_URL}/api/rides/${rideId}/receipt`;
+    const uri = `${API_BASE}/api/rides/${rideId}/receipt`;
     if (Platform.OS === 'web') {
       const response = await authenticatedFetch(uri);
       await assertOk(response);
@@ -383,13 +382,13 @@ export const apiService = {
   },
 
   async getFeStore(): Promise<FeStore> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store`);
+    const response = await authenticatedFetch(`${API_BASE}/api/fe-store`);
     await assertOk(response);
     return response.json();
   },
 
   async buyCoupon(percent: number): Promise<{ coupon: FeCoupon; points: number }> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store/coupons`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/fe-store/coupons`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ percent }),
@@ -403,19 +402,19 @@ export const apiService = {
     form.append('subject', subject);
     if (note) form.append('note', note);
     form.append('photo', photo);
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/fe-store/vouchers`, { method: 'POST', body: form });
+    const response = await authenticatedFetch(`${API_BASE}/api/fe-store/vouchers`, { method: 'POST', body: form });
     await assertOk(response);
     return response.json();
   },
 
   async getPendingVouchers(): Promise<AdminVoucher[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/vouchers`);
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/vouchers`);
     await assertOk(response);
     return response.json();
   },
 
   async reviewVoucher(id: number, action: 'aprobar' | 'rechazar', note?: string): Promise<void> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/vouchers/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/vouchers/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, note }),
@@ -426,13 +425,13 @@ export const apiService = {
   /** La evidencia es privada: se pide con el token del administrador. */
   async voucherEvidenceSource(id: number): Promise<{ uri: string; headers: Record<string, string> }> {
     return {
-      uri: `${BACKEND_URL}/api/admin/vouchers/${id}/evidence`,
+      uri: `${API_BASE}/api/admin/vouchers/${id}/evidence`,
       headers: { Authorization: `Bearer ${await getFirebaseIdToken()}` },
     };
   },
 
   async reviewWalletTransaction(id: number, action: 'aprobar' | 'rechazar', note?: string): Promise<void> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/transactions/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/wallet/transactions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, note }),
@@ -441,19 +440,19 @@ export const apiService = {
   },
 
   async getWallet(): Promise<WalletInfo> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/wallet`);
+    const response = await authenticatedFetch(`${API_BASE}/api/wallet`);
     await assertOk(response);
     return response.json();
   },
 
   async getQuizToday(): Promise<QuizToday> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/quiz/today`);
+    const response = await authenticatedFetch(`${API_BASE}/api/quiz/today`);
     await assertOk(response);
     return response.json();
   },
 
   async getLinks(): Promise<LinksInfo> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/links`);
+    const response = await authenticatedFetch(`${API_BASE}/api/links`);
     await assertOk(response);
     return response.json();
   },
@@ -467,7 +466,7 @@ export const apiService = {
   },
 
   async removeLink(linkId: number): Promise<void> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/links/${linkId}`, { method: 'DELETE' });
+    const response = await authenticatedFetch(`${API_BASE}/api/links/${linkId}`, { method: 'DELETE' });
     await assertOk(response);
   },
 
@@ -492,7 +491,7 @@ export const apiService = {
   },
 
   async getWorkshop(): Promise<WorkshopItem[]> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/wallet/workshop`);
+    const response = await authenticatedFetch(`${API_BASE}/api/wallet/workshop`);
     await assertOk(response);
     return response.json();
   },
@@ -502,14 +501,14 @@ export const apiService = {
   },
 
   async getLinksCount(): Promise<number> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/links`);
+    const response = await authenticatedFetch(`${API_BASE}/api/links`);
     await assertOk(response);
     const body = await response.json();
     return body.links.length;
   },
 
   async updateRideStatus(rideId: number, status: RideStatus): Promise<{ fe_awarded: number }> {
-    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/${rideId}/status`, {
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/${rideId}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -523,7 +522,7 @@ export const apiService = {
     review: ReviewSubmission
   ): Promise<{ points_earned: number }> {
     const response = await authenticatedFetch(
-      `${BACKEND_URL}/api/reviews?passenger_id=${passengerId}`,
+      `${API_BASE}/api/reviews?passenger_id=${passengerId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -540,7 +539,7 @@ export const apiService = {
   },
 
   async getRewards(): Promise<Reward[]> {
-    const response = await fetch(`${BACKEND_URL}/api/gamification/rewards`);
+    const response = await fetch(`${API_BASE}/api/gamification/rewards`);
     await assertOk(response);
     return response.json();
   },
@@ -550,7 +549,7 @@ export const apiService = {
     rewardId: number
   ): Promise<{ message: string; new_balance: number; discount_code: string }> {
     const response = await authenticatedFetch(
-      `${BACKEND_URL}/api/gamification/redeem?user_id=${userId}`,
+      `${API_BASE}/api/gamification/redeem?user_id=${userId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

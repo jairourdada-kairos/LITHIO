@@ -11,12 +11,11 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { authenticatedFetch } from './firebase';
 import { API_BASE } from '../config/api';
 
-const BACKEND_URL = API_BASE;
 
 /** Las fotos subidas a LITHIO llegan como ruta relativa (/media/...). */
 export function resolveMediaUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
-  return url.startsWith('/') ? `${BACKEND_URL}${url}` : url;
+  return url.startsWith('/') ? `${API_BASE}${url}` : url;
 }
 
 export type AvatarSource = 'camera' | 'library';
@@ -112,7 +111,7 @@ export async function uploadAvatar(uri: string): Promise<string> {
   form.append('photo', await photoFormValue(uri, 'avatar.jpg'));
   let response: Response;
   try {
-    response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/avatar`, { method: 'POST', body: form });
+    response = await authenticatedFetch(`${API_BASE}/api/users/me/avatar`, { method: 'POST', body: form });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     throw new Error(
@@ -127,6 +126,6 @@ export async function uploadAvatar(uri: string): Promise<string> {
 }
 
 export async function deleteAvatar(): Promise<void> {
-  const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me/avatar`, { method: 'DELETE' });
+  const response = await authenticatedFetch(`${API_BASE}/api/users/me/avatar`, { method: 'DELETE' });
   if (!response.ok) throw new Error(await readError(response));
 }

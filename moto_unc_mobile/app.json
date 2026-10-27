@@ -37,7 +37,14 @@
           "cameraPermission": "LITHIO usa la cámara para tomar tu foto de perfil."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "color": "#45D6C5",
+          "defaultChannel": "default"
+        }
+      ]
     ]
   }
 }

@@ -39,3 +39,6 @@ moto_unc_mobile/.expo/
 moto_unc_mobile/node_modules/
 moto_unc_backend/media/
 moto_unc_backend/evidence/
+
+# Firebase para Android (se envía a EAS como variable de archivo)
+moto_unc_mobile/google-services.json

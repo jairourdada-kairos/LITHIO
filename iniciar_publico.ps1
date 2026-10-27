@@ -58,6 +58,12 @@ for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
 if (-not $ok) { Write-Host "Aviso: $url aun no responde; puede tardar unos segundos mas." -ForegroundColor Yellow }
 Write-Host "Servidor publico: $url" -ForegroundColor Green
 
+# El APK lee esta direccion desde Firebase al abrirse (cambia en cada arranque).
+Push-Location (Join-Path $Root 'moto_unc_backend')
+& .\venv\Scripts\python.exe -m app.publish_address $url
+if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: el APK no sabra la direccion nueva hasta configurar Firestore (ver DESPLIEGUE.md).' -ForegroundColor Yellow }
+Pop-Location
+
 # La app tambien sale por Cloudflare (https). El tunel de Expo fallaba: se caia
 # con error 409 y redirigia de http a https, y algunos telefonos no lo cargaban.
 Write-Host '==> 3/3 App por Cloudflare (espera el QR)' -ForegroundColor Cyan

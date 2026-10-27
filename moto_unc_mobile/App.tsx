@@ -1,6 +1,6 @@
 import { FeedbackHost, installAlertBridge } from './src/components/ui/Feedback';
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View, Alert, StatusBar } from 'react-native';
+import { StyleSheet, View, Alert, StatusBar, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -16,6 +16,8 @@ import { ThemeModeProvider } from './src/theme/ThemeMode';
 import { AuthUser } from './src/services/auth';
 import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { onSessionReplaced } from './src/services/deviceSession';
+import { initApiBase } from './src/config/api';
+import { registerForPush, unregisterPush } from './src/services/notifications';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -74,13 +76,24 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
 
   useEffect(() => {
     let cancelled = false;
-    restoreSession().then((restored) => {
-      if (cancelled) return;
-      if (restored) setSession(restored);
-      setAuthStep('welcome');
+    // En el APK, primero se averigua la dirección vigente del servidor.
+    initApiBase()
+      .then(restoreSession)
+      .then((restored) => {
+        if (cancelled) return;
+        if (restored) {
+          setSession(restored);
+          void registerForPush();
+        }
+        setAuthStep('welcome');
+      });
+    // Al volver a la app, la dirección pudo cambiar (se reinició el modo público).
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void initApiBase();
     });
     return () => {
       cancelled = true;
+      sub.remove();
     };
   }, []);
 
@@ -100,6 +113,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     }
     await saveSessionRole(role);
     setSession({ user, role });
+    void registerForPush();
   };
 
   // Política de sesión única: si la cuenta se abre en otro dispositivo, este sale.
@@ -118,6 +132,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   );
 
   const endSession = useCallback(async () => {
+    await unregisterPush();
     await signOut();
     setSession(null);
     setAuthStep('welcome');

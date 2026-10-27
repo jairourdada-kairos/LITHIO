@@ -8,7 +8,6 @@
 import { useEffect, useState } from 'react';
 import { API_BASE } from '../config/api';
 
-const BACKEND_URL = API_BASE;
 
 export interface BcvRate {
   rate: number;
@@ -21,7 +20,7 @@ let cached: Promise<BcvRate | null> | null = null;
 
 function loadRate(): Promise<BcvRate | null> {
   if (!cached) {
-    cached = fetch(`${BACKEND_URL}/api/rates/bcv`)
+    cached = fetch(`${API_BASE}/api/rates/bcv`)
       .then((response) => (response.ok ? (response.json() as Promise<BcvRate>) : null))
       .catch(() => null)
       .then((rate) => {
