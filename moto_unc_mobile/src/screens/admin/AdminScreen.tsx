@@ -4,6 +4,7 @@
  * Conductores: revisar datos → citar inspección → dar luz verde, o rechazar.
  * Billetera: aprobar o rechazar recargas, retiros y canjes del taller.
  * Vales: revisar la evidencia del vale «Pasar con 20».
+ * Rutas: crear, editar o eliminar rutas y sus tarifas.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -16,10 +17,13 @@ import { Avatar } from '../../components/ui/Avatar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { PromptConfig, PromptSheet } from '../../components/ui/PromptSheet';
 import { AdminApplication, AdminVoucher, AdminWalletItem, apiService, VerificationStatus } from '../../services/api';
+import { RouteDraft, RouteFormSheet } from '../../components/admin/RouteFormSheet';
+import { formatBs, useBcvRate } from '../../services/rates';
+import type { PresetRoute } from '../../types';
 
-type Section = 'drivers' | 'wallet' | 'vouchers';
+type Section = 'drivers' | 'wallet' | 'vouchers' | 'routes';
 
-const SECTION_LABEL: Record<Section, string> = { drivers: 'Postulaciones', wallet: 'Billetera', vouchers: 'Vales' };
+const SECTION_LABEL: Record<Section, string> = { drivers: 'Postulaciones', wallet: 'Billetera', vouchers: 'Vales', routes: 'Rutas' };
 
 const STATUS_LABEL: Record<VerificationStatus, string> = {
   pendiente: 'Nueva',
@@ -45,6 +49,10 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [applications, setApplications] = useState<AdminApplication[]>([]);
   const [walletItems, setWalletItems] = useState<AdminWalletItem[]>([]);
   const [vouchers, setVouchers] = useState<AdminVoucher[]>([]);
+  const [routes, setRoutes] = useState<PresetRoute[]>([]);
+  // undefined: formulario cerrado; null: ruta nueva; objeto: ruta a editar.
+  const [editingRoute, setEditingRoute] = useState<PresetRoute | null | undefined>(undefined);
+  const bcv = useBcvRate();
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<PromptConfig | null>(null);
@@ -52,14 +60,16 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [apps, wallet, pendingVouchers] = await Promise.all([
+      const [apps, wallet, pendingVouchers, routeList] = await Promise.all([
         apiService.getDriverApplications(),
         apiService.getPendingWallet(),
         apiService.getPendingVouchers(),
+        apiService.getPresetRoutes(),
       ]);
       setApplications(apps);
       setWalletItems(wallet);
       setVouchers(pendingVouchers);
+      setRoutes(routeList);
     } catch (error) {
       Alert.alert('No se pudo cargar la administración', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
@@ -154,6 +164,18 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     void run(`v${voucher.id}`, () => apiService.reviewVoucher(voucher.id, 'aprobar'));
   };
 
+  const saveRoute = async (draft: RouteDraft) => {
+    if (editingRoute) await apiService.updateRoute(editingRoute.id, draft);
+    else await apiService.createRoute(draft);
+    await load();
+  };
+
+  const removeRoute = (route: PresetRoute) =>
+    Alert.alert('Eliminar ruta', `${route.origin} → ${route.destination} dejará de aparecer para los pasajeros. Los viajes ya hechos no cambian.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => void run(`r${route.id}`, () => apiService.deleteRoute(route.id)) },
+    ]);
+
   const counts = {
     drivers: applications.filter((a) => a.status !== 'rechazado').length,
     topups: walletItems.filter((w) => w.kind === 'recarga').length,
@@ -174,7 +196,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </View>
 
         <View style={styles.segment}>
-          {(['drivers', 'wallet', 'vouchers'] as Section[]).map((value) => {
+          {(['drivers', 'wallet', 'vouchers', 'routes'] as Section[]).map((value) => {
             const selected = section === value;
             return (
               <Pressable
@@ -234,6 +256,52 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               );
             })
           )
+        ) : section === 'routes' ? (
+          <>
+            <PressableScale
+              style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]}
+              onPress={() => setEditingRoute(null)}
+              accessibilityLabel="Crear una ruta nueva"
+            >
+              <Text style={[styles.primaryText, { color: theme.colors.onSecondary }]}>+ Nueva ruta</Text>
+            </PressableScale>
+            {routes.length === 0 ? (
+              <Empty icon="map-marker-path" text="No hay rutas. Crea la primera." />
+            ) : (
+              routes.map((route) => {
+                const busy = busyId === `r${route.id}`;
+                return (
+                  <View key={route.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.kindIcon}>
+                        <MaterialCommunityIcons name="map-marker-path" size={20} color={theme.colors.secondary} />
+                      </View>
+                      <View style={styles.flex}>
+                        <Text style={styles.name}>{route.origin} → {route.destination}</Text>
+                        <Text style={styles.muted}>
+                          ${route.fare_usd.toFixed(2)}{bcv ? ` · ${formatBs(route.fare_usd, bcv)}` : ''} · {route.estimated_minutes} min
+                          {route.tag ? ` · ${route.tag}` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.actions}>
+                      <PressableScale containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => removeRoute(route)} disabled={busy}>
+                        <Text style={styles.secondaryText}>{busy ? 'Eliminando…' : 'Eliminar'}</Text>
+                      </PressableScale>
+                      <PressableScale
+                        containerStyle={styles.flex2}
+                        style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]}
+                        onPress={() => setEditingRoute(route)}
+                        disabled={busy}
+                      >
+                        <Text style={[styles.primaryText, { color: theme.colors.onSecondary }]}>Editar precio o datos</Text>
+                      </PressableScale>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </>
         ) : section === 'vouchers' ? (
           vouchers.length === 0 ? (
             <Empty icon="school-outline" text="No hay vales «Pasar con 20» por revisar." />
@@ -300,6 +368,12 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         )}
       </ScrollView>
       <PromptSheet config={prompt} onClose={() => setPrompt(null)} />
+      <RouteFormSheet
+        visible={editingRoute !== undefined}
+        route={editingRoute ?? null}
+        onClose={() => setEditingRoute(undefined)}
+        onSubmit={saveRoute}
+      />
     </View>
   );
 };

@@ -229,6 +229,31 @@ async function assertOk(response: Response): Promise<void> {
 }
 
 export const apiService = {
+  async createRoute(route: Omit<PresetRoute, 'id' | 'popular' | 'tag'> & { tag: string | null }): Promise<PresetRoute> {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/routes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(route),
+    });
+    await assertOk(response);
+    return response.json();
+  },
+
+  async updateRoute(id: number, route: Partial<Omit<PresetRoute, 'id' | 'tag'>> & { tag?: string | null }): Promise<PresetRoute> {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/routes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(route),
+    });
+    await assertOk(response);
+    return response.json();
+  },
+
+  async deleteRoute(id: number): Promise<void> {
+    const response = await authenticatedFetch(`${API_BASE}/api/admin/routes/${id}`, { method: 'DELETE' });
+    await assertOk(response);
+  },
+
   async getPresetRoutes(): Promise<PresetRoute[]> {
     const response = await fetch(`${API_BASE}/api/routes`);
     await assertOk(response);
