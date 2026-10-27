@@ -8,6 +8,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List, Dict, Set
+import hashlib
+import hmac
 import json
 import asyncio
 import os
@@ -36,7 +38,7 @@ from .schemas import (
     AdminRewardResponse,
     ToggleAvailabilityRequest, RideCreate, RideStatusUpdate,
     RideResponse, ReviewCreate, ReviewResponse,
-    RewardResponse, RedeemRewardRequest,
+    RewardResponse,
     PassengerRegisterRequest, DriverRegisterRequest
 )
 from .seed import seed_database
@@ -173,10 +175,29 @@ async def verify_whatsapp_webhook(request: Request):
     raise HTTPException(status_code=403, detail="Token de verificacion invalido")
 
 
+def whatsapp_signature_is_valid(raw_body: bytes, signature_header: str | None) -> bool:
+    """Meta firma cada POST con HMAC-SHA256 del cuerpo usando el App Secret.
+
+    Sin WHATSAPP_APP_SECRET configurado no se acepta nada: no hay forma de
+    saber si el mensaje viene de Meta.
+    """
+    secret = os.getenv("WHATSAPP_APP_SECRET", "")
+    if not secret or not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header.removeprefix("sha256="))
+
+
 @app.post("/webhooks/whatsapp")
 async def receive_whatsapp_webhook(request: Request):
     """Recibe mensajes entrantes y actualizaciones de estado de WhatsApp."""
-    payload = await request.json()
+    raw_body = await request.body()
+    if not whatsapp_signature_is_valid(raw_body, request.headers.get("X-Hub-Signature-256")):
+        raise HTTPException(status_code=403, detail="Firma de WhatsApp no válida")
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Cuerpo no válido")
     print("WhatsApp webhook recibido:", payload.get("object", "unknown"))
     return {"received": True}
 
@@ -728,6 +749,8 @@ def switch_user_role(
         profile = db.query(DriverProfile).filter(DriverProfile.user_id == user_id).first()
         if not profile:
             raise HTTPException(status_code=400, detail="Debes registrar un perfil de conductor primero.")
+        if profile.verification_status != "aprobado":
+            raise HTTPException(status_code=403, detail="Tu postulación de conductor debe estar aprobada.")
     user.role = req.new_role
     db.commit()
     return {"message": f"Rol cambiado a {req.new_role}", "role": user.role}
@@ -1400,37 +1423,6 @@ def create_review(
 def get_rewards(db: Session = Depends(get_db)):
     """Retorna las recompensas disponibles para canjear con Fe."""
     return db.query(Reward).filter(Reward.is_active == True).all()
-
-@app.post("/api/gamification/redeem")
-def redeem_reward(
-    user_id: int,
-    req: RedeemRewardRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Canjea una recompensa descontando Fe del usuario."""
-    if user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Solo puedes canjear recompensas para tu cuenta.")
-    user = db.query(User).filter(User.id == user_id).first()
-    reward = db.query(Reward).filter(Reward.id == req.reward_id).first()
-
-    if not user or not reward:
-        raise HTTPException(status_code=404, detail="Usuario o recompensa no encontrada")
-
-    if user.points < reward.points_cost:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Fe insuficiente. Tienes {user.points} Fe y necesitas {reward.points_cost} Fe."
-        )
-
-    user.points -= reward.points_cost
-    db.commit()
-
-    return {
-        "message": f"¡Recompensa '{reward.title}' canjeada con éxito!",
-        "new_balance": user.points,
-        "discount_code": f"LITHIO-{reward.discount_percent}OFF-{user_id}"
-    }
 
 @app.get("/api/gamification/leaderboard")
 def get_leaderboard(db: Session = Depends(get_db)):

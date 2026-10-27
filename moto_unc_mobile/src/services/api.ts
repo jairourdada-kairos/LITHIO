@@ -544,19 +544,4 @@ export const apiService = {
     return response.json();
   },
 
-  async redeemReward(
-    userId: number,
-    rewardId: number
-  ): Promise<{ message: string; new_balance: number; discount_code: string }> {
-    const response = await authenticatedFetch(
-      `${API_BASE}/api/gamification/redeem?user_id=${userId}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reward_id: rewardId }),
-      }
-    );
-    await assertOk(response);
-    return response.json();
-  },
 };

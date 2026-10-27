@@ -12,9 +12,6 @@ class UserBase(BaseModel):
     phone: str
     role: str = "pasajero"
 
-class UserCreate(UserBase):
-    password: Optional[str] = "123456"
-
 # --- REGISTRO: CAMPOS COMUNES A PASAJERO Y CONDUCTOR ---
 class RegistrationFields(BaseModel):
     """Datos obligatorios de identidad. Ver reglas en validation.py."""
@@ -246,5 +243,3 @@ class RewardResponse(BaseModel):
     icon: str
     is_active: bool
 
-class RedeemRewardRequest(BaseModel):
-    reward_id: int

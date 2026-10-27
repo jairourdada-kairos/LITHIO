@@ -189,3 +189,36 @@ def test_fcm_tokens_go_straight_to_firebase_and_expo_tokens_to_expo(client, monk
     ])
     assert [m["to"] for m in to_fcm] == [fcm_token]
     assert [m["to"] for m in to_expo] == [TOKEN_PASSENGER]
+
+
+# --- Auditoría: prioridad 1 --------------------------------------------------------
+
+def test_whatsapp_webhook_requires_meta_signature(client, monkeypatch):
+    import hashlib
+    import hmac
+
+    body = b'{"object": "whatsapp_business_account"}'
+    assert client.post("/webhooks/whatsapp", content=body).status_code == 403  # Sin secreto configurado
+
+    monkeypatch.setenv("WHATSAPP_APP_SECRET", "secreto-de-prueba")
+    good = "sha256=" + hmac.new(b"secreto-de-prueba", body, hashlib.sha256).hexdigest()
+    assert client.post("/webhooks/whatsapp", content=body).status_code == 403
+    assert client.post("/webhooks/whatsapp", content=body, headers={"X-Hub-Signature-256": "sha256=falsa"}).status_code == 403
+    assert client.post("/webhooks/whatsapp", content=body + b" ", headers={"X-Hub-Signature-256": good}).status_code == 403
+    assert client.post("/webhooks/whatsapp", content=body, headers={"X-Hub-Signature-256": good}).json() == {"received": True}
+
+
+def test_switch_to_driver_requires_approved_application(client):
+    from app.database import get_db
+    from app.main import app
+    from app.models import DriverProfile
+
+    db = next(app.dependency_overrides[get_db]())
+    profile = db.query(DriverProfile).filter(DriverProfile.user_id == 1).first()
+    profile.verification_status = "rechazado"
+    db.commit()
+    assert client.post("/api/users/1/switch-role", json={"new_role": "conductor"}, headers=auth_headers(1)).status_code == 403
+
+    profile.verification_status = "aprobado"
+    db.commit()
+    assert client.post("/api/users/1/switch-role", json={"new_role": "conductor"}, headers=auth_headers(1)).status_code == 200

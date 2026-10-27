@@ -541,24 +541,10 @@ def test_review_and_payment_validation(client):
     assert unsupported_payment.status_code == 400
 
 
-def test_rewards_are_public_but_redemption_is_owner_only(client):
-    rewards = client.get("/api/gamification/rewards")
-    assert rewards.status_code == 200
-    reward_id = rewards.json()[0]["id"]
-
-    denied = client.post(
-        "/api/gamification/redeem?user_id=4",
-        json={"reward_id": reward_id},
-        headers=auth_headers(2),
-    )
-    assert denied.status_code == 403
-
-    redeemed = client.post(
-        "/api/gamification/redeem?user_id=4",
-        json={"reward_id": reward_id},
-        headers=auth_headers(4),
-    )
-    assert redeemed.status_code == 200
+def test_rewards_are_public_and_legacy_redeem_is_gone(client):
+    assert client.get("/api/gamification/rewards").status_code == 200
+    # El canje viejo se reemplazó por la tienda de Fe (/api/fe-store).
+    assert client.post("/api/gamification/redeem?user_id=4", json={"reward_id": 1}, headers=auth_headers(4)).status_code == 404
 
 
 def test_admin_routes_require_admin_role(client):
