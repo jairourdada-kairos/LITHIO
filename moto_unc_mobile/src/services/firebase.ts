@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { getDeviceSession, notifySessionReplaced } from './deviceSession';
 import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
@@ -64,5 +65,10 @@ export async function authenticatedFetch(
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${await getFirebaseIdToken()}`);
-  return fetch(url, { ...init, headers });
+  const sessionId = getDeviceSession();
+  if (sessionId) headers.set('X-Session-Id', sessionId);
+  const response = await fetch(url, { ...init, headers });
+  // Otro dispositivo inició sesión con esta cuenta: este la cierra.
+  if (response.status === 401 && response.headers.get('X-Session-Replaced')) notifySessionReplaced();
+  return response;
 }

@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from '@firebase/auth';
 import { getFirebaseAuth, authenticatedFetch } from './firebase';
 import { wsService } from './websocket';
+import { loadDeviceSession, setDeviceSession } from './deviceSession';
 import type { AuthUser } from './auth';
 
 export type SessionRole = 'pasajero' | 'conductor';
@@ -36,8 +37,17 @@ export async function saveSessionRole(role: SessionRole): Promise<void> {
   }
 }
 
+/** Toma la cuenta para este dispositivo: cualquier otro queda desconectado. */
+export async function claimDeviceSession(): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE}/api/sessions`, { method: 'POST' });
+  if (!response.ok) throw new Error('No se pudo iniciar la sesión en este dispositivo. Intenta de nuevo.');
+  const body = await response.json();
+  await setDeviceSession(body.session_id);
+}
+
 export async function signOut(): Promise<void> {
   wsService.disconnect();
+  await setDeviceSession(null);
   try {
     await AsyncStorage.removeItem(ROLE_KEY);
   } catch {
@@ -66,6 +76,8 @@ export async function restoreSession(): Promise<{ user: AuthUser; role: SessionR
     if (role !== 'pasajero' && role !== 'conductor') return null;
     const firebaseUser = await firstAuthState();
     if (!firebaseUser) return null;
+    // Sin sesión de dispositivo guardada (o reemplazada): hay que entrar de nuevo.
+    if (!(await loadDeviceSession())) return null;
 
     const response = await authenticatedFetch(`${API_BASE}/api/users/me`);
     if (!response.ok) return null;

@@ -27,6 +27,7 @@ from .auth import (
     get_user_for_identity,
     is_admin,
     require_admin,
+    session_is_current,
     verify_firebase_token,
 )
 from .schemas import (
@@ -99,7 +100,9 @@ app.add_middleware(
     allow_origin_regex=None if config.IS_PRODUCTION else r"https://[a-z0-9-]+\.trycloudflare\.com",
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Session-Id"],
+    # La app web necesita leerla para cerrar la sesión cuando otro dispositivo entra.
+    expose_headers=["X-Session-Replaced"],
 )
 
 # Montar Dashboard Web (HTML / CSS / JS)
@@ -246,13 +249,18 @@ async def websocket_endpoint(websocket: WebSocket):
         db = SessionLocal()
         try:
             user = get_user_for_identity(identity, db)
+            session_id = auth_message.get("session_id") if isinstance(auth_message.get("session_id"), str) else None
+            if not session_is_current(user, session_id):
+                await websocket.send_json({"type": "SESSION_REPLACED"})
+                await websocket.close(code=4001, reason="Sesión iniciada en otro dispositivo")
+                return
             user_id = user.id
             active_ride = get_active_ride(db, user_id)
             snapshot = serialize_ride_for_socket(active_ride) if active_ride else None
         finally:
             db.close()
 
-        manager.connect(user_id, websocket)
+        manager.connect(user_id, websocket, session_id)
         await websocket.send_json({"type": "AUTHENTICATED", "user_id": user_id})
         # Tras cada (re)conexión el cliente recibe el viaje activo para
         # recuperar cualquier cambio de estado que se perdió estando offline.

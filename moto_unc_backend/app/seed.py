@@ -87,6 +87,7 @@ ADDED_COLUMNS = {
         "diamonds_cents": "INTEGER NOT NULL DEFAULT 0",
         "fe_lifetime": "INTEGER NOT NULL DEFAULT 0",
         "friend_code": "VARCHAR(12)",
+        "active_session_id": "VARCHAR(64)",
     },
     "driver_profiles": {
         "mobile_payment_bank": "TEXT",

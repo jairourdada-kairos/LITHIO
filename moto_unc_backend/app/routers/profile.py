@@ -5,11 +5,12 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
+from ..auth import get_current_user, get_current_user_any_session
 from ..config import MEDIA_DIR
 from ..database import get_db
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import User
+from ..realtime import manager
 
 router = APIRouter(prefix="/api", tags=["perfil"])
 
@@ -90,3 +91,17 @@ def levels(user: User = Depends(get_current_user)):
             for z, (symbol, name) in enumerate(ELEMENTS, start=1)
         ],
     }
+
+
+@router.post("/sessions", status_code=201)
+async def start_session(user: User = Depends(get_current_user_any_session), db: Session = Depends(get_db)):
+    """Inicia sesión en este dispositivo y cierra la de cualquier otro.
+
+    Política de sesión única: el último dispositivo que entra se queda con la
+    cuenta. Los demás reciben SESSION_REPLACED por WebSocket y, en adelante,
+    sus peticiones con el identificador viejo responden 401.
+    """
+    user.active_session_id = secrets.token_urlsafe(24)
+    db.commit()
+    await manager.close_other_sessions(user.id, user.active_session_id)
+    return {"session_id": user.active_session_id}

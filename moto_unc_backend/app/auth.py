@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import firebase_admin
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth as firebase_auth
 from firebase_admin.exceptions import FirebaseError
@@ -130,11 +130,34 @@ def get_user_for_identity(identity: FirebaseIdentity, db: Session) -> User:
     )
 
 
-def get_current_user(
+SESSION_HEADER = "X-Session-Id"
+SESSION_REPLACED = "Tu cuenta se abrió en otro dispositivo. Vuelve a iniciar sesión para usarla aquí."
+
+
+def session_is_current(user: User, session_id: str | None) -> bool:
+    """Política de sesión única: gana el último dispositivo que inició sesión.
+
+    Un cliente sin identificador de sesión (p. ej. el panel web de
+    administración) no compite por la sesión de la app y se acepta.
+    """
+    return not session_id or not user.active_session_id or session_id == user.active_session_id
+
+
+def get_current_user_any_session(
     identity: FirebaseIdentity = Depends(get_firebase_identity),
     db: Session = Depends(get_db),
 ) -> User:
+    """Usuario autenticado sin comprobar la sesión (solo para iniciar una nueva)."""
     return get_user_for_identity(identity, db)
+
+
+def get_current_user(
+    request: Request,
+    user: User = Depends(get_current_user_any_session),
+) -> User:
+    if not session_is_current(user, request.headers.get(SESSION_HEADER)):
+        raise HTTPException(status_code=401, detail=SESSION_REPLACED, headers={"X-Session-Replaced": "1"})
+    return user
 
 
 def is_admin(user: User) -> bool:

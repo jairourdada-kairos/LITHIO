@@ -22,6 +22,8 @@ class User(Base):
     role = Column(String, default="pasajero")  # 'pasajero', 'conductor', 'ambos'
     avatar_url = Column(String, nullable=True)
     points = Column(Integer, default=100)  # Bono de bienvenida de 100 puntos
+    # Sesión única: solo el dispositivo con este identificador puede usar la cuenta.
+    active_session_id = Column(String(64), nullable=True)
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
     # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.

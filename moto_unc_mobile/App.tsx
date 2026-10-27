@@ -14,7 +14,8 @@ import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/spac
 import { ColorScheme, theme, themed } from './src/constants/theme';
 import { ThemeModeProvider } from './src/theme/ThemeMode';
 import { AuthUser } from './src/services/auth';
-import { restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
+import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
+import { onSessionReplaced } from './src/services/deviceSession';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -90,9 +91,31 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
       Alert.alert('No puedes entrar con este rol', denied);
       return;
     }
+    try {
+      await claimDeviceSession();
+    } catch (error) {
+      await signOut();
+      Alert.alert('No se pudo iniciar sesión', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      return;
+    }
     await saveSessionRole(role);
     setSession({ user, role });
   };
+
+  // Política de sesión única: si la cuenta se abre en otro dispositivo, este sale.
+  useEffect(
+    () =>
+      onSessionReplaced(() => {
+        void signOut();
+        setSession(null);
+        setAuthStep('welcome');
+        Alert.alert(
+          'Tu cuenta se abrió en otro dispositivo',
+          'Por seguridad, LITHIO solo permite una sesión a la vez. Si fuiste tú, sigue en el otro dispositivo; si no, entra aquí y cambia tu contraseña.'
+        );
+      }),
+    []
+  );
 
   const endSession = useCallback(async () => {
     await signOut();

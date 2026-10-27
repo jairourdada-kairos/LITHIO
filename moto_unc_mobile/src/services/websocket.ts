@@ -9,6 +9,7 @@
  */
 
 import { getFirebaseIdToken } from './firebase';
+import { getDeviceSession, notifySessionReplaced } from './deviceSession';
 
 const WS_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://172.17.101.213:8000').replace(/^http/, 'ws');
 
@@ -18,6 +19,7 @@ const MAX_BACKOFF_MS = 30_000;
 
 export type WSMessageType =
   | 'AUTHENTICATED'
+  | 'SESSION_REPLACED'
   | 'ACTIVE_RIDE_SYNC'
   | 'NEW_RIDE_REQUEST'
   | 'RIDE_STATUS_UPDATED'
@@ -73,7 +75,7 @@ class WebSocketService {
     this.socket = socket;
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({ type: 'AUTH', token }));
+      socket.send(JSON.stringify({ type: 'AUTH', token, session_id: getDeviceSession() }));
     };
 
     socket.onmessage = (event) => {
@@ -87,6 +89,12 @@ class WebSocketService {
         this.attempts = 0;
         this.setConnected(true);
         this.startHeartbeat();
+        return;
+      }
+      if (msg.type === 'SESSION_REPLACED') {
+        // La cuenta se abrió en otro dispositivo: no se reconecta.
+        this.disconnect();
+        notifySessionReplaced();
         return;
       }
       if (msg.type === 'PONG') {

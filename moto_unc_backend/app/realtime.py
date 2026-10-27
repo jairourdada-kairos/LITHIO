@@ -17,15 +17,19 @@ class ConnectionManager:
     def __init__(self):
         # Mapea user_id -> conexiones abiertas
         self.active_connections: Dict[int, Set[WebSocket]] = {}
+        # Sesión con la que se autenticó cada conexión (política de sesión única).
+        self.sessions: Dict[WebSocket, str | None] = {}
 
-    def connect(self, user_id: int, websocket: WebSocket):
+    def connect(self, user_id: int, websocket: WebSocket, session_id: str | None = None):
         self.active_connections.setdefault(user_id, set()).add(websocket)
+        self.sessions[websocket] = session_id
 
     def disconnect(self, user_id: int, websocket: WebSocket):
         connections = self.active_connections.get(user_id)
         if connections is None:
             return
         connections.discard(websocket)
+        self.sessions.pop(websocket, None)
         if not connections:
             del self.active_connections[user_id]
 
@@ -42,6 +46,19 @@ class ConnectionManager:
         payload = json.dumps(message, default=str)
         for connection in list(self.active_connections.get(user_id, ())):
             await self._send(user_id, connection, payload)
+
+    async def close_other_sessions(self, user_id: int, session_id: str):
+        """Avisa y desconecta los dispositivos de esta cuenta con otra sesión."""
+        payload = json.dumps({"type": "SESSION_REPLACED"})
+        for connection in list(self.active_connections.get(user_id, ())):
+            if self.sessions.get(connection) == session_id:
+                continue
+            await self._send(user_id, connection, payload)
+            try:
+                await connection.close(code=4001, reason="Sesión iniciada en otro dispositivo")
+            except (RuntimeError, OSError):
+                pass
+            self.disconnect(user_id, connection)
 
     async def broadcast(self, message: dict):
         payload = json.dumps(message, default=str)
