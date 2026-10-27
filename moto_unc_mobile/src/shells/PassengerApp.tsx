@@ -21,6 +21,7 @@ import { ActiveRideCard } from '../components/ActiveRideCard';
 import { RequestRideModal } from '../components/RequestRideModal';
 import { ReviewModal } from '../components/ReviewModal';
 import { FeStoreModal } from '../components/FeStoreModal';
+import { photoFormValue } from '../services/avatar';
 import { AboutLithioModal } from '../components/AboutLithioModal';
 import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { PassengerHome } from '../screens/passenger/PassengerHome';
@@ -153,7 +154,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     setOverlay({ type: 'trip', ...options });
   };
 
-  const confirmRide = async (paymentMethod: PaymentMethod, reference?: string, couponId?: number) => {
+  const confirmRide = async (paymentMethod: PaymentMethod, reference?: string, couponId?: number, receiptUri?: string) => {
     if (!pending) return;
     const { driver, selection } = pending;
     try {
@@ -171,6 +172,14 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
       rides.setActiveRide(ride);
       setPending(null);
       setOverlay({ type: 'ride' });
+      if (receiptUri) {
+        // El viaje ya quedó pedido; si falla la captura, se puede adjuntar desde el historial.
+        photoFormValue(receiptUri, 'comprobante.jpg')
+          .then((photo) => apiService.uploadRideReceipt(ride.id, photo))
+          .catch(() =>
+            Alert.alert('No se pudo adjuntar el comprobante', 'Tu viaje sí quedó pedido. Adjunta la captura desde Viajes → detalle del viaje.')
+          );
+      }
     } catch (error) {
       Alert.alert('No se pudo solicitar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }

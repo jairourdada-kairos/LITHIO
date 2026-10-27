@@ -214,6 +214,7 @@ class RideResponse(BaseModel):
     driver_mobile_payment_id: Optional[str] = None
     driver_bank_account_number: Optional[str] = None
     driver_binance_address: Optional[str] = None
+    has_receipt: bool = False
 
 # --- RESEÑAS & GAMIFICACIÓN ---
 class ReviewCreate(BaseModel):

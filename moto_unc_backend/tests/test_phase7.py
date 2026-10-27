@@ -43,3 +43,51 @@ def test_websocket_rejects_and_kicks_old_sessions(client):
     with client.websocket_connect("/ws") as current:
         current.send_json({"type": "AUTH", "token": "test-user-1", "session_id": second})
         assert current.receive_json()["type"] == "AUTHENTICATED"
+
+
+# --- 3 y 5. Comprobante y detalle del viaje ----------------------------------------
+
+from tests.test_phase4a import ADMIN, PNG  # noqa: E402
+
+
+def make_ride(client, payment="pago_movil"):
+    return client.post(
+        "/api/rides?passenger_id=4",
+        json={"driver_id": 1, "origin": "UNC", "destination": "IVIC", "payment_method": payment,
+              "payment_reference": "123456", "fare_amount": 2},
+        headers=auth_headers(4),
+    ).json()
+
+
+def test_receipt_is_private_and_linked_to_the_ride(client):
+    ride = make_ride(client)
+    photo = {"photo": ("pago.png", PNG, "image/png")}
+    assert client.post(f"/api/rides/{ride['id']}/receipt", files=photo, headers=auth_headers(1)).status_code == 403
+    assert client.post(f"/api/rides/{ride['id']}/receipt", files={"photo": ("x.png", b"nope", "image/png")},
+                       headers=auth_headers(4)).status_code == 400
+    assert client.post(f"/api/rides/{ride['id']}/receipt", files=photo, headers=auth_headers(4)).json()["has_receipt"]
+
+    # Pasajero, conductor y administrador lo ven; nadie más, y no está en /media.
+    for headers in (auth_headers(4), auth_headers(1), ADMIN):
+        assert client.get(f"/api/rides/{ride['id']}/receipt", headers=headers).content == PNG
+    assert client.get(f"/api/rides/{ride['id']}/receipt", headers=auth_headers(2)).status_code == 404
+
+
+def test_ride_detail_shows_timeline_receipt_and_review(client):
+    ride = make_ride(client)
+    for status in ("aceptado", "en_camino", "en_curso", "completado"):
+        client.put(f"/api/rides/{ride['id']}/status", json={"status": status}, headers=auth_headers(1))
+    client.post(f"/api/rides/{ride['id']}/receipt", files={"photo": ("p.png", PNG, "image/png")}, headers=auth_headers(4))
+
+    detail = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(4)).json()
+    assert [t["status"] for t in detail["timeline"]] == ["solicitado", "aceptado", "en_camino", "en_curso", "completado"]
+    assert detail["has_receipt"] and detail["payment_reference"] == "123456"
+    assert detail["viewer_role"] == "pasajero" and detail["can_upload_receipt"]
+    assert detail["driver"]["plate"]
+
+    as_driver = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(1)).json()
+    assert as_driver["viewer_role"] == "conductor" and not as_driver["can_upload_receipt"]
+    assert client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(2)).status_code == 404
+
+    history = client.get("/api/rides/mine?scope=history&role=pasajero", headers=auth_headers(4)).json()
+    assert history[0]["id"] == ride["id"] and history[0]["has_receipt"]

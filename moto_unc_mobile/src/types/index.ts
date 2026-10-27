@@ -56,6 +56,7 @@ export interface Ride {
   driver_mobile_payment_id?: string;
   driver_bank_account_number?: string;
   driver_binance_address?: string;
+  has_receipt?: boolean;
 }
 
 export interface PresetRoute {

@@ -89,6 +89,11 @@ ADDED_COLUMNS = {
         "friend_code": "VARCHAR(12)",
         "active_session_id": "VARCHAR(64)",
     },
+    "rides": {
+        "status_log": "TEXT",
+        "receipt_file": "VARCHAR",
+        "receipt_uploaded_at": "TIMESTAMP",
+    },
     "driver_profiles": {
         "mobile_payment_bank": "TEXT",
         "mobile_payment_id": "TEXT",

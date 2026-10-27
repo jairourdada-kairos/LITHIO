@@ -99,6 +99,11 @@ class Ride(Base):
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
     points_rewarded = Column(Integer, default=50)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Línea de tiempo: JSON [{"status": "...", "at": "ISO"}] con cada cambio de estado.
+    status_log = Column(Text, nullable=True)
+    # Comprobante de pago (captura): archivo privado en EVIDENCE_DIR/receipts.
+    receipt_file = Column(String, nullable=True)
+    receipt_uploaded_at = Column(DateTime, nullable=True)
 
     passenger = relationship("User", foreign_keys=[passenger_id], back_populates="passenger_rides")
     driver = relationship("User", foreign_keys=[driver_id], back_populates="driver_rides")

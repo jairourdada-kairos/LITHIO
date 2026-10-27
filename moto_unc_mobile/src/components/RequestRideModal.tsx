@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView, Image } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
 import { apiService, FeCoupon } from '../services/api';
 import { formatBs, useBcvRate } from '../services/rates';
+import { pickDocumentPhoto } from '../services/avatar';
 
 interface RequestRideModalProps {
   visible: boolean;
@@ -15,7 +16,7 @@ interface RequestRideModalProps {
   scheduledTime: string;
   userPoints: number;
   onClose: () => void;
-  onConfirm: (paymentMethod: PaymentMethod, reference?: string, couponId?: number) => void;
+  onConfirm: (paymentMethod: PaymentMethod, reference?: string, couponId?: number, receiptUri?: string) => void;
 }
 
 export const RequestRideModal: React.FC<RequestRideModalProps> = ({
@@ -35,10 +36,12 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   const [reference, setReference] = useState('');
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
   const [couponId, setCouponId] = useState<number | undefined>(undefined);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     setCouponId(undefined);
+    setReceiptUri(null);
     apiService
       .getFeStore()
       .then((store) => setCoupons(store.coupons.filter((c) => c.status === 'activo')))
@@ -144,6 +147,19 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                 <Text style={styles.referenceHint}>
                   💡 Podrás transferirle al conductor al finalizar la carrera.
                 </Text>
+                <TouchableOpacity
+                  style={styles.receiptPick}
+                  onPress={async () => setReceiptUri((await pickDocumentPhoto()) ?? receiptUri)}
+                  accessibilityRole="button"
+                >
+                  {receiptUri ? (
+                    <Image source={{ uri: receiptUri }} style={styles.receiptThumb} />
+                  ) : null}
+                  <Text style={styles.receiptPickText}>
+                    {receiptUri ? 'Cambiar captura del pago' : 'Adjuntar captura del pago (opcional)'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.referenceHint}>También puedes adjuntarla después desde Viajes → detalle del viaje.</Text>
               </View>
             )}
 
@@ -195,7 +211,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => onConfirm(paymentMethod, reference, couponId)}
+              onPress={() => onConfirm(paymentMethod, reference, couponId, paymentMethod === 'pago_movil' ? receiptUri ?? undefined : undefined)}
               activeOpacity={0.85}
             >
               <Text style={styles.confirmBtnText}>
@@ -218,6 +234,28 @@ const styles = themed(() => ({
     fontSize: 12,
     color: theme.colors.textMuted,
     marginTop: 2,
+  },
+  receiptPick: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+    padding: 10,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.cardBorder,
+  },
+  receiptThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+  },
+  receiptPickText: {
+    flex: 1,
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+    color: theme.colors.primary,
   },
   couponBox: {
     marginBottom: 16,

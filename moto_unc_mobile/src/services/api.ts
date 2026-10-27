@@ -1,5 +1,7 @@
 import { Driver, Ride, RideStatus, Reward, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
+import { Platform } from 'react-native';
 import { authenticatedFetch, getFirebaseIdToken } from './firebase';
+import { getDeviceSession } from './deviceSession';
 import type { SessionRole } from './session';
 import type { Level, LevelElement } from '../utils/elements';
 
@@ -39,6 +41,41 @@ export interface AdminApplication extends DriverApplication {
   career: string | null;
   semester: string | null;
   license_number: string | null;
+}
+
+export interface RideTimelineEntry {
+  status: RideStatus;
+  at: string | null;
+}
+
+export interface RidePerson {
+  id: number;
+  name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface RideDetail {
+  id: number;
+  origin: string;
+  destination: string;
+  status: RideStatus;
+  created_at: string | null;
+  is_scheduled: boolean;
+  scheduled_time: string | null;
+  fare_amount: number;
+  coupon_percent: number | null;
+  payment_method: PaymentMethod;
+  payment_reference: string | null;
+  has_receipt: boolean;
+  receipt_uploaded_at: string | null;
+  can_upload_receipt: boolean;
+  fe_rewarded: number;
+  timeline: RideTimelineEntry[];
+  passenger: RidePerson;
+  driver: RidePerson & { moto: string | null; moto_color: string | null; plate: string | null };
+  review: { rating: number; comment: string | null; badges: string | null } | null;
+  viewer_role: 'pasajero' | 'conductor' | 'admin';
 }
 
 export interface FeCoupon {
@@ -286,6 +323,36 @@ export const apiService = {
     const response = await authenticatedFetch(`${BACKEND_URL}/api/admin/wallet/pending`);
     await assertOk(response);
     return response.json();
+  },
+
+  async getRideDetail(rideId: number): Promise<RideDetail> {
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/${rideId}/detail`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async uploadRideReceipt(rideId: number, photo: Blob): Promise<void> {
+    const form = new FormData();
+    form.append('photo', photo);
+    const response = await authenticatedFetch(`${BACKEND_URL}/api/rides/${rideId}/receipt`, { method: 'POST', body: form });
+    await assertOk(response);
+  },
+
+  /**
+   * El comprobante es privado. En iOS/Android, Image acepta cabeceras; en el
+   * navegador se descarga con el token y se muestra como blob.
+   */
+  async rideReceiptSource(rideId: number): Promise<{ uri: string; headers?: Record<string, string> }> {
+    const uri = `${BACKEND_URL}/api/rides/${rideId}/receipt`;
+    if (Platform.OS === 'web') {
+      const response = await authenticatedFetch(uri);
+      await assertOk(response);
+      return { uri: URL.createObjectURL(await response.blob()) };
+    }
+    const headers: Record<string, string> = { Authorization: `Bearer ${await getFirebaseIdToken()}` };
+    const session = getDeviceSession();
+    if (session) headers['X-Session-Id'] = session;
+    return { uri, headers };
   },
 
   async getFeStore(): Promise<FeStore> {

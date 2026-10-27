@@ -2,10 +2,11 @@
  * TripsScreen.tsx — Viajes: historial y agendados en una sola pestaña
  */
 
-import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, BackHandler } from 'react-native';
 import { theme, themed } from '../../constants/theme';
 import { RidesListScreen } from './RidesListScreen';
+import { RideDetailScreen } from './RideDetailScreen';
 import type { SessionRole } from '../../services/session';
 
 interface Props {
@@ -17,6 +18,22 @@ interface Props {
 
 export const TripsScreen: React.FC<Props> = ({ role, reloadKey, accent, onScheduleTrip }) => {
   const [scope, setScope] = useState<'history' | 'scheduled'>('history');
+  const [openRideId, setOpenRideId] = useState<number | null>(null);
+
+  // El botón atrás de Android cierra el detalle antes que la pestaña.
+  useEffect(() => {
+    if (openRideId === null) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setOpenRideId(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [openRideId]);
+
+  if (openRideId !== null) {
+    return <RideDetailScreen rideId={openRideId} accent={accent} onBack={() => setOpenRideId(null)} />;
+  }
+
   return (
     <View style={styles.root}>
       <Text style={styles.title}>Viajes</Text>
@@ -38,7 +55,15 @@ export const TripsScreen: React.FC<Props> = ({ role, reloadKey, accent, onSchedu
           );
         })}
       </View>
-      <RidesListScreen key={scope} scope={scope} role={role} reloadKey={reloadKey} onPrimaryAction={onScheduleTrip} hideHeader />
+      <RidesListScreen
+        key={scope}
+        scope={scope}
+        role={role}
+        reloadKey={reloadKey}
+        onPrimaryAction={onScheduleTrip}
+        onOpenRide={setOpenRideId}
+        hideHeader
+      />
     </View>
   );
 };

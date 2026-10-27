@@ -43,7 +43,7 @@ from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
 from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
-from .routers import driver_applications, fe_store, links, profile, quiz, rates, wallet
+from .routers import driver_applications, fe_store, links, profile, quiz, rates, ride_details, wallet
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 VENEZUELA_TZ = config.VENEZUELA_TZ
@@ -87,6 +87,7 @@ app.include_router(driver_applications.router)
 app.include_router(profile.router)
 app.include_router(fe_store.router)
 app.include_router(rates.router)
+app.include_router(ride_details.router)
 
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1022,6 +1023,7 @@ async def request_ride(
         fare_amount=fare,
         points_rewarded=35
     )
+    log_status(new_ride, "solicitado")
     db.add(new_ride)
     db.flush()
     if coupon:
@@ -1156,8 +1158,9 @@ def list_my_rides(
         item = RideResponse.model_validate(ride)
         item.passenger_name = ride.passenger.name
         item.driver_name = ride.driver.name
-        # La referencia de pago solo la necesitan los participantes en el viaje activo.
+        # La referencia y el comprobante se consultan en el detalle del viaje.
         item.payment_reference = None
+        item.has_receipt = bool(ride.receipt_file)
         results.append(item)
     return results
 
@@ -1193,6 +1196,13 @@ def get_my_summary(
         "is_admin": is_admin(current_user),
     }
 
+
+
+def log_status(ride: Ride, status: str) -> None:
+    """Agrega el cambio de estado a la línea de tiempo del viaje."""
+    entries = json.loads(ride.status_log) if ride.status_log else []
+    entries.append({"status": status, "at": datetime.utcnow().isoformat()})
+    ride.status_log = json.dumps(entries)
 
 @app.put("/api/rides/{ride_id}/status")
 async def update_ride_status(
@@ -1232,6 +1242,7 @@ async def update_ride_status(
 
     old_status = ride.status
     ride.status = update.status
+    log_status(ride, update.status)
     fe_awarded = 0
     availability_changed = False
 

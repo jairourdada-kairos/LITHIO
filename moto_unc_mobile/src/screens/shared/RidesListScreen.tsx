@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -21,10 +21,12 @@ interface Props {
   onPrimaryAction?: () => void;
   /** Oculta el encabezado cuando la lista va dentro de otra pantalla. */
   hideHeader?: boolean;
+  /** Abre el detalle de un viaje. */
+  onOpenRide?: (rideId: number) => void;
 }
 
 // Función (no constante) para leer la paleta activa.
-const statusInfo = (): Record<string, { label: string; color: string }> => ({
+export const statusInfo = (): Record<string, { label: string; color: string }> => ({
   solicitado: { label: 'Pendiente', color: theme.colors.warning },
   aceptado: { label: 'Aceptado', color: theme.colors.primary },
   en_camino: { label: 'En camino', color: theme.colors.primary },
@@ -42,7 +44,7 @@ function formatDate(ride: Ride) {
     : date.toLocaleDateString('es-VE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPrimaryAction, hideHeader }) => {
+export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPrimaryAction, hideHeader, onOpenRide }) => {
   const [rides, setRides] = useState<Ride[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +102,13 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
           renderItem={({ item }) => {
             const status = statusInfo()[item.status] || { label: item.status, color: theme.colors.textMuted };
             return (
-              <View style={styles.card}>
+              <Pressable
+                onPress={() => onOpenRide?.(item.id)}
+                disabled={!onOpenRide}
+                style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+                accessibilityRole="button"
+                accessibilityHint="Abre el detalle del viaje"
+              >
                 <View style={styles.cardTop}>
                   <Text style={styles.date}>{formatDate(item)}</Text>
                   <Text style={[styles.status, { color: status.color, borderColor: `${status.color}66` }]}>
@@ -119,10 +127,16 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
                   </View>
                   <Text style={styles.fare}>${item.fare_amount.toFixed(2)}</Text>
                 </View>
-                <Text style={styles.person}>
-                  {role === 'pasajero' ? 'Conductor' : 'Pasajero'}: {counterpart(item) || '—'}
-                </Text>
-              </View>
+                <View style={styles.cardBottom}>
+                  <Text style={styles.person}>
+                    {role === 'pasajero' ? 'Conductor' : 'Pasajero'}: {counterpart(item) || '—'}
+                  </Text>
+                  {item.has_receipt ? (
+                    <MaterialCommunityIcons name="receipt-text-check-outline" size={18} color={theme.colors.success} accessibilityLabel="Con comprobante" />
+                  ) : null}
+                  {onOpenRide ? <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textMuted} /> : null}
+                </View>
+              </Pressable>
             );
           }}
         />
@@ -132,6 +146,12 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
 };
 
 const styles = themed(() => ({
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   root: {
     flex: 1,
   },
