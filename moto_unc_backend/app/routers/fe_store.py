@@ -20,7 +20,7 @@ from ..links_service import GIFT_COUPONS, STORE_DISCOUNT_LEVEL, user_z
 from ..models import Coupon, GradeVoucher, PerkGrant, User
 from ..realtime import manager
 from .. import push_service
-from .profile import _detect_format
+from .profile import _detect_format, commit_or_discard
 
 router = APIRouter(prefix="/api", tags=["tienda-fe"])
 
@@ -134,7 +134,7 @@ async def request_voucher(
         fe_cost=cost,
     )
     db.add(voucher)
-    db.commit()
+    commit_or_discard(db, EVIDENCE_DIR / filename)
     return {"voucher": voucher_payload(voucher), "points": user.points}
 
 

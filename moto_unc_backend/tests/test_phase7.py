@@ -245,3 +245,22 @@ def test_sensitive_actions_are_rate_limited_per_user(client):
     assert blocked.status_code == 429 and int(blocked.headers["Retry-After"]) > 0
     # El límite es por usuario: otra cuenta no queda bloqueada.
     assert client.post("/api/sessions", headers=auth_headers(1)).status_code == 201
+
+
+def test_failed_save_keeps_old_photo_and_leaves_no_orphan(client, monkeypatch):
+    from app.routers import profile as profile_module
+    from sqlalchemy.orm import Session
+
+    first = client.post("/api/users/me/avatar", files={"photo": ("a.png", PNG, "image/png")}, headers=auth_headers(4)).json()
+    before = set(profile_module.AVATAR_DIR.iterdir())
+
+    def broken_commit(self):
+        raise RuntimeError("base de datos caída")
+
+    monkeypatch.setattr(Session, "commit", broken_commit)
+    with pytest.raises(RuntimeError):
+        client.post("/api/users/me/avatar", files={"photo": ("b.png", PNG, "image/png")}, headers=auth_headers(4))
+    monkeypatch.undo()
+
+    assert set(profile_module.AVATAR_DIR.iterdir()) == before  # Sin archivo huérfano
+    assert client.get(first["avatar_url"]).content == PNG       # La foto anterior sigue ahí

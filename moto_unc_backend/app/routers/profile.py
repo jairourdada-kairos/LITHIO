@@ -40,6 +40,16 @@ def _detect_format(data: bytes) -> str | None:
     return None
 
 
+def commit_or_discard(db: Session, written: Path) -> None:
+    """Guarda en la base de datos; si falla, borra el archivo recién escrito para no dejar huérfanos."""
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        written.unlink(missing_ok=True)
+        raise
+
+
 def _delete_local_avatar(url: str | None) -> None:
     """Borra la foto anterior si la guardó LITHIO (no toca enlaces externos)."""
     if not url or not url.startswith("/media/avatars/"):
@@ -65,9 +75,11 @@ async def upload_avatar(
     AVATAR_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{user.id}-{secrets.token_hex(8)}.{extension}"
     (AVATAR_DIR / filename).write_bytes(data)
-    _delete_local_avatar(user.avatar_url)
+    previous = user.avatar_url
     user.avatar_url = f"/media/avatars/{filename}"
-    db.commit()
+    commit_or_discard(db, AVATAR_DIR / filename)
+    # La foto anterior se borra solo cuando la nueva quedó guardada.
+    _delete_local_avatar(previous)
     return {"avatar_url": user.avatar_url}
 
 

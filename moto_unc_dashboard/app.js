@@ -218,8 +218,8 @@ function renderApprovals() {
         <p>Teléfono: ${escapeHtml(app.phone)} · ${escapeHtml(app.email)}</p>
         ${app.inspection_date ? `<p>Inspección: ${escapeHtml(app.inspection_date)}</p>` : ''}
         <div class="action-group">
-          ${next ? `<button class="small-btn" data-action="app-advance" data-id="${app.user_id}">${escapeHtml(next.label)}</button>` : ''}
-          <button class="small-btn danger" data-action="app-reject" data-id="${app.user_id}">Rechazar</button>
+          ${next ? `<button class="small-btn" data-action="app-advance" data-id="${Number(app.user_id)}">${escapeHtml(next.label)}</button>` : ''}
+          <button class="small-btn danger" data-action="app-reject" data-id="${Number(app.user_id)}">Rechazar</button>
         </div>
       </div>`;
   }).join('') : emptyNote('No hay postulaciones pendientes.');
@@ -232,8 +232,8 @@ function renderApprovals() {
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}
       <p>${escapeHtml(new Date(item.created_at).toLocaleString('es-VE'))}</p>
       <div class="action-group">
-        <button class="small-btn" data-action="wallet-approve" data-id="${item.id}">Aprobar</button>
-        <button class="small-btn danger" data-action="wallet-reject" data-id="${item.id}">Rechazar</button>
+        <button class="small-btn" data-action="wallet-approve" data-id="${Number(item.id)}">Aprobar</button>
+        <button class="small-btn danger" data-action="wallet-reject" data-id="${Number(item.id)}">Rechazar</button>
       </div>
     </div>`).join('') : emptyNote('No hay movimientos esperando revisión.');
 
@@ -241,11 +241,11 @@ function renderApprovals() {
     <div class="route-card">
       <strong>${escapeHtml(voucher.subject)}</strong>
       <p>${escapeHtml(voucher.user_name)}</p>
-      <img class="evidence-img" data-voucher="${voucher.id}" alt="Foto de la nota">
+      <img class="evidence-img" data-voucher="${Number(voucher.id)}" alt="Foto de la nota">
       ${voucher.note ? `<p>${escapeHtml(voucher.note)}</p>` : ''}
       <div class="action-group">
-        <button class="small-btn" data-action="voucher-approve" data-id="${voucher.id}">Aprobar vale</button>
-        <button class="small-btn danger" data-action="voucher-reject" data-id="${voucher.id}">Rechazar</button>
+        <button class="small-btn" data-action="voucher-approve" data-id="${Number(voucher.id)}">Aprobar vale</button>
+        <button class="small-btn danger" data-action="voucher-reject" data-id="${Number(voucher.id)}">Rechazar</button>
       </div>
     </div>`).join('') : emptyNote('No hay vales por revisar.');
 
@@ -291,8 +291,8 @@ function renderDrivers() {
       </td>
       <td>
         <div class="action-group">
-          <button class="small-btn" data-action="edit-driver" data-id="${driver.user_id}">Editar</button>
-          <button class="small-btn danger" data-action="delete-driver" data-id="${driver.user_id}">Quitar</button>
+          <button class="small-btn" data-action="edit-driver" data-id="${Number(driver.user_id)}">Editar</button>
+          <button class="small-btn danger" data-action="delete-driver" data-id="${Number(driver.user_id)}">Quitar</button>
         </div>
       </td>
     </tr>
@@ -304,11 +304,11 @@ function renderRoutes() {
     <div class="route-card">
       <strong>${escapeHtml(route.origin)} → ${escapeHtml(route.destination)}</strong>
       <p>${escapeHtml(route.tag || 'Ruta disponible')}</p>
-      <p>Tarifa: $${route.fare_usd}</p>
-      <p>Duración: ${route.estimated_minutes} min</p>
+      <p>Tarifa: $${Number(route.fare_usd).toFixed(2)}</p>
+      <p>Duración: ${Number(route.estimated_minutes)} min</p>
       <div class="action-group">
-        <button class="small-btn" data-action="edit-route" data-id="${route.id}">Editar</button>
-        <button class="small-btn danger" data-action="delete-route" data-id="${route.id}">Eliminar</button>
+        <button class="small-btn" data-action="edit-route" data-id="${Number(route.id)}">Editar</button>
+        <button class="small-btn danger" data-action="delete-route" data-id="${Number(route.id)}">Eliminar</button>
       </div>
     </div>
   `).join('');
@@ -322,8 +322,8 @@ function renderRewards() {
       <p>Precio: ◆ ${Number(reward.cost).toFixed(2)}</p>
       <p>${reward.is_active ? 'Visible en la app' : 'Oculto'}</p>
       <div class="action-group">
-        <button class="small-btn" data-action="edit-reward" data-id="${reward.id}">Editar</button>
-        <button class="small-btn danger" data-action="delete-reward" data-id="${reward.id}">Eliminar</button>
+        <button class="small-btn" data-action="edit-reward" data-id="${Number(reward.id)}">Editar</button>
+        <button class="small-btn danger" data-action="delete-reward" data-id="${Number(reward.id)}">Eliminar</button>
       </div>
     </div>
   `).join('');
@@ -348,7 +348,7 @@ function buildForm(type, payload) {
 
     return `
       <input type="hidden" name="type" value="driver">
-      ${payload ? `<input type="hidden" name="entity_id" value="${payload.user_id || payload.id}">` : ''}
+      ${payload ? `<input type="hidden" name="entity_id" value="${Number(payload.user_id || payload.id)}">` : ''}
       <label>Nombre<input name="name" value="${escapeHtml(data.name)}"></label>
       <label>Teléfono<input name="phone" value="${escapeHtml(data.phone)}"></label>
       <label>Modelo de moto<input name="moto_brand_model" value="${escapeHtml(data.moto_brand_model)}"></label>
@@ -367,11 +367,11 @@ function buildForm(type, payload) {
     const data = payload || { origin: '', destination: '', fare_usd: 2.5, estimated_minutes: 12, tag: '' };
     return `
       <input type="hidden" name="type" value="route">
-      ${payload ? `<input type="hidden" name="entity_id" value="${payload.id}">` : ''}
+      ${payload ? `<input type="hidden" name="entity_id" value="${Number(payload.id)}">` : ''}
       <label>Origen<input name="origin" value="${escapeHtml(data.origin)}"></label>
       <label>Destino<input name="destination" value="${escapeHtml(data.destination)}"></label>
-      <label>Tarifa<input type="number" step="0.1" name="fare_usd" value="${data.fare_usd || 2.5}"></label>
-      <label>Duración (min)<input type="number" name="estimated_minutes" value="${data.estimated_minutes || 12}"></label>
+      <label>Tarifa<input type="number" step="0.1" name="fare_usd" value="${Number(data.fare_usd) || 2.5}"></label>
+      <label>Duración (min)<input type="number" name="estimated_minutes" value="${Number(data.estimated_minutes) || 12}"></label>
       <label>Etiqueta<input name="tag" value="${escapeHtml(data.tag)}"></label>
       <button type="submit" class="primary-btn">Guardar</button>
     `;
@@ -381,10 +381,10 @@ function buildForm(type, payload) {
     const data = payload || { title: '', description: '', cost: 5, is_active: true };
     return `
       <input type="hidden" name="type" value="reward">
-      ${payload ? `<input type="hidden" name="entity_id" value="${payload.id}">` : ''}
+      ${payload ? `<input type="hidden" name="entity_id" value="${Number(payload.id)}">` : ''}
       <label>Servicio<input name="title" value="${escapeHtml(data.title)}" required minlength="3"></label>
       <label>Descripción<textarea name="description">${escapeHtml(data.description || '')}</textarea></label>
-      <label>Precio en diamantes (◆ = USD)<input type="number" step="0.5" min="0.5" name="cost" value="${data.cost}"></label>
+      <label>Precio en diamantes (◆ = USD)<input type="number" step="0.5" min="0.5" name="cost" value="${Number(data.cost)}"></label>
       <label>Visible en la app
         <select name="is_active">
           <option value="true" ${data.is_active ? 'selected' : ''}>Sí</option>

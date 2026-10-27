@@ -18,7 +18,7 @@ from ..database import get_db
 from ..models import Coupon, Ride, User
 from ..realtime import manager
 from .. import push_service
-from .profile import _detect_format
+from .profile import _detect_format, commit_or_discard
 
 router = APIRouter(prefix="/api/rides", tags=["historial"])
 
@@ -107,7 +107,7 @@ async def upload_receipt(
     old = ride.receipt_file
     ride.receipt_file = filename
     ride.receipt_uploaded_at = datetime.utcnow()
-    db.commit()
+    commit_or_discard(db, RECEIPT_DIR / filename)
     if old:
         old_path = (RECEIPT_DIR / old).resolve()
         if old_path.parent == RECEIPT_DIR.resolve() and old_path.exists():
