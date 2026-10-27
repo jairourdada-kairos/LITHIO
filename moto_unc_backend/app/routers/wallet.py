@@ -1,5 +1,6 @@
 """Billetera de diamantes: saldo, recargas, envíos a enlaces, donaciones al
 Fondo Solidario, retiros y canjes del taller aliado para conductores."""
+from ..rate_limit import rate_limit
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -106,7 +107,7 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
     }
 
 
-@router.post("/wallet/topups", status_code=201, response_model=TransactionOut)
+@router.post("/wallet/topups", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
 def request_topup(data: TopupIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TOPUP_CENTS:
@@ -119,7 +120,7 @@ def request_topup(data: TopupIn, user: User = Depends(get_current_user), db: Ses
     return serialize(db, tx)
 
 
-@router.post("/wallet/transfers", status_code=201, response_model=TransactionOut)
+@router.post("/wallet/transfers", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
 async def transfer(data: TransferIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TRANSFER_CENTS:
@@ -149,7 +150,7 @@ async def transfer(data: TransferIn, user: User = Depends(get_current_user), db:
     return serialize(db, sent)
 
 
-@router.post("/wallet/donations", status_code=201, response_model=TransactionOut)
+@router.post("/wallet/donations", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
 def donate(data: AmountIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if wallet.outgoing_today_cents(db, user.id) + cents > wallet.MAX_DAILY_OUTGOING_CENTS:
@@ -160,7 +161,7 @@ def donate(data: AmountIn, user: User = Depends(get_current_user), db: Session =
     return serialize(db, tx)
 
 
-@router.post("/wallet/withdrawals", status_code=201, response_model=TransactionOut)
+@router.post("/wallet/withdrawals", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
 def request_withdrawal(data: WithdrawalIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_approved_driver(db, user)
     driver = wallet.lock_user(db, user.id)

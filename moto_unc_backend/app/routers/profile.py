@@ -1,5 +1,6 @@
 """Foto de perfil y tabla de niveles."""
 import secrets
+from ..rate_limit import rate_limit
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -48,7 +49,7 @@ def _delete_local_avatar(url: str | None) -> None:
         path.unlink()
 
 
-@router.post("/users/me/avatar")
+@router.post("/users/me/avatar", dependencies=[Depends(rate_limit("fotos", 10, 600))])
 async def upload_avatar(
     photo: UploadFile = File(...),
     user: User = Depends(get_current_user),
@@ -100,7 +101,7 @@ def levels(user: User = Depends(get_current_user)):
     }
 
 
-@router.post("/sessions", status_code=201)
+@router.post("/sessions", status_code=201, dependencies=[Depends(rate_limit("sesiones", 10, 300))])
 async def start_session(user: User = Depends(get_current_user_any_session), db: Session = Depends(get_db)):
     """Inicia sesión en este dispositivo y cierra la de cualquier otro.
 

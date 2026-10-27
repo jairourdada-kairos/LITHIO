@@ -22,3 +22,11 @@ def push_outbox(monkeypatch):
     sent = []
     monkeypatch.setattr(push_service, "dispatch", sent.extend)
     return sent
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Cada prueba empieza con los contadores de límite de peticiones en cero."""
+    from app import rate_limit
+
+    rate_limit.reset()

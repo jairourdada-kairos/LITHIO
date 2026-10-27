@@ -4,6 +4,7 @@ El Fe gastado sale de `points` (saldo canjeable); `fe_lifetime` no baja,
 así que canjear nunca hace perder nivel.
 """
 import secrets
+from ..rate_limit import rate_limit
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -93,7 +94,7 @@ class CouponIn(BaseModel):
     percent: Literal[25, 50]
 
 
-@router.post("/fe-store/coupons")
+@router.post("/fe-store/coupons", dependencies=[Depends(rate_limit("tienda", 10, 600))])
 def buy_coupon(data: CouponIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cost = price(user, COUPON_PRICES[data.percent])
     _spend_fe(user, cost)
@@ -103,7 +104,7 @@ def buy_coupon(data: CouponIn, user: User = Depends(get_current_user), db: Sessi
     return {"coupon": coupon_payload(coupon), "points": user.points}
 
 
-@router.post("/fe-store/vouchers")
+@router.post("/fe-store/vouchers", dependencies=[Depends(rate_limit("vales", 5, 600))])
 async def request_voucher(
     subject: str = Form(..., min_length=3, max_length=80),
     note: Optional[str] = Form(None, max_length=200),

@@ -236,3 +236,12 @@ def test_admin_endpoints_reject_invalid_data_with_422(client):
     assert client.put("/api/admin/drivers/1", json={"rating_avg": 9}, headers=ADMIN).status_code == 422
     assert client.post("/api/admin/drivers", json={"email": "no-es-correo"}, headers=ADMIN).status_code == 422
     assert client.post("/api/admin/rewards", json={"discount_percent": 150}, headers=ADMIN).status_code == 422
+
+
+def test_sensitive_actions_are_rate_limited_per_user(client):
+    for _ in range(10):
+        assert client.post("/api/sessions", headers=auth_headers(4)).status_code == 201
+    blocked = client.post("/api/sessions", headers=auth_headers(4))
+    assert blocked.status_code == 429 and int(blocked.headers["Retry-After"]) > 0
+    # El límite es por usuario: otra cuenta no queda bloqueada.
+    assert client.post("/api/sessions", headers=auth_headers(1)).status_code == 201

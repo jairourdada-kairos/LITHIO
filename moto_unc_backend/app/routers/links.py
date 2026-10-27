@@ -1,4 +1,5 @@
 """Enlaces: amigos de viaje que forman tu molécula."""
+from ..rate_limit import rate_limit
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
@@ -57,7 +58,7 @@ def list_links(me: User = Depends(get_current_user), db: Session = Depends(get_d
     return {"my_code": me.friend_code, "links": accepted, "incoming": incoming, "outgoing": outgoing}
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(rate_limit("enlaces", 20, 600))])
 async def request_link(data: LinkRequestIn, me: User = Depends(get_current_user), db: Session = Depends(get_db)):
     other = db.query(User).filter(func.upper(User.friend_code) == data.code.strip().upper()).first()
     if not other:

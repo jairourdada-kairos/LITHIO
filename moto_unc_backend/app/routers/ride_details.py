@@ -5,6 +5,7 @@ y solo lo ven el pasajero, el conductor de ese viaje y el administrador.
 """
 import json
 import secrets
+from ..rate_limit import rate_limit
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -79,7 +80,7 @@ def ride_detail(ride_id: int, user: User = Depends(get_current_user), db: Sessio
     }
 
 
-@router.post("/{ride_id}/receipt")
+@router.post("/{ride_id}/receipt", dependencies=[Depends(rate_limit("comprobantes", 10, 600))])
 async def upload_receipt(
     ride_id: int,
     photo: UploadFile = File(...),

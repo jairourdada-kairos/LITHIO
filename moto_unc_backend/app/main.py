@@ -1,4 +1,5 @@
 from . import config  # Carga el .env antes que cualquier otro módulo de la app
+from .rate_limit import rate_limit
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -806,7 +807,7 @@ def commit_registration(db: Session, user: User) -> User:
     return user
 
 
-@app.post("/api/passengers/register", response_model=UserResponse, status_code=201)
+@app.post("/api/passengers/register", response_model=UserResponse, status_code=201, dependencies=[Depends(rate_limit("registro", 5, 600))])
 def register_passenger(
     data: PassengerRegisterRequest,
     identity: FirebaseIdentity = Depends(get_firebase_identity),
@@ -859,7 +860,7 @@ def register_passenger(
     return commit_registration(db, new_user)
 
 
-@app.post("/api/drivers/register", response_model=UserResponse, status_code=201)
+@app.post("/api/drivers/register", response_model=UserResponse, status_code=201, dependencies=[Depends(rate_limit("registro", 5, 600))])
 def register_driver(
     data: DriverRegisterRequest,
     identity: FirebaseIdentity = Depends(get_firebase_identity),
@@ -995,7 +996,7 @@ async def toggle_driver_availability(
 # -------------------------------------------------------------
 # SOLICITUD Y GESTIÓN DE VIAJES
 # -------------------------------------------------------------
-@app.post("/api/rides", response_model=RideResponse)
+@app.post("/api/rides", response_model=RideResponse, dependencies=[Depends(rate_limit("viajes", 10, 600))])
 async def request_ride(
     ride_data: RideCreate, 
     passenger_id: int | None = None,
