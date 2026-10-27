@@ -205,10 +205,11 @@ def seed_database():
 
     admin = db.query(User).filter(User.email == "jairourdada@gmail.com").first()
     if admin:
-        admin.name = "Jairo Eduardo Urdaneta González"
-        admin.phone = "+58 412 4091527"
+        # Solo completa lo que falte: nunca pisa la foto, el nombre ni el teléfono
+        # que el administrador cambió desde la app (antes se reiniciaban al arrancar).
+        admin.name = admin.name or "Jairo Eduardo Urdaneta González"
+        admin.phone = admin.phone or "+58 412 4091527"
         admin.role = "ambos"
-        admin.avatar_url = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80"
         admin.xp_level = "Administrador LITHIO 🏍️"
         db.flush()
 

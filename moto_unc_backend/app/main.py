@@ -94,6 +94,9 @@ app.mount("/media", StaticFiles(directory=config.MEDIA_DIR), name="media")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    # En local, la versión web publicada con iniciar_publico.bat usa un túnel de
+    # Cloudflare cuya dirección cambia en cada arranque.
+    allow_origin_regex=None if config.IS_PRODUCTION else r"https://[a-z0-9-]+\.trycloudflare\.com",
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
