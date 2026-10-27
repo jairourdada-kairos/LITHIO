@@ -54,6 +54,14 @@ export async function registerForPush(): Promise<void> {
     if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
     if (status !== 'granted') return; // La app sigue funcionando; solo no llegan avisos fuera de ella.
 
+    // Android: token nativo de Firebase; el servidor envía directo por FCM con su
+    // propia cuenta de servicio (no hay que subir claves a Expo).
+    // iOS: token de Expo (Firebase no entrega a iPhone sin la configuración de Apple).
+    if (Platform.OS === 'android') {
+      const { data: token } = await Notifications.getDevicePushTokenAsync();
+      await saveToken(String(token));
+      return;
+    }
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     await saveToken(token);

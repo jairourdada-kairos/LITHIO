@@ -170,3 +170,22 @@ def test_new_device_takes_over_notifications(client, push_outbox):
     from app.models import User
     db = next(app.dependency_overrides[get_db]())
     assert db.get(User, 4).push_token is None and db.get(User, 1).push_token == TOKEN_DRIVER
+
+
+def test_fcm_tokens_go_straight_to_firebase_and_expo_tokens_to_expo(client, monkeypatch):
+    from app import push_service
+
+    fcm_token = "dQw4w9WgXcQ:APA91b" + "x" * 140
+    assert push_service.is_valid_token(fcm_token) and push_service.is_valid_token(TOKEN_DRIVER)
+    assert not push_service.is_valid_token("hola")
+    assert client.put("/api/users/me/push-token", json={"token": fcm_token}, headers=auth_headers(1)).json()["registered"]
+
+    to_expo, to_fcm = [], []
+    monkeypatch.setattr(push_service, "_post_to_expo", to_expo.extend)
+    monkeypatch.setattr(push_service, "_send_fcm", to_fcm.append)
+    push_service._deliver([
+        {"to": fcm_token, "title": "a", "body": "b"},
+        {"to": TOKEN_PASSENGER, "title": "c", "body": "d"},
+    ])
+    assert [m["to"] for m in to_fcm] == [fcm_token]
+    assert [m["to"] for m in to_expo] == [TOKEN_PASSENGER]

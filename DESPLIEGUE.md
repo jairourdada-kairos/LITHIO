@@ -170,11 +170,9 @@ service cloud.firestore {
 Doble clic en **`generar_apk.bat`**. Te pedirá:
 
 - Iniciar sesión en tu cuenta de Expo (la primera vez).
-- Subir la clave de notificaciones **FCM V1** (la primera vez): en el menú
-  elige *Android → preview → Google Service Account → Manage your Google
-  Service Account Key for Push Notifications (FCM V1) → Upload* y selecciona el
-  JSON de la cuenta de servicio de Firebase (`C:\secure\...`).
-- Aceptar crear la firma de Android (la primera vez).
+La firma de Android se crea sola la primera vez. No hay que subir ninguna
+clave a Expo: el servidor envía las notificaciones directo por Firebase con su
+propia cuenta de servicio.
 
 Al terminar (≈15 min) te da el enlace del `.apk` para compartir.
 
