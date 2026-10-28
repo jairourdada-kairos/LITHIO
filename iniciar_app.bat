@@ -6,6 +6,6 @@ echo   Escanea el codigo QR con Expo Go
 echo   Uso: iniciar_app.bat          (normal)
 echo        iniciar_app.bat --clear  (limpia la cache)
 echo ===================================================
-cd /d "%~dp0moto_unc_mobile"
+cd /d "%~dp0lithio_mobile"
 npx expo start --port 8082 %*
 pause

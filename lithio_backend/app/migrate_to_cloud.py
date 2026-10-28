@@ -1,8 +1,8 @@
 """Copia la base local (SQLite) a la base de la nube (PostgreSQL).
 
-Uso, desde moto_unc_backend:
+Uso, desde lithio_backend:
     set DATABASE_URL=postgresql://...   (la URL pública que da Railway)
-    python -m app.migrate_to_cloud moto_unc.db
+    python -m app.migrate_to_cloud lithio.db
 
 Los datos cifrados se copian tal cual (sin descifrar), así que en la nube
 deben usarse las MISMAS claves LITHIO_ENCRYPTION_KEYS y LITHIO_HASH_KEY.
@@ -56,4 +56,4 @@ def main(sqlite_path: str, target_url: str | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "moto_unc.db")
+    main(sys.argv[1] if len(sys.argv) > 1 else "lithio.db")

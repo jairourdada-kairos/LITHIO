@@ -4,18 +4,18 @@ El producto se denomina **LITHIO**: **Linked Intelligent Transport for Higher In
 
 Este repositorio queda organizado para trabajar en 3 piezas principales:
 
-- Backend: [moto_unc_backend](moto_unc_backend)
-- Dashboard web: [moto_unc_dashboard](moto_unc_dashboard)
-- App móvil: [moto_unc_mobile](moto_unc_mobile)
+- Backend: [lithio_backend](lithio_backend)
+- Dashboard web: [lithio_dashboard](lithio_dashboard)
+- App móvil: [lithio_mobile](lithio_mobile)
 
 ## Backend principal
 
-Usar [moto_unc_backend](moto_unc_backend) como fuente oficial de la API.
+Usar [lithio_backend](lithio_backend) como fuente oficial de la API.
 
 Comandos de arranque:
 
 ```powershell
-cd moto_unc_backend
+cd lithio_backend
 .\venv\Scripts\Activate.ps1
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -26,12 +26,12 @@ Documentación:
 
 ## Dashboard
 
-El dashboard web queda en [moto_unc_dashboard](moto_unc_dashboard).
+El dashboard web queda en [lithio_dashboard](lithio_dashboard).
 
 Para ejecutarlo:
 
 ```powershell
-cd moto_unc_dashboard
+cd lithio_dashboard
 python -m http.server 8080
 ```
 
@@ -41,27 +41,27 @@ Abrir:
 
 ## App móvil
 
-La app móvil queda en [moto_unc_mobile](moto_unc_mobile).
+La app móvil queda en [lithio_mobile](lithio_mobile).
 
 Para ejecutarla:
 
 ```powershell
-cd moto_unc_mobile
+cd lithio_mobile
 npx expo start
 ```
 
 ## Archivos antiguos o duplicados
 
 La carpeta [app](app) existe como versión antigua, está deshabilitada por seguridad y debe usarse solo como referencia histórica.
-La carpeta oficial para desarrollo es [moto_unc_backend](moto_unc_backend).
+La carpeta oficial para desarrollo es [lithio_backend](lithio_backend).
 
 ## Estado recomendado
 
 Para empezar a practicar y desarrollar la aplicación, usar esta base:
 
-1. Backend en [moto_unc_backend](moto_unc_backend)
-2. Dashboard en [moto_unc_dashboard](moto_unc_dashboard)
-3. App móvil en [moto_unc_mobile](moto_unc_mobile)
+1. Backend en [lithio_backend](lithio_backend)
+2. Dashboard en [lithio_dashboard](lithio_dashboard)
+3. App móvil en [lithio_mobile](lithio_mobile)
 4. Repositorio limpio con [ .gitignore ](.gitignore)
 
 ## Tareas rápidas

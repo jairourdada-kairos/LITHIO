@@ -123,6 +123,6 @@ class EncryptedString(TypeDecorator):
 
 
 if __name__ == "__main__":
-    print("Agrega estas líneas a moto_unc_backend/.env (o a las variables del servidor):")
+    print("Agrega estas líneas a lithio_backend/.env (o a las variables del servidor):")
     print(f"LITHIO_ENCRYPTION_KEYS={Fernet.generate_key().decode()}")
     print(f"LITHIO_HASH_KEY={Fernet.generate_key().decode()}")

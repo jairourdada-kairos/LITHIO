@@ -11,7 +11,8 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.motounc.mobile",
+      "package": "com.lithio.app",
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#10191C",
         "foregroundImage": "./assets/android-icon-foreground.png",

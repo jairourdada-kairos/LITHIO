@@ -23,7 +23,7 @@ plan **Hobby** (5 USD/mes) en Railway → *Account → Plans*. Ese plan no
 
 Los pasos de abajo son la versión manual de lo mismo.
 
-> **Antes de empezar:** ten a mano tu archivo `moto_unc_backend/.env`.
+> **Antes de empezar:** ten a mano tu archivo `lithio_backend/.env`.
 > Las claves `LITHIO_ENCRYPTION_KEYS` y `LITHIO_HASH_KEY` deben ser
 > **exactamente las mismas** en la nube. Si las cambias o las pierdes, las
 > cédulas, teléfonos y datos de pago cifrados no se podrán leer nunca más.
@@ -48,11 +48,11 @@ desde `master`.
 Hazlo **antes** de desplegar el servidor: la base debe estar vacía.
 Así conservas tus usuarios, conductores aprobados, viajes y rutas.
 
-En PowerShell, desde la carpeta `moto_unc_backend`:
+En PowerShell, desde la carpeta `lithio_backend`:
 
 ```powershell
 $env:DATABASE_URL = "pega-aquí-DATABASE_PUBLIC_URL"
-.\venv\Scripts\python.exe -m app.migrate_to_cloud moto_unc.db
+.\venv\Scripts\python.exe -m app.migrate_to_cloud lithio.db
 Remove-Item Env:DATABASE_URL
 ```
 
@@ -92,7 +92,7 @@ CORS_ALLOWED_ORIGINS=https://TU-DOMINIO.up.railway.app
 
 ## 5. Conectar la app al servidor de la nube
 
-En `moto_unc_mobile/.env` cambia solo la primera línea:
+En `lithio_mobile/.env` cambia solo la primera línea:
 
 ```
 EXPO_PUBLIC_API_URL=https://TU-DOMINIO.up.railway.app
@@ -103,7 +103,7 @@ ni de estar en el mismo Wi-Fi.
 
 ## 6. Generar el APK para Android
 
-Desde `moto_unc_mobile` (la primera vez pide iniciar sesión en Expo):
+Desde `lithio_mobile` (la primera vez pide iniciar sesión en Expo):
 
 ```bash
 npx eas-cli@latest env:push --environment preview --path .env
@@ -121,7 +121,7 @@ un enlace para descargar el `.apk` e instalarlo en cualquier Android.
 - **Una sola instancia** (`numReplicas: 1`): los avisos en tiempo real viven
   en la memoria del servidor. Para escalar a varias haría falta Redis.
 - **Fotos actuales:** las fotos de perfil locales están en
-  `moto_unc_backend/media/avatars`. Si no las copias al volumen, esos usuarios
+  `lithio_backend/media/avatars`. Si no las copias al volumen, esos usuarios
   verán sus iniciales hasta subir la foto de nuevo.
 - **Respaldo:** en la base de Railway → **Backups** puedes programar copias.
 
@@ -137,9 +137,9 @@ abierta en la PC.
 ## 1. Firebase para Android (una sola vez)
 
 1. Entra a <https://console.firebase.google.com> → proyecto **lithio-app**.
-2. **Agregar app → Android**. Nombre del paquete: `com.motounc.mobile`.
+2. **Agregar app → Android**. Nombre del paquete: `com.lithio.app`.
    Registra la app y **descarga `google-services.json`**.
-3. Guárdalo en `moto_unc_mobile\google-services.json` (no se sube a GitHub).
+3. Guárdalo en `lithio_mobile\google-services.json` (no se sube a GitHub).
 
 ## 2. Firestore para la dirección del servidor (una sola vez)
 
@@ -175,7 +175,7 @@ propia cuenta de servicio.
 Al terminar (≈15 min) te da el enlace del `.apk` para compartir.
 
 Si dice que el proyecto pertenece a otra cuenta de Expo, ejecuta en
-`moto_unc_mobile`: `npx eas-cli@latest init --force` y vuelve a intentarlo.
+`lithio_mobile`: `npx eas-cli@latest init --force` y vuelve a intentarlo.
 
 ---
 
@@ -184,11 +184,12 @@ Si dice que el proyecto pertenece a otra cuenta de Expo, ejecuta en
 Desde el APK v3, los cambios de pantallas, textos y lógica llegan solos:
 
 1. Doble clic en `publicar_actualizacion.bat` y escribe qué cambió.
-2. Cada teléfono la descarga al abrir LITHIO y la aplica la siguiente vez que se abre.
+2. Cada teléfono la descarga al abrir LITHIO y se reinicia solo con los cambios.
+   El script también sube a Expo las claves nuevas del `.env` de la app.
 
 Hace falta un APK nuevo (`generar_apk.bat`) solo si cambia algo nativo: un permiso,
 una librería nativa, el ícono o el nombre. En ese caso sube `version` en
-`moto_unc_mobile/app.json` y, cuando todos tengan el APK nuevo, fija
+`lithio_mobile/app.json` y, cuando todos tengan el APK nuevo, fija
 `APP_MIN_BUILD` en el `.env` del servidor: los APK viejos verán la pantalla
 "Actualiza LITHIO" con el enlace de `APP_DOWNLOAD_URL`.
 
@@ -196,82 +197,211 @@ una librería nativa, el ícono o el nombre. En ese caso sube `version` en
 
 # Entrar con Google y Facebook
 
-El código ya está listo. Mientras falten las claves, los botones muestran "pronto".
-En la web funcionan con solo activar el proveedor en Firebase (paso A1 / B1).
-En el APK hay que poner las claves y **generar un APK nuevo** (`generar_apk.bat`).
-En Expo Go no funcionan (no tiene el código nativo de Google ni de Facebook).
+El código ya está listo. Mientras falten las claves, los botones dicen "Muy pronto".
 
-Un usuario nuevo que entra con Google o Facebook completa su perfil (cédula,
-carrera, semestre, teléfono) sin crear contraseña. El correo queda fijo: es el de esa cuenta.
+|          | En la web             | En el APK v3 (el que ya tienen)                                  |
+|----------|-----------------------|------------------------------------------------------------------|
+| Google   | Activarlo en Firebase | Claves + `publicar_actualizacion.bat`. **No hace falta APK nuevo.** |
+| Facebook | Activarlo en Firebase | Claves + **APK nuevo** (`generar_apk.bat`)                        |
 
-## A. Google
+¿Por qué la diferencia? El APK v3 ya trae el módulo de Google; solo le falta el
+ID de cliente, que llega con una actualización. Facebook exige que su
+identificador vaya escrito dentro del APK, y eso solo se cambia compilando.
+En Expo Go ninguno funciona.
 
-1. **Firebase → Authentication → Método de acceso → Agregar proveedor → Google** →
-   Habilitar → correo de asistencia (el tuyo) → Guardar.
-2. **Huella SHA-1 del APK:** en https://expo.dev → proyecto **lithio** →
-   *Credentials* → *Android* → `com.motounc.mobile` → copia el **SHA-1 Fingerprint**
-   del *Keystore*.
-3. **Firebase → Configuración del proyecto (engranaje) → Tus apps → app Android** →
-   *Agregar huella digital* → pega el SHA-1 → Guardar.
-4. En esa misma página descarga de nuevo **google-services.json** y reemplaza el de
-   `moto_unc_mobile/` (ahora incluye el cliente de Google).
-5. **ID de cliente web:** Firebase → Authentication → Método de acceso → Google →
-   *Configuración del SDK web* → copia el **ID de cliente web**
-   (termina en `.apps.googleusercontent.com`).
-6. Añade a `moto_unc_mobile/.env`:
+Reglas que se mantienen:
+
+- **Solo Gmail.** Con Google siempre es Gmail. Con Facebook solo entra quien
+  registró su Facebook con un Gmail; el resto ve "LITHIO solo acepta cuentas
+  reales de Gmail".
+- **Correo verificado.** Google ya lo da por verificado. Facebook no: la primera
+  vez aparece "Verifica tu correo" y la app envía el enlace.
+- **Usuario nuevo:** completa su perfil (cédula, carrera, semestre, teléfono) sin
+  crear contraseña.
+- **Ya tenía cuenta con contraseña:** con Google entra a la misma cuenta. Con
+  Facebook, Firebase no lo permite y la app le pide entrar con su correo.
+
+## A. Google (unos 10 minutos)
+
+**A1. Activar Google en Firebase**
+
+1. Abre <https://console.firebase.google.com> → proyecto **lithio-app**.
+2. Menú izquierdo: **Compilación → Authentication → Método de acceso**.
+3. **Agregar proveedor nuevo → Google** → activa **Habilitar**.
+4. *Nombre público del proyecto*: `LITHIO` (el usuario verá "Elige una cuenta
+   para ir a LITHIO"). *Correo de asistencia*: el tuyo.
+5. Abre **Configuración del SDK web** y copia el **ID de cliente web** (termina
+   en `.apps.googleusercontent.com`; no es secreto). Pulsa **Guardar**.
+
+¿Qué es el ID de cliente web? El "nombre" con el que LITHIO se presenta ante
+Google. Cuando alguien elige su Gmail, Google entrega una constancia firmada
+dirigida a ese ID; Firebase solo la acepta si va dirigida a un ID de su propio
+proyecto. Va dentro de la app, así que puede verlo cualquiera. Lo que **nunca**
+debe salir de Firebase es el *Secreto del cliente web* que aparece debajo.
+
+Otros lugares donde está el mismo ID:
+
+- <https://console.cloud.google.com> → proyecto **lithio-app** → *APIs y
+  servicios → Credenciales* → *IDs de clientes de OAuth 2.0* → la fila
+  **Web client (auto created by Google Service)**.
+- En `google-services.json` descargado después del paso A2: el `client_id` con
+  `"client_type": 3`.
+
+**A2. Registrar la huella (SHA-1) del APK**
+
+Google solo entrega la cuenta a apps que reconoce por su firma.
+
+1. <https://expo.dev> → proyecto **lithio** → **Credentials** → **Android** →
+   `com.lithio.app` → en *Keystore* copia el **SHA-1 Fingerprint**
+   (forma `AA:BB:CC:...`).
+2. Firebase → engranaje **Configuración del proyecto** → pestaña **General** →
+   *Tus apps* → la app Android `com.lithio.app` → **Agregar huella digital** →
+   pega el SHA-1 → **Guardar**.
+3. En esa misma página descarga el **google-services.json** nuevo y reemplaza
+   `lithio_mobile\google-services.json` (lo usará el próximo APK).
+
+**A3. Poner el ID en la app y publicar**
+
+1. Abre `lithio_mobile\.env` con el Bloc de notas y añade al final:
    ```
    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
    ```
+2. Doble clic en `publicar_actualizacion.bat` y escribe `Entrar con Google`.
+3. Prueba: cierra LITHIO del todo, ábrelo (se actualiza solo) → **Iniciar
+   sesión** → botón **Google** (ya sin la etiqueta "pronto") → elige tu Gmail.
+   Si es la primera vez, completa cédula, carrera, semestre y teléfono.
 
-## B. Facebook
+| Qué ves | Qué pasa | Qué hacer |
+|---|---|---|
+| El botón dice "pronto" / "Muy pronto podrás entrar con Google" | El ID no llegó a la app | Revisa la línea del `.env` (sin espacios ni comillas), publica otra vez y reabre la app |
+| "El acceso con Google todavía no está activado" | Google está apagado en Firebase | Paso A1 |
+| "No se pudo entrar con Google" | Falta la huella o el ID no es el web | Paso A2; usa el ID **web**, no el de Android ni el secreto |
+| "LITHIO solo acepta cuentas reales de Gmail" | Es una cuenta de Google con otro dominio | Entrar con una cuenta `@gmail.com` |
+| Google dice "Acceso bloqueado" | La pantalla de permisos está en modo prueba | Google Cloud → *Google Auth Platform → Público* → **Publicar app** |
 
-1. https://developers.facebook.com → *Mis apps* → **Crear app** → caso de uso
-   *Autenticar y solicitar datos a los usuarios con el inicio de sesión con Facebook* →
-   nombre **LITHIO**.
-2. *Configuración de la app → Básica*: copia el **Identificador de la app** y la
-   **Clave secreta de la app**. En *Configuración → Avanzada*, copia el
-   **Token de cliente**.
-3. **Firebase → Authentication → Agregar proveedor → Facebook** → Habilitar → pega el
-   Identificador y la Clave secreta. Copia la **URI de redireccionamiento de OAuth**
-   que muestra Firebase y pégala en Facebook → *Inicio de sesión con Facebook →
-   Configuración → URI de redireccionamiento de OAuth válidos*.
-4. Facebook → *Configuración → Básica → Agregar plataforma → Android*:
-   - Nombre del paquete: `com.motounc.mobile`
-   - Nombre de clase: `com.motounc.mobile.MainActivity`
-   - Hash de clave: el SHA-1 del paso A2 convertido a Base64. Puedes calcularlo en
-     PowerShell (cambia el SHA-1 por el tuyo):
-     ```
-     [Convert]::ToBase64String([byte[]]('AA:BB:CC:...'.Split(':') | % { [Convert]::ToByte($_, 16) }))
-     ```
-5. Mientras la app de Facebook esté *en desarrollo*, solo pueden entrar las personas
-   que agregues en *Roles de la app → Evaluadores*. Para abrirla a todos, Facebook pide
-   una URL de política de privacidad y pasar la app a modo *Activo*.
-6. Añade a `moto_unc_mobile/.env`:
+En la versión web de LITHIO, el dominio donde se abre debe estar en Firebase →
+*Authentication → Configuración → Dominios autorizados*.
+
+## B. Facebook (unos 30 minutos)
+
+**B1. Crear la app en Meta**
+
+1. <https://developers.facebook.com> → **Mis apps → Crear app**.
+2. Nombre **LITHIO** y tu correo de contacto.
+3. Caso de uso: **Autenticar y solicitar datos a los usuarios con el inicio de
+   sesión con Facebook**. El portafolio comercial puede quedar para después.
+4. En el caso de uso → **Personalizar → Permisos**: deja `public_profile` y
+   **agrega `email`**. Sin el correo no se puede comprobar que sea Gmail.
+
+**B2. Copiar las claves**
+
+- *Configuración de la app → Básica*: **Identificador de la app** y **Clave
+  secreta de la app** (botón *Mostrar*).
+- *Configuración de la app → Avanzada → Seguridad*: **Token de cliente**.
+
+**B3. Conectar Facebook con Firebase**
+
+1. Firebase → Authentication → Método de acceso → **Agregar proveedor →
+   Facebook** → Habilitar → pega el Identificador y la Clave secreta.
+2. Copia la **URI de redireccionamiento de OAuth** que muestra Firebase
+   (termina en `/__/auth/handler`) → **Guardar**.
+3. Meta → tu app → **Casos de uso → Inicio de sesión con Facebook →
+   Configuración** → *URI de redireccionamiento de OAuth válidos* → pégala →
+   **Guardar cambios**.
+
+**B4. Registrar el APK en Meta**
+
+1. Meta → *Configuración de la app → Básica* → abajo **Agregar plataforma →
+   Android**.
+2. Nombre del paquete: `com.lithio.app`.
+   Nombre de clase: `com.lithio.app.MainActivity`.
+3. **Hashes de clave**: el SHA-1 del paso A2 convertido a Base64. En PowerShell
+   (cambia el SHA-1 por el tuyo):
+   ```
+   [Convert]::ToBase64String([byte[]]('AA:BB:CC:...'.Split(':') | % { [Convert]::ToByte($_, 16) }))
+   ```
+   Pega el resultado (termina en `=`).
+4. *Inicio de sesión único*: **Sí** → **Guardar cambios**. Si avisa que no
+   encuentra el paquete en Google Play, elige usarlo igual.
+
+**B5. Claves en la app y APK nuevo**
+
+1. Añade a `lithio_mobile\.env` (la Clave secreta **no** va aquí, solo en Firebase):
    ```
    EXPO_PUBLIC_FACEBOOK_APP_ID=1234567890
    FACEBOOK_CLIENT_TOKEN=el_token_de_cliente
    ```
+2. Doble clic en `generar_apk.bat` (≈15 min) e instala el APK nuevo (v4).
+   No cambies `version` en `app.json`: así el APK v3 y el v4 siguen recibiendo
+   las mismas actualizaciones.
+3. En `lithio_backend\.env` pon `APP_LATEST_BUILD=4` y en `APP_DOWNLOAD_URL`
+   el enlace del APK nuevo; reinicia el servidor. Quien tenga el v3 verá el
+   aviso de versión nueva. En el v3 el botón de Facebook falla hasta instalar el v4.
 
-Después de A y/o B: doble clic en `generar_apk.bat` e instala el APK nuevo.
+**B6. Abrirlo para todos**
+
+- Mientras la app de Meta esté en **modo desarrollo**, solo entran las cuentas
+  que agregues en *Roles de la app → Roles → Evaluadores* (deben aceptar la
+  invitación desde su Facebook).
+- Para que entre cualquiera, Meta pide en *Configuración → Básica*: URL de
+  **política de privacidad**, URL o instrucciones de **eliminación de datos**,
+  ícono de 1024×1024 y categoría. Después cambia **Modo de la app** a
+  **Activo**. Con solo `email` y `public_profile` no hace falta revisión de Meta.
+- LITHIO todavía no tiene una página pública de política de privacidad: hay que
+  publicarla antes de este paso.
 
 ---
 
-# Avisos de viaje por WhatsApp a los conductores
+# Teléfonos: recuperar la cuenta, llamar y avisos por WhatsApp
 
-El servidor ya envía el aviso al teléfono del conductor cuando le llega una solicitud.
-Solo faltan las credenciales de Meta (WhatsApp Cloud API, gratis para empezar):
+## Recuperar con el teléfono y botón "Llamar": no hay que configurar nada
 
-1. En https://developers.facebook.com → **Crear app** → tipo *Empresa* → agrega el
-   producto **WhatsApp**. Meta crea una cuenta de WhatsApp Business y un número de prueba.
-2. *WhatsApp → Configuración de la API*: copia el **Identificador del número de
-   teléfono** y el **Identificador de la cuenta de WhatsApp Business**.
-3. Token permanente: *business.facebook.com → Configuración → Usuarios del sistema →
-   Agregar* (administrador) → *Generar token* con los permisos
-   `whatsapp_business_messaging` y `whatsapp_business_management`.
-4. **Plantilla** (obligatoria para avisos automáticos: sin ella, WhatsApp solo entrega
-   el mensaje si el conductor escribió al número en las últimas 24 horas).
-   *WhatsApp → Plantillas de mensajes → Crear* → categoría **Utilidad**, nombre
-   `nueva_solicitud`, idioma **Español**, cuerpo:
+Funcionan con el teléfono que cada usuario guardó en su perfil.
+
+- Debe ser un celular venezolano: 0412, 0414, 0416, 0422, 0424 o 0426 y 7
+  dígitos. Se acepta `0414-1234567`, `414 1234567` o `+58 414 1234567`; LITHIO lo
+  guarda como `+58 414 1234567`.
+- Para cambiarlo: **Cuenta → Mis datos → Teléfono**.
+- Si dos cuentas tienen el mismo número, la recuperación por teléfono pide la cédula.
+- "Llamar" abre la app Teléfono del usuario con el número escrito; la llamada
+  la cobra su operadora, LITHIO no cobra nada. El número solo se comparte
+  mientras el viaje está aceptado, en camino o en curso.
+
+## Avisos de viaje por WhatsApp a los conductores
+
+El servidor ya envía el aviso al WhatsApp del conductor cuando le llega una
+solicitud. Faltan las credenciales de Meta (WhatsApp Cloud API).
+
+**W1. Crear la app de WhatsApp**
+
+1. <https://developers.facebook.com> → **Mis apps → Crear app** (puede ser otra,
+   distinta de la de Facebook) → caso de uso **Conectarse con los clientes a
+   través de WhatsApp** → elige o crea tu **portafolio comercial**.
+2. Meta crea una cuenta de WhatsApp Business con un **número de prueba** gratis.
+
+**W2. Copiar el identificador del número**
+
+*WhatsApp → Configuración de la API*: copia el **Identificador del número de
+teléfono** (Phone number ID; es un número largo, no el teléfono).
+
+**W3. Token permanente** (el de la página de la API vence en 24 horas)
+
+1. <https://business.facebook.com> → **Configuración** → *Usuarios → Usuarios
+   del sistema* → **Agregar** → nombre `lithio-servidor`, rol **Administrador**.
+2. **Asignar activos**: la app de WhatsApp (control total) y tu cuenta de
+   WhatsApp Business (control total).
+3. **Generar token** → elige la app → caducidad **Nunca** → permisos
+   `whatsapp_business_messaging` y `whatsapp_business_management` → copia el
+   token. Trátalo como una contraseña: no lo compartas.
+
+**W4. Plantilla del aviso**
+
+Sin plantilla aprobada, WhatsApp solo entrega el aviso si el conductor escribió
+al número en las últimas 24 horas.
+
+1. *WhatsApp Manager → Plantillas de mensajes → Crear plantilla* → categoría
+   **Utilidad** → nombre `nueva_solicitud` → idioma **Español**.
+2. Cuerpo (respeta el orden de las variables):
    ```
    LITHIO: nueva solicitud de viaje de {{1}}.
    Origen: {{2}}
@@ -280,18 +410,43 @@ Solo faltan las credenciales de Meta (WhatsApp Cloud API, gratis para empezar):
    Horario: {{5}}
    Abre LITHIO para aceptarla.
    ```
-   Meta la revisa (minutos u horas).
-5. Con el número de prueba solo puedes enviar a los teléfonos que agregues como
-   destinatarios en *Configuración de la API*. Para enviar a cualquiera, agrega tu
-   propio número de empresa.
-6. Completa en `moto_unc_backend/.env` y reinicia el servidor:
-   ```
-   WHATSAPP_ACCESS_TOKEN=el_token_permanente
-   WHATSAPP_PHONE_NUMBER_ID=...
-   WHATSAPP_BUSINESS_ACCOUNT_ID=...
-   WHATSAPP_APP_SECRET=la_clave_secreta_de_la_app_de_meta
-   WHATSAPP_TEMPLATE_NAME=nueva_solicitud
-   WHATSAPP_TEMPLATE_LANGUAGE=es
-   ```
+3. Meta pide ejemplos: `María Pérez`, `Biblioteca UNC`, `Residencias`, `$2.50`, `inmediato`.
+4. Envíala; Meta la revisa en minutos u horas.
 
-El teléfono del conductor debe estar guardado con código de país (p. ej. `+58 414 1234567`).
+**W5. Probar con el número de prueba**
+
+En *Configuración de la API → Para*: agrega tu teléfono y el de los conductores
+de prueba (hasta 5). A cada uno le llega un código por WhatsApp para confirmarlo.
+Con el número de prueba solo se envía a esos teléfonos.
+
+**W6. Datos en el servidor**
+
+Añade a `lithio_backend\.env` y reinicia el servidor:
+
+```
+WHATSAPP_ACCESS_TOKEN=el_token_permanente
+WHATSAPP_PHONE_NUMBER_ID=el_identificador_del_numero
+WHATSAPP_TEMPLATE_NAME=nueva_solicitud
+WHATSAPP_TEMPLATE_LANGUAGE=es
+```
+
+Prueba: con una cuenta de pasajero pide un viaje a un conductor de la lista del
+paso W5; le debe llegar el WhatsApp en segundos.
+
+**W7. Enviar a cualquier conductor (número propio)**
+
+1. *WhatsApp Manager → Números de teléfono → Agregar número*: un número que **no**
+   esté usando la app de WhatsApp (o bórralo de ella antes) y que reciba SMS o
+   llamadas para el código.
+2. Nombre visible: `LITHIO` (Meta lo revisa).
+3. Agrega un método de pago en el portafolio comercial: Meta cobra por cada
+   plantilla enviada; el precio depende del país (ver
+   <https://developers.facebook.com/docs/whatsapp/pricing>).
+4. Cambia `WHATSAPP_PHONE_NUMBER_ID` por el identificador del número nuevo y
+   reinicia el servidor.
+
+Opcional: para recibir en el servidor las respuestas y los estados de entrega,
+configura el webhook en *WhatsApp → Configuración* con la URL
+`https://<tu-servidor>/webhooks/whatsapp` y añade al `.env`
+`WHATSAPP_WEBHOOK_VERIFY_TOKEN` (una palabra que tú inventes, la misma en Meta)
+y `WHATSAPP_APP_SECRET` (la clave secreta de esa app de Meta).

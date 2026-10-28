@@ -7,7 +7,7 @@
 **/.pytest_cache
 **/*.db
 **/node_modules
-moto_unc_mobile
+lithio_mobile
 app
 .git
 .claude

@@ -1,6 +1,6 @@
 # Lo que NO se sube a Railway con `railway up` (además de lo del .gitignore).
-# La imagen solo necesita moto_unc_backend/ y moto_unc_dashboard/.
-moto_unc_mobile/
+# La imagen solo necesita lithio_backend/ y lithio_dashboard/.
+lithio_mobile/
 app/
 .claude/
 lithio_skills.zip
@@ -8,5 +8,5 @@ lithio_skills.zip
 **/__pycache__/
 **/.env
 **/*.db
-moto_unc_backend/media/
-moto_unc_backend/evidence/
+lithio_backend/media/
+lithio_backend/evidence/

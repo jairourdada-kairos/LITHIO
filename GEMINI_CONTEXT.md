@@ -22,7 +22,7 @@ El producto incluye tres piezas:
 
 ```text
 /
-├── moto_unc_backend/           # Backend oficial
+├── lithio_backend/           # Backend oficial
 │   ├── app/
 │   │   ├── auth.py             # Verificación de identidad Firebase y autorización admin
 │   │   ├── database.py         # Engine, sesiones y dependencia de DB
@@ -33,8 +33,8 @@ El producto incluye tres piezas:
 │   ├── tests/test_api.py       # Pruebas de API, permisos, viajes y gamificación
 │   ├── requirements.txt
 │   └── firebase-config.example
-├── moto_unc_dashboard/         # Panel administrativo web (HTML/CSS/JS)
-├── moto_unc_mobile/            # Aplicación React Native / Expo
+├── lithio_dashboard/         # Panel administrativo web (HTML/CSS/JS)
+├── lithio_mobile/            # Aplicación React Native / Expo
 │   ├── App.tsx                 # Composición de pantallas y estado principal
 │   └── src/
 │       ├── components/         # Componentes de viaje, rutas, conductor, reseñas y Fe
@@ -50,7 +50,7 @@ El producto incluye tres piezas:
 └── iniciar_mobile.bat
 ```
 
-Los nombres `moto_unc_*`, `com.motounc.mobile` y `moto_unc.db` son nombres técnicos históricos que se conservan por compatibilidad; el nombre de producto y la marca visible son LITHIO. El backend que se debe ejecutar es `moto_unc_backend`, no el directorio raíz `app/`. En la raíz también hay bases SQLite históricas; la configuración del backend oficial apunta a `moto_unc_backend/moto_unc.db` cuando se inicia desde esa carpeta.
+Todo el proyecto usa el nombre LITHIO: carpetas `lithio_*`, identificador de Android `com.lithio.app` y base `lithio.db`. El backend que se debe ejecutar es `lithio_backend`, no el directorio raíz `app/`. En la raíz también hay bases SQLite históricas; la configuración del backend oficial apunta a `lithio_backend/lithio.db` cuando se inicia desde esa carpeta.
 
 ## 3. Tecnologías y responsabilidades
 
@@ -149,10 +149,10 @@ El formulario contiene un campo “Ciudad principal”, pero el endpoint del bac
 - `seed.py` crea las tablas y el catálogo inicial de rutas/recompensas, sincroniza nombres antiguos hacia Fe/LITHIO y añade de forma compatible columnas de Pago Móvil que podrían faltar en una base previa.
 - Hay un perfil de demostración asociado a Jairo y un perfil pasajero de prueba en la lógica de semilla. No se deben tratar estos datos como cuentas de producción ni como credenciales de acceso.
 - Backend: archivo `.env` local con `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `ADMIN_FIREBASE_UIDS`, `FIREBASE_WEB_API_KEY`, `FIREBASE_AUTH_DOMAIN` y `CORS_ALLOWED_ORIGINS`.
-- App: copiar `moto_unc_mobile/firebase-config.example` a `.env` y completar las variables `EXPO_PUBLIC_FIREBASE_*` y `EXPO_PUBLIC_API_URL`. La URL debe apuntar a una dirección accesible desde el dispositivo, no necesariamente `localhost`.
+- App: copiar `lithio_mobile/firebase-config.example` a `.env` y completar las variables `EXPO_PUBLIC_FIREBASE_*` y `EXPO_PUBLIC_API_URL`. La URL debe apuntar a una dirección accesible desde el dispositivo, no necesariamente `localhost`.
 - Panel: se puede servir desde el backend en `/dashboard` o como estático desde puerto 8080. Si se sirve aparte, incluir ese origen en `CORS_ALLOWED_ORIGINS`.
 - Scripts Windows existentes: `iniciar_backend.bat`, `iniciar_dashboard.bat`, `iniciar_mobile.bat`. También hay instrucciones en `README.md` y `ORGANIZACION_PROYECTO.md`.
-- La configuración del paquete móvil indica Expo, Android/iOS/web y mantiene el identificador Android `com.motounc.mobile`.
+- La configuración del paquete móvil indica Expo, Android/iOS/web y mantiene el identificador Android `com.lithio.app`.
 
 ## 9. Lo implementado, lo parcial y lo futuro
 
@@ -174,12 +174,12 @@ No describir como completado lo que sigue siendo parcial:
 ### Conexión entre app y backend
 
 1. El usuario crea cuenta o inicia sesión en Firebase Authentication desde la app.
-2. `moto_unc_mobile/src/services/firebase.ts` inicializa Firebase y la persistencia de la sesión; `getFirebaseIdToken()` obtiene el ID token.
+2. `lithio_mobile/src/services/firebase.ts` inicializa Firebase y la persistencia de la sesión; `getFirebaseIdToken()` obtiene el ID token.
 3. `authenticatedFetch()` añade el token como Bearer a peticiones protegidas.
-4. `moto_unc_backend/app/auth.py` valida el token con Firebase Admin SDK, resuelve UID/correo y busca o vincula el perfil local.
+4. `lithio_backend/app/auth.py` valida el token con Firebase Admin SDK, resuelve UID/correo y busca o vincula el perfil local.
 5. FastAPI usa dependencias para obtener el usuario autenticado, autorizar acciones y abrir una sesión SQLAlchemy.
-6. `moto_unc_backend/app/database.py` conecta con SQLite. `models.py` define tablas; `schemas.py` define respuestas y entradas Pydantic.
-7. `moto_unc_mobile/src/services/api.ts` agrupa llamadas al backend; `App.tsx` administra el estado de pantalla y viaje, mientras los componentes renderizan la interfaz.
+6. `lithio_backend/app/database.py` conecta con SQLite. `models.py` define tablas; `schemas.py` define respuestas y entradas Pydantic.
+7. `lithio_mobile/src/services/api.ts` agrupa llamadas al backend; `App.tsx` administra el estado de pantalla y viaje, mientras los componentes renderizan la interfaz.
 
 Las rutas, lista pública de conductores y recompensas se consultan con endpoints públicos. Las operaciones de usuario y viaje que cambian datos requieren el token. Para tiempo real, el cliente abre `/ws` y envía un mensaje `AUTH` con el ID token antes de recibir notificaciones.
 
@@ -271,7 +271,7 @@ Priorizar antes de ampliar funcionalidades: reparar GET del dashboard, completar
 
 ## 16. Pruebas y modificaciones visibles en el árbol de trabajo
 
-`moto_unc_backend/tests/test_api.py` tiene pruebas de Firebase no configurado, CORS, privacidad de tarjetas/perfiles/datos financieros, vinculación de Firebase, disponibilidad, autorización y privacidad de viajes, ciclo de viaje y Fe, validación de reseñas/pagos, canje, rutas administrativas, perfil de admin, cambio de rol y WebSocket autenticado.
+`lithio_backend/tests/test_api.py` tiene pruebas de Firebase no configurado, CORS, privacidad de tarjetas/perfiles/datos financieros, vinculación de Firebase, disponibilidad, autorización y privacidad de viajes, ciclo de viaje y Fe, validación de reseñas/pagos, canje, rutas administrativas, perfil de admin, cambio de rol y WebSocket autenticado.
 
 Entre las modificaciones que ya se ven reflejadas en el árbol de trabajo están:
 

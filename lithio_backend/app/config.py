@@ -1,6 +1,6 @@
 """Configuración central leída desde variables de entorno.
 
-En local se cargan desde moto_unc_backend/.env; en la nube (Railway, Render
+En local se cargan desde lithio_backend/.env; en la nube (Railway, Render
 o un VPS) se definen en el panel del proveedor. Este módulo debe importarse
 antes que cualquier otro que lea variables de entorno.
 """
@@ -29,7 +29,7 @@ def _normalize_database_url(url: str) -> str:
 
 
 DATABASE_URL = _normalize_database_url(
-    os.getenv("DATABASE_URL", f"sqlite:///{(BACKEND_DIR / 'moto_unc.db').as_posix()}")
+    os.getenv("DATABASE_URL", f"sqlite:///{(BACKEND_DIR / 'lithio.db').as_posix()}")
 )
 
 # Venezuela no cambia de horario: UTC-4 todo el año.

@@ -4,7 +4,7 @@ echo ===================================================
 echo   Iniciando App Movil Expo (LITHIO)
 echo   Escanea el codigo QR con la app Expo Go
 echo ===================================================
-cd /d "%~dp0moto_unc_mobile"
+cd /d "%~dp0lithio_mobile"
 npx expo start
 pause
 

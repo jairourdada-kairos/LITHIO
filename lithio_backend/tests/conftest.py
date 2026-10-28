@@ -3,7 +3,7 @@ import tempfile
 
 from cryptography.fernet import Fernet
 
-# Se define antes de importar la app: las pruebas nunca tocan moto_unc.db
+# Se define antes de importar la app: las pruebas nunca tocan lithio.db
 # ni usan las claves reales del .env (load_dotenv no sobrescribe estas).
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["LITHIO_ENCRYPTION_KEYS"] = Fernet.generate_key().decode()
@@ -13,6 +13,8 @@ os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="lithio-media-")
 # se prueba aparte, activándola en su propio test.
 os.environ["ALLOWED_EMAIL_DOMAINS"] = ""
 os.environ["REQUIRE_VERIFIED_EMAIL"] = "false"
+# Sin token: las pruebas nunca envían un WhatsApp real a los teléfonos de la base.
+os.environ["WHATSAPP_ACCESS_TOKEN"] = ""
 
 
 import pytest  # noqa: E402

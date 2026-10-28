@@ -4,7 +4,7 @@
 def seed_data() -> None:
     raise RuntimeError(
         "The root-level backend is retired. Initialize data with "
-        "moto_unc_backend/app/seed.py and configure Firebase authentication."
+        "lithio_backend/app/seed.py and configure Firebase authentication."
     )
 
 

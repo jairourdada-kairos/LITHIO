@@ -107,6 +107,8 @@ class Ride(Base):
     payment_reference = Column(EncryptedString, nullable=True)
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
     points_rewarded = Column(Integer, default=50)
+    # El conductor también gana el Fe del viaje; marca que ya se le pagó (una sola vez).
+    driver_fe_awarded = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utcnow)
     # Línea de tiempo: JSON [{"status": "...", "at": "ISO"}] con cada cambio de estado.
     status_log = Column(Text, nullable=True)

@@ -32,13 +32,13 @@ Thumbs.db
 .vscode/
 
 # project runtime
-moto_unc_backend/.pytest_cache/
-moto_unc_backend/venv/
-moto_unc_backend/*.db
-moto_unc_mobile/.expo/
-moto_unc_mobile/node_modules/
-moto_unc_backend/media/
-moto_unc_backend/evidence/
+lithio_backend/.pytest_cache/
+lithio_backend/venv/
+lithio_backend/*.db
+lithio_mobile/.expo/
+lithio_mobile/node_modules/
+lithio_backend/media/
+lithio_backend/evidence/
 
 # Firebase para Android (se envía a EAS como variable de archivo)
-moto_unc_mobile/google-services.json
+lithio_mobile/google-services.json

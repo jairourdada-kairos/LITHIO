@@ -1,6 +1,6 @@
 from .database import SessionLocal, engine, Base
 from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward, phone_fingerprint
-from .links_service import assign_friend_code
+from .links_service import assign_friend_code, award_fe
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
 from datetime import datetime
@@ -96,6 +96,7 @@ ADDED_COLUMNS = {
         "status_log": "TEXT",
         "receipt_file": "VARCHAR",
         "receipt_uploaded_at": "TIMESTAMP",
+        "driver_fe_awarded": "BOOLEAN NOT NULL DEFAULT 0",
     },
     "driver_profiles": {
         "mobile_payment_bank": "TEXT",
@@ -147,6 +148,16 @@ def backfill_user_fields(db):
     for user in db.query(User).filter(User.phone_hash.is_(None)).all():
         user.phone_hash = phone_fingerprint(user.phone)
     db.execute(text("UPDATE users SET fe_lifetime = points WHERE fe_lifetime < points"))
+    db.commit()
+
+
+def backfill_driver_fe(db):
+    """Paga a los conductores el Fe de los viajes que completaron antes de que lo ganaran."""
+    for ride in db.query(Ride).filter(Ride.status == "completado", Ride.driver_fe_awarded.is_(False)).all():
+        driver = db.get(User, ride.driver_id)
+        if driver:
+            award_fe(driver, ride.points_rewarded or 0)
+        ride.driver_fe_awarded = True
     db.commit()
 
 
@@ -204,6 +215,7 @@ def seed_database():
     ensure_columns(db)
     migrate_plaintext_columns(db)
     backfill_user_fields(db)
+    backfill_driver_fe(db)
     seed_workshop(db)
     sync_route_catalog(db)
     sync_legacy_reward_copy(db)

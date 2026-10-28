@@ -35,7 +35,7 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 hopeful-galileo/
 ├── .vscode/
 │   └── tasks.json             # Tareas para correr backend, app y tests en 1 clic
-├── moto_unc_backend/          # Servidor FastAPI
+├── lithio_backend/          # Servidor FastAPI
 │   ├── app/
 │   │   ├── database.py        # Configuración SQLAlchemy SQLite
 │   │   ├── models.py          # Modelos User, DriverProfile, Ride, Review, Reward
@@ -46,7 +46,7 @@ hopeful-galileo/
 │   │   └── test_api.py        # Pruebas automatizadas (pytest)
 │   ├── requirements.txt
 │   └── venv/
-└── moto_unc_mobile/           # App Móvil Expo
+└── lithio_mobile/           # App Móvil Expo
     ├── src/
     │   ├── components/        # Header, RoutePicker, DriverCard, ActiveRideCard, etc.
     │   ├── constants/         # Rutas fijas (UNC/IVIC/Caracas) y Tema Gamificado
@@ -72,7 +72,7 @@ hopeful-galileo/
 
 #### Terminal 1: Backend
 ```powershell
-cd moto_unc_backend
+cd lithio_backend
 .\venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -80,7 +80,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 #### Terminal 2: App Móvil (Expo)
 ```powershell
-cd moto_unc_mobile
+cd lithio_mobile
 npx expo start
 ```
 > Aparecerá un código QR en la terminal. 
@@ -94,7 +94,7 @@ npx expo start
 Para validar que todos los flujos de negocio (solicitud, aceptación, cambio de estados, asignación de puntos y reseñas) funcionan a la perfección:
 
 ```powershell
-cd moto_unc_backend
+cd lithio_backend
 $env:PYTHONPATH="."
 .\venv\Scripts\pytest tests/test_api.py -v
 ```
@@ -105,8 +105,8 @@ El conjunto verifica autenticación, permisos de administrador, privacidad de pe
 El backend verifica Firebase ID tokens en las rutas privadas. Para configurarlo:
 
 1. Crea una app web en Firebase y habilita el proveedor **Correo/contraseña**.
-2. Copia `moto_unc_mobile/firebase-config.example` a `moto_unc_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
-3. Configura `moto_unc_backend/.env` con el ID del proyecto, la clave web pública de Firebase (`FIREBASE_WEB_API_KEY`), el dominio de autenticación y la ruta local a un archivo de cuenta de servicio. No guardes ni compartas el archivo de cuenta de servicio; mantenlo fuera del repositorio.
+2. Copia `lithio_mobile/firebase-config.example` a `lithio_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
+3. Configura `lithio_backend/.env` con el ID del proyecto, la clave web pública de Firebase (`FIREBASE_WEB_API_KEY`), el dominio de autenticación y la ruta local a un archivo de cuenta de servicio. No guardes ni compartas el archivo de cuenta de servicio; mantenlo fuera del repositorio.
 4. Para autorizar administradores, coloca sus Firebase UIDs en `ADMIN_FIREBASE_UIDS` (separados por comas) o asigna el rol `admin` directamente en la base de datos con acceso administrativo seguro.
 5. Configura `CORS_ALLOWED_ORIGINS` con los orígenes web que usarás, separados por comas. El dashboard servido por el backend no requiere un origen adicional; el servidor estático local predeterminado en el puerto 8080 sí.
 6. Reinicia backend y Expo. Los registros existentes se vinculan a Firebase solo cuando el token presenta el mismo correo verificado.

@@ -28,7 +28,7 @@ export function getFirebaseAuth(): Auth {
     .map(([key]) => key);
   if (missingConfig.length > 0) {
     throw new Error(
-      `Configura Firebase en moto_unc_mobile/.env (${missingConfig.join(', ')}).`
+      `Configura Firebase en lithio_mobile/.env (${missingConfig.join(', ')}).`
     );
   }
 

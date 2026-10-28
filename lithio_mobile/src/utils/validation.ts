@@ -1,7 +1,7 @@
 /**
  * validation.ts — Reglas del formulario de registro
  *
- * Copia en el cliente de moto_unc_backend/app/validation.py: avisa al
+ * Copia en el cliente de lithio_backend/app/validation.py: avisa al
  * usuario antes de enviar, pero el backend vuelve a validar todo.
  * Si cambias una regla aquí, cámbiala también allá.
  */

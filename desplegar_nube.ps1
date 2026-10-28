@@ -11,8 +11,8 @@
 # escribe en stderr detiene el script. Los fallos se detectan con $LASTEXITCODE.
 $ErrorActionPreference = 'Continue'
 $Root = $PSScriptRoot
-$Backend = Join-Path $Root 'moto_unc_backend'
-$Mobile = Join-Path $Root 'moto_unc_mobile'
+$Backend = Join-Path $Root 'lithio_backend'
+$Mobile = Join-Path $Root 'lithio_mobile'
 $Service = 'lithio-api'
 
 function Step($text) { Write-Host ''; Write-Host "==> $text" -ForegroundColor Cyan }
@@ -44,7 +44,7 @@ $envFile = Join-Path $Backend '.env'
 if (-not (Test-Path $envFile)) { Fail "No existe $envFile" }
 $cfg = Read-DotEnv $envFile
 foreach ($key in 'LITHIO_ENCRYPTION_KEYS', 'LITHIO_HASH_KEY', 'FIREBASE_PROJECT_ID') {
-  if (-not $cfg[$key]) { Fail "Falta $key en moto_unc_backend\.env" }
+  if (-not $cfg[$key]) { Fail "Falta $key en lithio_backend\.env" }
 }
 $saPath = $cfg['FIREBASE_SERVICE_ACCOUNT_PATH']
 if (-not $saPath -or -not (Test-Path $saPath)) { Fail 'No se encontro el JSON de la cuenta de servicio de Firebase (FIREBASE_SERVICE_ACCOUNT_PATH en el .env).' }
@@ -79,7 +79,7 @@ if ($newDatabase) {
     Start-Sleep 10  # La base acepta conexiones unos segundos despues de crearse
     $env:DATABASE_URL = $publicUrl
     Push-Location $Backend
-    try { & .\venv\Scripts\python.exe -m app.migrate_to_cloud moto_unc.db } finally { Pop-Location; Remove-Item Env:DATABASE_URL }
+    try { & .\venv\Scripts\python.exe -m app.migrate_to_cloud lithio.db } finally { Pop-Location; Remove-Item Env:DATABASE_URL }
   }
 }
 
@@ -139,5 +139,5 @@ Write-Host ''
 Write-Host '================ LISTO ================' -ForegroundColor Green
 Write-Host "Servidor 24/7:     $url"
 Write-Host "Panel de admin:    $url/dashboard"
-Write-Host 'La app (moto_unc_mobile\.env) ya apunta a la nube.'
+Write-Host 'La app (lithio_mobile\.env) ya apunta a la nube.'
 Write-Host 'Siguiente paso: generar_apk.bat para crear el instalable de Android.'

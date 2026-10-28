@@ -4,7 +4,7 @@
 # 2. Abre un tunel de Cloudflare: una direccion https publica que llega a esta PC.
 # 3. Abre otro tunel para la app (Expo) y arranca Expo: el QR sirve desde cualquier red.
 #
-# La direccion cambia cada vez que se abre; no se toca moto_unc_mobile\.env, asi
+# La direccion cambia cada vez que se abre; no se toca lithio_mobile\.env, asi
 # que iniciar_todo.bat sigue funcionando igual para uso en tu Wi-Fi.
 
 $ErrorActionPreference = 'Continue'
@@ -59,7 +59,7 @@ if (-not $ok) { Write-Host "Aviso: $url aun no responde; puede tardar unos segun
 Write-Host "Servidor publico: $url" -ForegroundColor Green
 
 # El APK lee esta direccion desde Firebase al abrirse (cambia en cada arranque).
-Push-Location (Join-Path $Root 'moto_unc_backend')
+Push-Location (Join-Path $Root 'lithio_backend')
 & .\venv\Scripts\python.exe -m app.publish_address $url
 if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: el APK no sabra la direccion nueva hasta configurar Firestore (ver DESPLIEGUE.md).' -ForegroundColor Yellow }
 Pop-Location
@@ -78,7 +78,7 @@ Write-Host ''
 Write-Host "Direccion para Expo Go (escanea el QR o escribela en Expo Go):" -ForegroundColor Green
 Write-Host "  $expUrl" -ForegroundColor Green
 Write-Host ''
-Set-Location (Join-Path $Root 'moto_unc_mobile')
+Set-Location (Join-Path $Root 'lithio_mobile')
 try { & npx expo start --lan --port 8082 --clear }
 finally {
   Stop-Process -Id $api.Process.Id -Force -ErrorAction SilentlyContinue

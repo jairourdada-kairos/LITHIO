@@ -425,3 +425,56 @@ def test_cancel_rules_and_phone_contact_during_ride(client):
     passenger_cancel = client.put(path, json={"status": "cancelado"}, headers=auth_headers(4))
     assert passenger_cancel.status_code == 400 and "conductor" in passenger_cancel.json()["detail"]
     assert client.put(path, json={"status": "cancelado"}, headers=auth_headers(1)).status_code == 200
+
+
+def complete_ride(client):
+    ride = make_ride(client, payment="efectivo")
+    for status in ("aceptado", "en_curso", "completado"):
+        assert client.put(f"/api/rides/{ride['id']}/status", json={"status": status}, headers=auth_headers(1)).status_code == 200
+    return ride
+
+
+def lifetime_fe(client, user_id):
+    return client.get("/api/users/me/summary", headers=auth_headers(user_id)).json()["level"]["fe_lifetime"]
+
+
+def test_driver_and_passenger_earn_fe_for_each_completed_ride(client):
+    driver_before, passenger_before = lifetime_fe(client, 1), lifetime_fe(client, 4)
+    ride = complete_ride(client)
+    assert lifetime_fe(client, 1) == driver_before + ride["points_rewarded"]
+    assert lifetime_fe(client, 4) == passenger_before + ride["points_rewarded"]
+
+
+def test_rides_completed_before_driver_fe_existed_are_paid_once(client):
+    from app.database import get_db
+    from app.main import app
+    from app.models import Ride, User
+    from app.seed import backfill_driver_fe
+
+    ride = complete_ride(client)
+    db = next(app.dependency_overrides[get_db]())
+    # Como los viajes de antes: completado, pero el conductor no recibió su Fe.
+    db.get(Ride, ride["id"]).driver_fe_awarded = False
+    driver = db.get(User, 1)
+    driver.fe_lifetime -= ride["points_rewarded"]
+    driver.points -= ride["points_rewarded"]
+    db.commit()
+    before = driver.fe_lifetime
+
+    backfill_driver_fe(db)
+    backfill_driver_fe(db)  # Al reiniciar el servidor no se paga otra vez
+    db.refresh(driver)
+    assert driver.fe_lifetime == before + ride["points_rewarded"]
+
+
+def test_welcome_bonus_counts_toward_level_from_registration(client):
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+    from tests.test_api import VALID_REGISTRATION
+
+    created = client.post("/api/passengers/register", json=VALID_REGISTRATION, headers={"Authorization": "Bearer test-new-user"})
+    assert created.status_code == 201
+    db = next(app.dependency_overrides[get_db]())
+    user = db.get(User, created.json()["id"])
+    assert user.points == 100 and user.fe_lifetime == 100

@@ -7,7 +7,7 @@
 
 # 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
 $ErrorActionPreference = 'Continue'
-$Mobile = Join-Path $PSScriptRoot 'moto_unc_mobile'
+$Mobile = Join-Path $PSScriptRoot 'lithio_mobile'
 Set-Location $Mobile
 
 # Parametro con nombre: con @args, el envoltorio npx.ps1 pierde los argumentos.
@@ -18,7 +18,7 @@ function Eas {
 }
 
 if (-not (Test-Path 'google-services.json')) {
-  Write-Host 'ERROR: falta moto_unc_mobile\google-services.json (Firebase para Android).' -ForegroundColor Red
+  Write-Host 'ERROR: falta lithio_mobile\google-services.json (Firebase para Android).' -ForegroundColor Red
   Write-Host 'Descargalo desde la consola de Firebase: ver DESPLIEGUE.md, seccion APK, paso 1.'
   exit 1
 }

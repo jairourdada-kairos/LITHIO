@@ -119,7 +119,7 @@ app.add_middleware(
 )
 
 # Montar Dashboard Web (HTML / CSS / JS)
-dashboard_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "moto_unc_dashboard"))
+dashboard_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_dashboard"))
 if os.path.isdir(dashboard_dir):
     app.mount("/dashboard", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
 
@@ -371,7 +371,7 @@ def get_firebase_web_config():
             status_code=503,
             detail=(
                 "Configura FIREBASE_PROJECT_ID y FIREBASE_WEB_API_KEY "
-                "en moto_unc_backend/.env y reinicia el backend."
+                "en lithio_backend/.env y reinicia el backend."
             ),
         )
     return {
@@ -567,6 +567,7 @@ def create_admin_driver(data: AdminDriverCreate, db: Session = Depends(get_db)):
         role="conductor",
         avatar_url=payload.get("avatar_url"),
         points=100,
+        fe_lifetime=100,
         xp_level=payload.get("xp_level", "Conductor UNC")
     )
     db.add(user)
@@ -892,6 +893,7 @@ def register_passenger(
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
         points=100,  # Bono de bienvenida
+        fe_lifetime=100,  # Cuenta para el nivel desde el primer día
         xp_level="Pasajero Novato"
     )
     db.add(new_user)
@@ -945,6 +947,7 @@ def register_driver(
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
         points=100,
+        fe_lifetime=100,
         xp_level="Conductor Novato"
     )
     db.add(new_user)
@@ -1380,12 +1383,16 @@ async def update_ride_status(
         # El cupón vuelve a estar disponible si el viaje no se hizo.
         db.query(Coupon).filter(Coupon.ride_id == ride.id).update({"status": "activo", "ride_id": None})
 
-    # Si se completa el viaje, sumar Fe al pasajero e incrementar contador del conductor
+    # Si se completa el viaje, pasajero y conductor ganan el Fe del viaje
     if update.status == "completado" and old_status != "completado":
         passenger = db.query(User).filter(User.id == ride.passenger_id).first()
         if passenger:
             award_fe(passenger, ride.points_rewarded)
             fe_awarded = ride.points_rewarded
+        driver = db.query(User).filter(User.id == ride.driver_id).first()
+        if driver and not ride.driver_fe_awarded:
+            award_fe(driver, ride.points_rewarded)
+            ride.driver_fe_awarded = True
         wallet_service.settle_ride_payment(db, ride)
 
         if driver_profile:

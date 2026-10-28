@@ -7,18 +7,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     APP_ENV=production
 
-WORKDIR /srv/moto_unc_backend
+WORKDIR /srv/lithio_backend
 
 # gosu: el arranque baja de root al usuario "lithio" (ver docker-entrypoint.sh).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gosu \
     && rm -rf /var/lib/apt/lists/*
 
-COPY moto_unc_backend/requirements.txt .
+COPY lithio_backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY moto_unc_backend/app ./app
-COPY moto_unc_dashboard /srv/moto_unc_dashboard
+COPY lithio_backend/app ./app
+COPY lithio_dashboard /srv/lithio_dashboard
 
 RUN useradd --create-home lithio && chown -R lithio /srv
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
