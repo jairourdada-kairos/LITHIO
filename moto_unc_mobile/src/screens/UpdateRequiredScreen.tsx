@@ -4,13 +4,13 @@
 
 import React from 'react';
 import { View, Text, Linking } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../components/ui/Icon';
 import { theme, themed } from '../constants/theme';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 
 export const UpdateRequiredScreen: React.FC<{ downloadUrl: string | null }> = ({ downloadUrl }) => (
   <View style={styles.root}>
-    <MaterialCommunityIcons name="cellphone-arrow-down" size={56} color={theme.colors.primary} />
+    <Icon name="download-outline" size={56} color={theme.colors.primary} />
     <Text style={styles.title}>Actualiza LITHIO</Text>
     <Text style={styles.body}>
       Hay una versión nueva de la app con cambios importantes. Descárgala e instálala encima de esta: tu cuenta y tus datos se mantienen.

@@ -3,15 +3,18 @@
  *
  * Cápsula separada del borde con la pestaña activa resaltada. Las pestañas
  * cambian sin animación de deslizamiento: son pares, no niveles.
+ *
+ * La cápsula es cristal teñido con desenfoque del contenido que pasa por
+ * debajo. Cada pestaña reacciona al puntero, al toque y al foco del teclado.
  */
 
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
+import { filledIcon, Icon, IconName } from '../ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+import { GlassSurface } from '../ui/GlassSurface';
+import { PressableScale } from '../brand/PressableScale';
 
 export interface TabItem<K extends string> {
   key: K;
@@ -34,31 +37,32 @@ export function BottomTabBar<K extends string>({ tabs, active, onChange, accent 
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
-      <View style={styles.bar} accessibilityRole="tablist">
+      <GlassSurface blur radius={32} tint={theme.colors.glassBg} style={styles.bar} accessibilityRole="tablist">
         {tabs.map((tab) => {
           const selected = tab.key === active;
           return (
-            <Pressable
+            <PressableScale
               key={tab.key}
+              variant="glass"
+              accent={accent}
               onPress={() => onChange(tab.key)}
-              style={styles.tab}
+              containerStyle={styles.tab}
+              style={[styles.pill, selected && { backgroundColor: `${accent}24`, borderColor: `${accent}40` }]}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={tab.label}
             >
-              <View style={[styles.pill, selected && { backgroundColor: `${accent}1F` }]}>
-                <MaterialCommunityIcons name={tab.icon} size={22} color={selected ? accent : theme.colors.textMuted} />
+                <Icon name={selected ? filledIcon(tab.icon) : tab.icon} size={22} color={selected ? accent : theme.colors.textMuted} />
                 {selected ? <Text style={[styles.label, { color: accent }]}>{tab.label}</Text> : null}
                 {tab.badge ? (
                   <View style={[styles.badge, { backgroundColor: theme.colors.secondary }]}>
                     <Text style={styles.badgeText}>{tab.badge > 9 ? '9+' : tab.badge}</Text>
                   </View>
                 ) : null}
-              </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
-      </View>
+      </GlassSurface>
     </View>
   );
 }
@@ -77,10 +81,6 @@ const styles = themed(() => ({
     alignItems: 'center',
     borderRadius: 32,
     paddingHorizontal: 6,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    boxShadow: theme.glow.soft,
   },
   tab: {
     flex: 1,
@@ -95,6 +95,8 @@ const styles = themed(() => ({
     paddingHorizontal: 12,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   label: {
     fontFamily: theme.fonts.semibold,

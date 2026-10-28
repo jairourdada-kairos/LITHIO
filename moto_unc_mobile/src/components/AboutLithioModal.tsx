@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { Modal, View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from './ui/Icon';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from './brand/LithiumAtom';
@@ -30,13 +30,13 @@ const ACRONYM: { letter: string; word: string; meaning: string }[] = [
 ];
 
 const principles = (): {
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  icon: IconName;
   title: string;
   body: string;
   color: string;
 }[] => [ // Función: lee la paleta activa
   {
-    icon: 'shield-account',
+    icon: 'shield-outline',
     title: 'Confianza verificada',
     body: 'Cada conductor es parte de la comunidad universitaria y se registra con su identidad real. Las reseñas de cada viaje construyen su reputación.',
     color: theme.colors.primary,
@@ -48,13 +48,13 @@ const principles = (): {
     color: theme.colors.primary,
   },
   {
-    icon: 'account-group',
+    icon: 'people-outline',
     title: 'Transporte comunitario',
     body: 'Estudiantes, docentes e investigadores que se mueven entre la UNC, el IVIC, San Antonio de los Altos y Caracas, ayudándose entre sí.',
     color: theme.colors.secondary,
   },
   {
-    icon: 'star-four-points',
+    icon: 'star-outline',
     title: 'Energía que se recompensa',
     body: 'Cada viaje y cada reseña útil suma Fe. Con Fe obtienes descuentos y premios por tu esfuerzo académico, como el voucher "Pasar con 20".',
     color: theme.colors.gold,
@@ -90,7 +90,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
           >
-            <MaterialCommunityIcons name="close" size={22} color={theme.colors.textSecondary} />
+            <Icon name="close-outline" size={22} color={theme.colors.textSecondary} />
           </Pressable>
 
           <View style={styles.hero}>
@@ -131,7 +131,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {principles().map((principle) => (
             <View key={principle.title} style={[styles.card, styles.principle]}>
               <View style={[styles.principleIcon, { borderColor: principle.color }]}>
-                <MaterialCommunityIcons name={principle.icon} size={20} color={principle.color} />
+                <Icon name={principle.icon} size={20} color={principle.color} />
               </View>
               <View style={styles.principleText}>
                 <Text style={styles.principleTitle}>{principle.title}</Text>

@@ -86,6 +86,7 @@ const styles = themed(() => ({
     padding: 4,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { FormField } from './FormField';
@@ -159,7 +159,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
                       style={({ pressed }) => [styles.option, !affordable && styles.dim, pressed && styles.pressed]}
                       accessibilityRole="button"
                     >
-                      <MaterialCommunityIcons name="wrench-outline" size={22} color={theme.colors.secondary} />
+                      <Icon name="settings-2-outline" size={22} color={theme.colors.secondary} />
                       <View style={styles.flex}>
                         <Text style={styles.optionTitle}>{item.title}</Text>
                         {item.description ? <Text style={styles.message}>{item.description}</Text> : null}
@@ -312,6 +312,7 @@ const styles = themed(() => ({
     padding: 14,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   optionTitle: {
     fontFamily: theme.fonts.semibold,

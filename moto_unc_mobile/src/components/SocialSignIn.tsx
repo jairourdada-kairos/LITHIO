@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './ui/Icon';
 import { theme, themed } from '../constants/theme';
 import { AuthUser } from '../services/auth';
 import {
@@ -56,7 +56,7 @@ export const SocialSignIn: React.FC<Props> = ({ onUser, onNeedsProfile, dividerL
         {(['google', 'facebook'] as SocialProvider[]).map((provider) => {
           const pending = socialUnavailableReason(provider) !== null;
           return (
-            <PressableScale
+            <PressableScale variant="glass"
               key={provider}
               containerStyle={styles.cell}
               style={styles.button}
@@ -67,7 +67,7 @@ export const SocialSignIn: React.FC<Props> = ({ onUser, onNeedsProfile, dividerL
               {busy === provider ? (
                 <ActivityIndicator size="small" color={theme.colors.textPrimary} />
               ) : (
-                <MaterialCommunityIcons name={ICON[provider]} size={18} color={theme.colors.textPrimary} />
+                <Icon name={ICON[provider]} size={18} color={theme.colors.textPrimary} />
               )}
               <Text style={styles.label}>{PROVIDER_LABEL[provider]}</Text>
               {pending ? <Text style={styles.soon}>pronto</Text> : null}

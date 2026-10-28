@@ -8,7 +8,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Modal, View, Text, ScrollView, ScrollViewInstance, Pressable, useWindowDimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from './ui/Icon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
@@ -16,10 +16,8 @@ import { LithiumAtom } from './brand/LithiumAtom';
 import { PressableScale } from './brand/PressableScale';
 import type { SessionRole } from '../services/session';
 
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
 interface Slide {
-  icon: IconName | 'atom-animated';
+  icon: IconName | 'atom';
   tint: 'primary' | 'secondary' | 'gold' | 'diamond' | 'success';
   title: string;
   body: string;
@@ -27,31 +25,31 @@ interface Slide {
 
 const PASSENGER_SLIDES: Slide[] = [
   {
-    icon: 'atom-animated',
+    icon: 'atom',
     tint: 'primary',
     title: 'Bienvenido a LITHIO',
     body: 'Movilidad comunitaria para la UNC, el IVIC, San Antonio y Caracas. Conductores de la comunidad, verificados uno por uno.',
   },
   {
-    icon: 'map-marker-path',
+    icon: 'navigation-2-outline',
     tint: 'primary',
     title: 'Pide tu viaje en tres pasos',
     body: 'Toca "Iniciar trayecto", elige tu ruta y luego al conductor que prefieras entre los disponibles. Puedes viajar ahora o programarlo.',
   },
   {
-    icon: 'diamond-stone',
+    icon: 'award-outline',
     tint: 'diamond',
     title: 'Diamantes y Fe',
     body: 'Los diamantes (◆) son tu saldo: 1 ◆ = 1 USD para pagar viajes. El Fe es hierro de recompensa: lo ganas al viajar y al dejar reseñas útiles.',
   },
   {
-    icon: 'account-multiple-outline',
+    icon: 'people-outline',
     tint: 'secondary',
     title: 'Enlaces y Fondo Solidario',
     body: 'Agrega amigos con tu código Li-XXXX para enviarles diamantes. Con "Donar" ayudas a pagar viajes de estudiantes que lo necesitan.',
   },
   {
-    icon: 'flask-outline',
+    icon: 'droplet-outline',
     tint: 'gold',
     title: 'Sube por la tabla periódica',
     body: 'Tu nivel es un elemento: empiezas en Hidrógeno y avanzas con tu Fe. Responde la Reacción del día para ganar Fe extra.',
@@ -60,25 +58,25 @@ const PASSENGER_SLIDES: Slide[] = [
 
 const DRIVER_SLIDES: Slide[] = [
   {
-    icon: 'atom-animated',
+    icon: 'atom',
     tint: 'secondary',
     title: 'Bienvenido, conductor',
     body: 'En LITHIO los pasajeros te eligen por tu reputación. Tú eres el protón: la energía que mueve a la comunidad.',
   },
   {
-    icon: 'shield-check-outline',
+    icon: 'shield-outline',
     tint: 'success',
     title: 'Verificación primero',
     body: 'Revisamos tus datos y documentos, inspeccionamos tu moto en persona y luego te damos la luz verde. Sigue el avance en "Tu postulación".',
   },
   {
-    icon: 'power',
+    icon: 'power-outline',
     tint: 'secondary',
     title: 'Conéctate y acepta',
     body: 'Con el botón de encendido apareces en el directorio. Las solicitudes llegan al instante: tienes 25 segundos para aceptar o rechazar.',
   },
   {
-    icon: 'wallet-outline',
+    icon: 'credit-card-outline',
     tint: 'diamond',
     title: 'Cobra en diamantes',
     body: 'Los viajes pagados con ◆ se acreditan al completarlos. Puedes retirarlos o canjearlos en el taller aliado: aceite, cadena, lavado y más.',
@@ -163,10 +161,10 @@ const TutorialContent: React.FC<Props> = ({ role, userId, onClose }) => {
           return (
             <View key={slide.title} style={[styles.slide, { width }]}>
               <View style={[styles.art, { backgroundColor: `${tint}14`, borderColor: `${tint}33` }]}>
-                {slide.icon === 'atom-animated' ? (
+                {slide.icon === 'atom' ? (
                   <LithiumAtom size={150} />
                 ) : (
-                  <MaterialCommunityIcons name={slide.icon} size={72} color={tint} />
+                  <Icon name={slide.icon} size={72} color={tint} />
                 )}
               </View>
               <Text style={styles.title}>{slide.title}</Text>
@@ -182,7 +180,7 @@ const TutorialContent: React.FC<Props> = ({ role, userId, onClose }) => {
         ))}
       </View>
 
-      <PressableScale
+      <PressableScale variant="solid" accent={accent}
         style={[styles.button, { backgroundColor: accent }]}
         onPress={() => (last ? finish() : goTo(page + 1))}
         accessibilityLabel={last ? 'Empezar' : 'Siguiente'}

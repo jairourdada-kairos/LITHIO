@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { TopBar } from '../../components/home/TopBar';
@@ -24,13 +24,11 @@ interface Props {
   onSignOut: () => void;
 }
 
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
 const STEPS: { key: VerificationStatus; title: string; body: string; icon: IconName }[] = [
-  { key: 'pendiente', title: 'Postulación enviada', body: 'Recibimos tus datos y los de tu moto.', icon: 'file-document-outline' },
-  { key: 'en_revision', title: 'Revisión de datos', body: 'Verificamos tu identidad, licencia y métodos de pago.', icon: 'account-search-outline' },
+  { key: 'pendiente', title: 'Postulación enviada', body: 'Recibimos tus datos y los de tu moto.', icon: 'file-text-outline' },
+  { key: 'en_revision', title: 'Revisión de datos', body: 'Verificamos tu identidad, licencia y métodos de pago.', icon: 'search-outline' },
   { key: 'inspeccion', title: 'Inspección de la moto', body: 'Te contactaremos para revisar tu moto en persona.', icon: 'motorbike' },
-  { key: 'aprobado', title: 'Luz verde', body: 'Tu cuenta de conductor queda activa.', icon: 'check-decagram-outline' },
+  { key: 'aprobado', title: 'Luz verde', body: 'Tu cuenta de conductor queda activa.', icon: 'checkmark-circle-2-outline' },
 ];
 
 export const DriverApplicationScreen: React.FC<Props> = ({ user, onApproved, onOpenTutorial, onSignOut }) => {
@@ -85,7 +83,7 @@ export const DriverApplicationScreen: React.FC<Props> = ({ user, onApproved, onO
 
       {application?.notes ? (
         <View style={[styles.note, rejected && { borderColor: theme.colors.error }]}>
-          <MaterialCommunityIcons name="message-text-outline" size={20} color={rejected ? theme.colors.error : theme.colors.secondary} />
+          <Icon name="message-square-outline" size={20} color={rejected ? theme.colors.error : theme.colors.secondary} />
           <View style={styles.flex}>
             <Text style={styles.noteTitle}>Mensaje del administrador</Text>
             <Text style={styles.noteBody}>{application.notes}</Text>
@@ -102,7 +100,7 @@ export const DriverApplicationScreen: React.FC<Props> = ({ user, onApproved, onO
             <View key={step.key} style={styles.step}>
               <View style={styles.rail}>
                 <View style={[styles.stepIcon, { borderColor: color, backgroundColor: done ? `${theme.colors.success}1F` : 'transparent' }]}>
-                  <MaterialCommunityIcons name={done ? 'check' : step.icon} size={18} color={color} />
+                  <Icon name={done ? 'checkmark-outline' : step.icon} size={18} color={color} />
                 </View>
                 {index < STEPS.length - 1 ? (
                   <View style={[styles.railLine, done && { backgroundColor: theme.colors.success }]} />
@@ -134,12 +132,12 @@ export const DriverApplicationScreen: React.FC<Props> = ({ user, onApproved, onO
       ) : null}
 
       <View style={styles.actions}>
-        <PressableScale style={styles.secondary} onPress={onOpenTutorial}>
-          <MaterialCommunityIcons name="school-outline" size={20} color={theme.colors.textPrimary} />
+        <PressableScale variant="glass" accent={theme.colors.secondary} style={styles.secondary} onPress={onOpenTutorial}>
+          <Icon name="book-open-outline" size={20} color={theme.colors.textPrimary} />
           <Text style={styles.secondaryText}>Cómo funciona LITHIO</Text>
         </PressableScale>
-        <PressableScale style={styles.secondary} onPress={onSignOut}>
-          <MaterialCommunityIcons name="logout" size={20} color={theme.colors.error} />
+        <PressableScale variant="glass" accent={theme.colors.secondary} style={styles.secondary} onPress={onSignOut}>
+          <Icon name="log-out-outline" size={20} color={theme.colors.error} />
           <Text style={[styles.secondaryText, { color: theme.colors.error }]}>Cerrar sesión</Text>
         </PressableScale>
       </View>
@@ -203,6 +201,7 @@ const styles = themed(() => ({
     padding: 18,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -279,6 +278,7 @@ const styles = themed(() => ({
     paddingHorizontal: 16,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

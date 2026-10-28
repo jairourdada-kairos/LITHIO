@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, ImageURISource, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -168,7 +168,7 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
                   <ActivityIndicator color={accent} />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="image-plus" size={20} color={accent} />
+                    <Icon name="image-outline" size={20} color={accent} />
                     <Text style={[styles.attachText, { color: accent }]}>{receipt ? 'Cambiar comprobante' : 'Adjuntar comprobante'}</Text>
                   </>
                 )}
@@ -256,6 +256,7 @@ const styles = themed(() => ({
     gap: 10,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   route: {
     flexDirection: 'row',

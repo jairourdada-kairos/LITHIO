@@ -187,7 +187,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         emailLocked={!!social}
       />
 
-      <FormField
+      <FormField accent={theme.colors.secondary}
         label="Edad (mínimo 18 años)"
         required
         value={form.age}

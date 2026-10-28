@@ -8,7 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import Animated, { Easing, FadeIn, ReduceMotion, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
@@ -138,8 +138,8 @@ export const LevelsTableScreen: React.FC<Props> = ({ accent, onBack }) => {
                   {selected.unlocked ? 'Alcanzado' : `Necesitas ${selected.threshold} Fe acumulado`}
                 </Text>
                 <View style={styles.detailPerk}>
-                  <MaterialCommunityIcons
-                    name={selected.perk ? (selected.unlocked ? 'gift-open-outline' : 'lock-outline') : 'atom'}
+                  <Icon
+                    name={selected.perk ? (selected.unlocked ? 'gift-outline' : 'lock-outline') : 'atom'}
                     size={16}
                     color={selected.perk ? theme.colors.gold : theme.colors.textMuted}
                   />
@@ -287,6 +287,7 @@ const styles = themed(() => ({
     marginTop: 6,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

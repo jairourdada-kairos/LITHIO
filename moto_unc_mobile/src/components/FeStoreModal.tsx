@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, ScrollView, Pressable, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './ui/Icon';
 import { theme, themed } from '../constants/theme';
 import { PressableScale } from './brand/PressableScale';
 import { apiService, FeStore, GradeVoucher } from '../services/api';
@@ -106,7 +106,7 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
               <Text style={styles.muted}>Canjear no te baja de nivel: tu nivel cuenta todo el Fe que ganaste.</Text>
             </View>
             <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="Cerrar">
-              <MaterialCommunityIcons name="close" size={20} color={theme.colors.textSecondary} />
+              <Icon name="close-outline" size={20} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -127,7 +127,7 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
                 {store.coupon_prices.map(({ percent, cost }) => {
                   const affordable = points >= cost;
                   return (
-                    <PressableScale
+                    <PressableScale variant="glass"
                       key={percent}
                       containerStyle={styles.flex}
                       style={[styles.coupon, !affordable && styles.dim]}
@@ -151,7 +151,7 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
               <Text style={styles.section}>Pasar con 20</Text>
               <View style={styles.card}>
                 <View style={styles.cardTop}>
-                  <MaterialCommunityIcons name="school-outline" size={26} color={theme.colors.gold} />
+                  <Icon name="book-open-outline" size={26} color={theme.colors.gold} />
                   <View style={styles.flex}>
                     <Text style={styles.cardTitle}>Vale académico · {store.voucher_cost} Fe</Text>
                     <Text style={styles.muted}>
@@ -183,17 +183,17 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
                         <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
                       ) : (
                         <>
-                          <MaterialCommunityIcons name="image-plus" size={22} color={theme.colors.textSecondary} />
+                          <Icon name="image-outline" size={22} color={theme.colors.textSecondary} />
                           <Text style={styles.muted}>Adjuntar foto de la nota</Text>
                         </>
                       )}
                     </Pressable>
-                    <PressableScale style={styles.primary} onPress={sendVoucher} disabled={busy !== null}>
+                    <PressableScale variant="solid" accent={theme.colors.gold} style={styles.primary} onPress={sendVoucher} disabled={busy !== null}>
                       <Text style={styles.primaryText}>{busy === 'voucher' ? 'Enviando…' : `Enviar · ${store.voucher_cost} Fe`}</Text>
                     </PressableScale>
                   </View>
                 ) : (
-                  <PressableScale
+                  <PressableScale variant="solid" accent={theme.colors.gold}
                     style={[styles.primary, (points < store.voucher_cost || pendingVoucher) && styles.dim]}
                     onPress={() => setVoucherOpen(true)}
                     disabled={points < store.voucher_cost || pendingVoucher}
@@ -265,6 +265,7 @@ const styles = themed(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   balance: {
     flexDirection: 'row',
@@ -300,6 +301,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.gold,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   couponPercent: {
     fontFamily: theme.fonts.monoBold,
@@ -319,6 +321,7 @@ const styles = themed(() => ({
     padding: 16,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     gap: 14,
   },
   cardTop: {

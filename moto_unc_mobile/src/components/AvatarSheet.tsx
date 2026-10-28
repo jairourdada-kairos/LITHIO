@@ -4,12 +4,10 @@
 
 import React, { useState } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from './ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { AvatarSource, deleteAvatar, pickAvatar, uploadAvatar } from '../services/avatar';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Props {
   visible: boolean;
@@ -62,7 +60,7 @@ export const AvatarSheet: React.FC<Props> = ({ visible, hasPhoto, accent, onClos
   const options: { icon: IconName; label: string; hint?: string; onPress: () => void; danger?: boolean }[] = [
     { icon: 'camera-outline', label: 'Tomar foto', hint: 'Luego ajustas el encuadre', onPress: () => void choose('camera') },
     { icon: 'image-outline', label: 'Elegir de la galería', hint: 'Luego ajustas el encuadre', onPress: () => void choose('library') },
-    ...(hasPhoto ? [{ icon: 'trash-can-outline' as IconName, label: 'Eliminar foto', onPress: remove, danger: true }] : []),
+    ...(hasPhoto ? [{ icon: 'trash-2-outline' as IconName, label: 'Eliminar foto', onPress: remove, danger: true }] : []),
   ];
 
   return (
@@ -85,7 +83,7 @@ export const AvatarSheet: React.FC<Props> = ({ visible, hasPhoto, accent, onClos
               accessibilityRole="button"
             >
               <View style={[styles.icon, { backgroundColor: option.danger ? `${theme.colors.error}1A` : `${accent}1A` }]}>
-                <MaterialCommunityIcons name={option.icon} size={22} color={option.danger ? theme.colors.error : accent} />
+                <Icon name={option.icon} size={22} color={option.danger ? theme.colors.error : accent} />
               </View>
               <View style={styles.flex}>
                 <Text style={[styles.label, option.danger && { color: theme.colors.error }]}>{option.label}</Text>

@@ -9,23 +9,21 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from './ui/Icon';
 import { theme, themed } from '../constants/theme';
 import { PrimaryButton } from './brand/PrimaryButton';
 import type { SessionRole } from '../services/session';
 
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
 const BENEFITS: Record<SessionRole, { icon: IconName; text: string }[]> = {
   conductor: [
-    { icon: 'bell-ring-outline', text: 'Nuevas solicitudes de viaje al instante, aunque tengas la app cerrada' },
-    { icon: 'receipt-text-check-outline', text: 'Cuando un pasajero adjunta su comprobante de Pago Móvil' },
-    { icon: 'wallet-outline', text: 'Retiros y canjes del taller aprobados' },
+    { icon: 'bell-outline', text: 'Nuevas solicitudes de viaje al instante, aunque tengas la app cerrada' },
+    { icon: 'file-text-outline', text: 'Cuando un pasajero adjunta su comprobante de Pago Móvil' },
+    { icon: 'credit-card-outline', text: 'Retiros y canjes del taller aprobados' },
   ],
   pasajero: [
     { icon: 'motorbike', text: 'Cuando tu conductor acepta y va en camino' },
-    { icon: 'map-marker-check-outline', text: 'Al llegar a tu destino, con el Fe que ganaste' },
-    { icon: 'diamond-stone', text: 'Recargas aprobadas y diamantes que te envían tus enlaces' },
+    { icon: 'pin-outline', text: 'Al llegar a tu destino, con el Fe que ganaste' },
+    { icon: 'award-outline', text: 'Recargas aprobadas y diamantes que te envían tus enlaces' },
   ],
 };
 
@@ -55,14 +53,14 @@ export const NotificationPrimer: React.FC<Props> = ({ visible, role, onActivate,
       <View style={styles.scrim}>
         <Animated.View entering={FadeInDown.duration(260).reduceMotion(ReduceMotion.System)} style={[styles.card, { borderColor: accent }]}>
           <View style={[styles.bell, { backgroundColor: theme.colors.surface }]}>
-            <MaterialCommunityIcons name="bell-badge-outline" size={34} color={accent} />
+            <Icon name="bell-outline" size={34} color={accent} />
           </View>
           <Text style={styles.title}>Activa tus avisos de LITHIO</Text>
           <Text style={styles.subtitle}>Te avisamos solo de lo importante:</Text>
           <View style={styles.list}>
             {BENEFITS[role].map((item) => (
               <View key={item.text} style={styles.item}>
-                <MaterialCommunityIcons name={item.icon} size={22} color={accent} />
+                <Icon name={item.icon} size={22} color={accent} />
                 <Text style={styles.itemText}>{item.text}</Text>
               </View>
             ))}

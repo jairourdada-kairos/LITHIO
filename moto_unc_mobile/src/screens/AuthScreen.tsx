@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../components/ui/Icon';
 import Animated, { Easing, FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
@@ -79,7 +79,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
           <RoleCard
             title="Soy Pasajero"
             description="Pide tu viaje a conductores de confianza de la comunidad"
-            icon="account-school"
+            icon="book-open-outline"
             particle="e⁻"
             accent={theme.colors.primary}
             soft={theme.colors.primarySoft}
@@ -102,7 +102,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
         </Animated.View>
 
         <Animated.View entering={enter(5)} style={styles.fullWidth}>
-          <PressableScale style={styles.signInButton} onPress={onSelectSignIn}>
+          <PressableScale variant="glass" style={styles.signInButton} onPress={onSelectSignIn}>
             <Text style={styles.signInText}>Ya tengo una cuenta · Iniciar sesión</Text>
           </PressableScale>
 
@@ -112,7 +112,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
             hitSlop={8}
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="atom" size={16} color={theme.colors.textSecondary} />
+            <Icon name="atom" size={16} color={theme.colors.textSecondary} />
             <Text style={styles.aboutText}>¿Qué es LITHIO?</Text>
           </Pressable>
 
@@ -129,7 +129,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
 interface RoleCardProps {
   title: string;
   description: string;
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  icon: IconName;
   particle: string;
   accent: string;
   soft: string;
@@ -138,9 +138,9 @@ interface RoleCardProps {
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({ title, description, icon, particle, accent, soft, line, onPress }) => (
-  <PressableScale style={[styles.roleCard, { borderColor: line }]} onPress={onPress} accessibilityLabel={title}>
+  <PressableScale variant="glass" accent={line} style={[styles.roleCard, { borderColor: line }]} onPress={onPress} accessibilityLabel={title}>
     <View style={[styles.roleIcon, { backgroundColor: soft, borderColor: line }]}>
-      <MaterialCommunityIcons name={icon} size={26} color={accent} />
+      <Icon name={icon} size={26} color={accent} />
     </View>
     <View style={styles.roleTextGroup}>
       <View style={styles.roleTitleRow}>
@@ -149,7 +149,7 @@ const RoleCard: React.FC<RoleCardProps> = ({ title, description, icon, particle,
       </View>
       <Text style={styles.roleDesc}>{description}</Text>
     </View>
-    <MaterialCommunityIcons name="chevron-right" size={22} color={accent} />
+    <Icon name="chevron-right-outline" size={22} color={accent} />
   </PressableScale>
 );
 

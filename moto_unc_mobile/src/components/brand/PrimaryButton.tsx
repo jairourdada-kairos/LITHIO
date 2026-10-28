@@ -1,7 +1,8 @@
 /**
  * PrimaryButton.tsx — Acción principal de una pantalla
  *
- * Botón sólido con brillo del color de acento y respuesta al presionar.
+ * Botón sólido con brillo del color de acento: crece al pasar el puntero,
+ * se hunde al presionar y muestra un anillo con el foco del teclado.
  * Muestra un indicador mientras `loading` está activo.
  */
 
@@ -32,7 +33,9 @@ export const PrimaryButton: React.FC<Props> = ({
     disabled={disabled || loading}
     accessibilityLabel={label}
     accessibilityState={{ busy: loading, disabled: disabled || loading }}
-    style={[styles.button, { backgroundColor: accent, boxShadow: `0 6px 20px ${accent}40` }, style]}
+    variant="solid"
+    accent={accent}
+    style={[styles.button, { backgroundColor: accent }, style]}
   >
     {loading ? (
       <ActivityIndicator color={theme.colors.bgDark} />

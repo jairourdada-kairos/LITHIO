@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, Share, Alert, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -108,7 +108,7 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
           <Text style={styles.muted}>Tu código de enlace</Text>
           <Text style={[styles.code, { color: accent }]}>{info?.my_code ?? '—'}</Text>
           <View style={styles.shareRow}>
-            <MaterialCommunityIcons name="share-variant" size={16} color={theme.colors.textSecondary} />
+            <Icon name="share-outline" size={16} color={theme.colors.textSecondary} />
             <Text style={styles.muted}>Toca para compartirlo</Text>
           </View>
         </Pressable>
@@ -125,8 +125,8 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
             maxLength={12}
             containerStyle={styles.flex}
           />
-          <PressableScale style={[styles.addBtn, { backgroundColor: accent }]} onPress={sendRequest} disabled={busy !== null} accessibilityLabel="Enviar solicitud">
-            <MaterialCommunityIcons name="account-plus" size={22} color={theme.colors.bgDark} />
+          <PressableScale variant="solid" accent={accent} style={[styles.addBtn, { backgroundColor: accent }]} onPress={sendRequest} disabled={busy !== null} accessibilityLabel="Enviar solicitud">
+            <Icon name="person-add-outline" size={22} color={theme.colors.bgDark} />
           </PressableScale>
         </View>
 
@@ -138,9 +138,9 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
                 <Avatar name={person.name} uri={person.avatar_url} size={40} ringColor={accent} />
                 <Text style={[styles.name, styles.flex]}>{person.name}</Text>
                 <Pressable onPress={() => remove(person, 'Rechazar')} style={styles.iconBtn} accessibilityLabel={`Rechazar a ${person.name}`}>
-                  <MaterialCommunityIcons name="close" size={20} color={theme.colors.textSecondary} />
+                  <Icon name="close-outline" size={20} color={theme.colors.textSecondary} />
                 </Pressable>
-                <PressableScale
+                <PressableScale variant="solid" accent={accent}
                   style={[styles.acceptBtn, { backgroundColor: accent }]}
                   onPress={() => void run(`a${person.link_id}`, () => apiService.acceptLink(person.link_id))}
                   disabled={busy !== null}
@@ -231,6 +231,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   code: {
     fontFamily: theme.fonts.monoBold,
@@ -295,6 +296,7 @@ const styles = themed(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   acceptBtn: {
     paddingHorizontal: 14,
@@ -324,6 +326,7 @@ const styles = themed(() => ({
     padding: 14,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   legendLabel: {
     fontFamily: theme.fonts.semibold,

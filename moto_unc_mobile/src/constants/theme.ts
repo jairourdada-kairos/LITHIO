@@ -10,13 +10,18 @@ type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
  * `themed(() => ({ ... }))` en lugar de StyleSheet.create: se calculan con la
  * paleta del momento y se guardan en caché por modo. Al cambiar de tema, App
  * vuelve a montar la interfaz y todo se pinta con la paleta nueva.
+ *
+ * Estilo Liquid Glass teñido: las superficies son cristal con el tono de la
+ * marca y opacidad de 0.78 a 0.88 (más que el glassmorphism clásico) para que
+ * el texto siempre se lea bien; borde blanco muy tenue que simula el canto del
+ * cristal y una sombra suave con un brillo interior arriba (theme.glass).
  */
 
 const dark = {
   bgDark: '#10191C',          // Fondo de la app
-  cardBg: '#1B292B',
-  cardBorder: '#344548',
-  cardElevated: '#243638',
+  cardBg: 'rgba(27, 41, 43, 0.82)',
+  cardBorder: 'rgba(255, 255, 255, 0.12)', // Canto del cristal
+  cardElevated: 'rgba(36, 54, 56, 0.85)',
   primary: '#45D6C5',         // Turquesa eléctrico: pasajero, acción principal
   onPrimary: '#0E2A27',       // Texto sobre turquesa
   secondary: '#FF765E',       // Coral: conductor, protones
@@ -31,11 +36,14 @@ const dark = {
   textMuted: '#64748B',
   accentGrad1: '#45D6C5',
   accentGrad2: '#FF765E',
-  glassBg: 'rgba(27, 41, 43, 0.62)',
-  glassBgStrong: 'rgba(36, 54, 56, 0.78)',
-  glassBorder: 'rgba(148, 163, 184, 0.16)',
-  glassHighlight: 'rgba(255, 255, 255, 0.06)',
-  surface: '#18262A',         // Tarjetas sólidas del boceto v3
+  glassBg: 'rgba(27, 41, 43, 0.78)',
+  glassBgStrong: 'rgba(36, 54, 56, 0.85)',
+  glassBorder: 'rgba(255, 255, 255, 0.12)',
+  glassHighlight: 'rgba(255, 255, 255, 0.08)',
+  glassHover: 'rgba(46, 68, 71, 0.86)',     // Cristal bajo el puntero
+  glassPressed: 'rgba(16, 28, 31, 0.88)',   // Cristal presionado (más hundido)
+  glassBorderHover: 'rgba(255, 255, 255, 0.24)',
+  surface: 'rgba(22, 38, 41, 0.80)', // Tarjetas: cristal teñido
   surfaceAlt: '#10191C',
   primarySoft: 'rgba(69, 214, 197, 0.12)',
   primaryLine: 'rgba(69, 214, 197, 0.45)',
@@ -51,9 +59,9 @@ export type Palette = typeof dark;
 
 const light: Palette = {
   bgDark: '#F3F6F5',
-  cardBg: '#FFFFFF',
-  cardBorder: '#D7E0DE',
-  cardElevated: '#E9EFED',
+  cardBg: 'rgba(255, 255, 255, 0.85)',
+  cardBorder: 'rgba(22, 37, 42, 0.10)',
+  cardElevated: 'rgba(233, 239, 237, 0.85)',
   primary: '#0F8F82',
   onPrimary: '#FFFFFF',
   secondary: '#E0533A',
@@ -68,11 +76,14 @@ const light: Palette = {
   textMuted: '#7A8B90',
   accentGrad1: '#0F8F82',
   accentGrad2: '#E0533A',
-  glassBg: 'rgba(255, 255, 255, 0.9)',
-  glassBgStrong: '#FFFFFF',
+  glassBg: 'rgba(255, 255, 255, 0.78)',
+  glassBgStrong: 'rgba(255, 255, 255, 0.88)',
   glassBorder: 'rgba(22, 37, 42, 0.10)',
-  glassHighlight: 'rgba(22, 37, 42, 0.04)',
-  surface: '#FFFFFF',
+  glassHighlight: 'rgba(255, 255, 255, 0.9)',
+  glassHover: 'rgba(255, 255, 255, 0.95)',
+  glassPressed: 'rgba(228, 236, 234, 0.9)',
+  glassBorderHover: 'rgba(22, 37, 42, 0.20)',
+  surface: 'rgba(255, 255, 255, 0.80)',
   surfaceAlt: '#EEF3F2',
   primarySoft: 'rgba(15, 143, 130, 0.10)',
   primaryLine: 'rgba(15, 143, 130, 0.35)',
@@ -118,14 +129,50 @@ export function themed<T extends NamedStyles<T> | NamedStyles<any>>(
   });
 }
 
-export const theme = {
+export const theme: {
+  colors: Palette;
+  glow: { primary: string; secondary: string; readonly soft: string };
+  glass: {
+    blur: number;
+    readonly shadow: string;
+    readonly shadowRaised: string;
+    readonly shadowPressed: string;
+    focusRing: (accent: string) => string;
+  };
+  fonts: Record<'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'mono' | 'monoBold', string>;
+  radius: Record<'sm' | 'md' | 'lg' | 'xl' | 'full', number>;
+} = {
   colors,
   glow: {
     primary: '0 0 24px rgba(69, 214, 197, 0.35)',
     secondary: '0 0 24px rgba(255, 118, 94, 0.35)',
     get soft() {
-      return activeScheme === 'dark' ? '0 12px 32px rgba(0, 0, 0, 0.35)' : '0 8px 24px rgba(16, 25, 28, 0.08)';
+      return theme.glass.shadow;
     },
+  },
+  glass: {
+    /** Desenfoque del fondo detrás del cristal (px). */
+    blur: 16,
+    /** Profundidad: sombra suave + brillo interior en el canto superior. */
+    get shadow() {
+      return activeScheme === 'dark'
+        ? '0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+        : '0 10px 28px rgba(16, 25, 28, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9)';
+    },
+    /** Cristal levantado (hover): la sombra crece un poco. */
+    get shadowRaised() {
+      return activeScheme === 'dark'
+        ? '0 14px 38px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
+        : '0 14px 34px rgba(16, 25, 28, 0.14), inset 0 1px 0 rgba(255, 255, 255, 1)';
+    },
+    /** Cristal presionado: casi pegado al fondo. */
+    get shadowPressed() {
+      return activeScheme === 'dark'
+        ? '0 4px 12px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04)'
+        : '0 4px 12px rgba(16, 25, 28, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7)';
+    },
+    /** Anillo de foco de teclado, con el color de acento. */
+    focusRing: (accent: string) => `0 0 0 3px ${accent}59`,
   },
   // Fuentes de marca, cargadas en App.tsx. En Android cada grosor es una
   // familia distinta, así que se usa fontFamily en lugar de fontWeight.

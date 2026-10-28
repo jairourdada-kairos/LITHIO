@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
@@ -81,8 +81,8 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <MaterialCommunityIcons
-                name={scope === 'history' ? 'history' : 'calendar-blank-outline'}
+              <Icon
+                name={scope === 'history' ? 'clock-outline' : 'calendar-outline'}
                 size={44}
                 color={theme.colors.textMuted}
               />
@@ -132,9 +132,9 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
                     {role === 'pasajero' ? 'Conductor' : 'Pasajero'}: {counterpart(item) || '—'}
                   </Text>
                   {item.has_receipt ? (
-                    <MaterialCommunityIcons name="receipt-text-check-outline" size={18} color={theme.colors.success} accessibilityLabel="Con comprobante" />
+                    <Icon name="file-text-outline" size={18} color={theme.colors.success} accessibilityLabel="Con comprobante" />
                   ) : null}
-                  {onOpenRide ? <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textMuted} /> : null}
+                  {onOpenRide ? <Icon name="chevron-right-outline" size={20} color={theme.colors.textMuted} /> : null}
                 </View>
               </Pressable>
             );

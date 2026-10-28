@@ -14,6 +14,7 @@ import { apiService, AccountSummary } from '../services/api';
 import { wsService } from '../services/websocket';
 import type { AuthUser } from '../services/auth';
 import { useRideCenter } from '../hooks/useRideCenter';
+import { GlassBlurScope, GlassBlurTarget } from '../components/ui/GlassSurface';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
 import { AboutLithioModal } from '../components/AboutLithioModal';
@@ -303,38 +304,40 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <View style={styles.content}>{renderTab()}</View>
+      <GlassBlurScope>
+        <GlassBlurTarget style={styles.content}>{renderTab()}</GlassBlurTarget>
 
-      {!profileOpen && !overlay ? (
-        <BottomTabBar<Tab>
-          tabs={[
-            { key: 'home', label: 'Inicio', icon: 'home-variant-outline', badge: rides.requests.length },
-            { key: 'trips', label: 'Viajes', icon: 'map-marker-path', badge: summary.scheduled_count },
-            { key: 'wallet', label: 'Billetera', icon: 'wallet-outline' },
-            { key: 'profile', label: 'Perfil', icon: 'account-outline' },
-          ]}
-          active={tab}
-          onChange={setTab}
-          accent={theme.colors.secondary}
+        {!profileOpen && !overlay ? (
+          <BottomTabBar<Tab>
+            tabs={[
+              { key: 'home', label: 'Inicio', icon: 'home-outline', badge: rides.requests.length },
+              { key: 'trips', label: 'Viajes', icon: 'navigation-2-outline', badge: summary.scheduled_count },
+              { key: 'wallet', label: 'Billetera', icon: 'credit-card-outline' },
+              { key: 'profile', label: 'Perfil', icon: 'person-outline' },
+            ]}
+            active={tab}
+            onChange={setTab}
+            accent={theme.colors.secondary}
+          />
+        ) : null}
+
+        <NoticeBanner notice={rides.notice} onClose={rides.clearNotice} onPress={() => setTab('home')} />
+        <RequestSheet
+          ride={sheetRide}
+          busy={busy}
+          onAccept={(ride) => void respond(ride, 'aceptado')}
+          onReject={(ride) => void respond(ride, 'rechazado')}
+          onDismiss={() => setSheetRide(null)}
         />
-      ) : null}
-
-      <NoticeBanner notice={rides.notice} onClose={rides.clearNotice} onPress={() => setTab('home')} />
-      <RequestSheet
-        ride={sheetRide}
-        busy={busy}
-        onAccept={(ride) => void respond(ride, 'aceptado')}
-        onReject={(ride) => void respond(ride, 'rechazado')}
-        onDismiss={() => setSheetRide(null)}
-      />
-      <AvatarSheet
-        visible={avatarSheetVisible}
-        hasPhoto={Boolean(user.avatar_url)}
-        accent={theme.colors.secondary}
-        onClose={() => setAvatarSheetVisible(false)}
-        onChanged={onAvatarChanged}
-      />
-      {children}
+        <AvatarSheet
+          visible={avatarSheetVisible}
+          hasPhoto={Boolean(user.avatar_url)}
+          accent={theme.colors.secondary}
+          onClose={() => setAvatarSheetVisible(false)}
+          onChanged={onAvatarChanged}
+        />
+        {children}
+      </GlassBlurScope>
     </SafeAreaView>
   );
 };

@@ -15,7 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, AlertButton, Modal, Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme, themed } from '../../constants/theme';
 
 export type FeedbackTone = 'error' | 'success' | 'info' | 'confirm';
@@ -115,9 +115,9 @@ export function installAlertBridge() {
 
 const TONES = () => ({
   error: { color: theme.colors.error, icon: 'alert-circle-outline' as const },
-  success: { color: theme.colors.success, icon: 'check-circle-outline' as const },
-  info: { color: theme.colors.primary, icon: 'information-outline' as const },
-  confirm: { color: theme.colors.warning, icon: 'help-circle-outline' as const },
+  success: { color: theme.colors.success, icon: 'checkmark-circle-2-outline' as const },
+  info: { color: theme.colors.primary, icon: 'info-outline' as const },
+  confirm: { color: theme.colors.warning, icon: 'question-mark-circle-outline' as const },
 });
 
 const AUTO_CLOSE_MS = 3800;
@@ -165,7 +165,7 @@ export const FeedbackHost: React.FC = () => {
           accessibilityLiveRegion="assertive"
         >
           <View style={[styles.iconWrap, { backgroundColor: theme.colors.surface }]}>
-            <MaterialCommunityIcons name={tone.icon} size={28} color={tone.color} />
+            <Icon name={tone.icon} size={28} color={tone.color} />
           </View>
           <Text style={styles.title}>{current.title}</Text>
           {current.message ? <Text style={styles.message}>{current.message}</Text> : null}

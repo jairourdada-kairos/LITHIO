@@ -23,6 +23,7 @@ import { checkAppVersion } from './src/services/appVersion';
 import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
+import { EVA_FONT } from './src/components/ui/Icon';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { PassengerSignIn } from './src/screens/PassengerSignIn';
 import { PassengerSignUp } from './src/screens/PassengerSignUp';
@@ -56,6 +57,7 @@ export default function App() {
     SpaceGrotesk_700Bold,
     SpaceMono_400Regular,
     SpaceMono_700Bold,
+    ...EVA_FONT, // Eva Icons: se precarga para que los íconos no parpadeen.
   });
 
   return (

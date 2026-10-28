@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
@@ -80,14 +80,14 @@ export const DriverHome: React.FC<Props> = ({
             onCancel={() => onUpdateActiveRide('cancelado')}
           />
           {activeRide.status === 'completado' ? (
-            <PressableScale style={styles.doneButton} onPress={onDismissCompleted}>
+            <PressableScale variant="solid" accent={theme.colors.secondary} style={styles.doneButton} onPress={onDismissCompleted}>
               <Text style={styles.doneText}>Listo, volver a recibir solicitudes</Text>
             </PressableScale>
           ) : null}
         </View>
       ) : (
         <View style={styles.statusCard}>
-          <PressableScale
+          <PressableScale variant="glass" accent={theme.colors.secondary}
             onPress={onToggleAvailability}
             disabled={togglingAvailability}
             accessibilityLabel={online ? 'Desconectarme' : 'Conectarme'}
@@ -101,7 +101,7 @@ export const DriverHome: React.FC<Props> = ({
             {togglingAvailability ? (
               <ActivityIndicator color={online ? '#FFFFFF' : theme.colors.textSecondary} />
             ) : (
-              <MaterialCommunityIcons name="power" size={36} color={online ? '#FFFFFF' : theme.colors.textSecondary} />
+              <Icon name="power-outline" size={36} color={online ? '#FFFFFF' : theme.colors.textSecondary} />
             )}
           </PressableScale>
           <Text style={[styles.statusTitle, { color: statusColor }]}>{online ? 'Conectado' : 'Desconectado'}</Text>
@@ -133,7 +133,7 @@ export const DriverHome: React.FC<Props> = ({
                 <Text style={styles.requestFare}>
                   {ride.payment_method === 'diamantes' ? '◆' : '$'} {ride.fare_amount.toFixed(2)}
                 </Text>
-                <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
+                <Icon name="chevron-right-outline" size={22} color={theme.colors.textMuted} />
               </Pressable>
             ))}
           </View>
@@ -141,18 +141,18 @@ export const DriverHome: React.FC<Props> = ({
       ) : null}
 
       <View style={styles.quickRow}>
-        <PressableScale containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Ver ganancias">
-          <MaterialCommunityIcons name="wallet-outline" size={24} color={theme.colors.diamond} />
+        <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Ver ganancias">
+          <Icon name="credit-card-outline" size={24} color={theme.colors.diamond} />
           <Text style={styles.quickValue}>◆ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
           <Text style={styles.quickLabel}>Ganancias</Text>
         </PressableScale>
-        <PressableScale containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Taller aliado">
-          <MaterialCommunityIcons name="wrench-outline" size={24} color={theme.colors.secondary} />
+        <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Taller aliado">
+          <Icon name="settings-2-outline" size={24} color={theme.colors.secondary} />
           <Text style={styles.quickValue}>Taller</Text>
           <Text style={styles.quickLabel}>Canjea servicios</Text>
         </PressableScale>
         <View style={[styles.quick, styles.flex]}>
-          <MaterialCommunityIcons name="star-outline" size={24} color={theme.colors.gold} />
+          <Icon name="star-outline" size={24} color={theme.colors.gold} />
           <Text style={styles.quickValue}>{summary?.rating_avg ? summary.rating_avg.toFixed(2) : 'Nuevo'}</Text>
           <Text style={styles.quickLabel}>{summary?.trips_completed ?? 0} viajes</Text>
         </View>
@@ -247,6 +247,7 @@ const styles = themed(() => ({
   list: {
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.secondaryLine,
     overflow: 'hidden',
@@ -288,6 +289,7 @@ const styles = themed(() => ({
     padding: 14,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

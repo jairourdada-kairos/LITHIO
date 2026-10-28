@@ -8,7 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -57,7 +57,7 @@ export const QuizScreen: React.FC<Props> = ({ accent, onBack, onAnswered }) => {
       ) : (
         <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
           <View style={styles.flask}>
-            <MaterialCommunityIcons name="flask-outline" size={30} color={accent} />
+            <Icon name="droplet-outline" size={30} color={accent} />
             <Text style={styles.muted}>Acierta y gana <Text style={styles.gold}>+{quiz.reward} Fe</Text>. Una pregunta por día.</Text>
           </View>
 
@@ -86,8 +86,8 @@ export const QuizScreen: React.FC<Props> = ({ accent, onBack, onAnswered }) => {
                   <Text style={[styles.letter, { color: accent }]}>{LETTERS[index]}</Text>
                   <Text style={styles.optionText}>{option}</Text>
                   {sending === index ? <ActivityIndicator color={accent} /> : null}
-                  {isCorrect ? <MaterialCommunityIcons name="check-circle" size={22} color={theme.colors.success} /> : null}
-                  {isWrongChoice ? <MaterialCommunityIcons name="close-circle" size={22} color={theme.colors.error} /> : null}
+                  {isCorrect ? <Icon name="checkmark-circle-2" size={22} color={theme.colors.success} /> : null}
+                  {isWrongChoice ? <Icon name="close-circle" size={22} color={theme.colors.error} /> : null}
                 </Pressable>
               );
             })}
@@ -153,6 +153,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   pressed: {
     opacity: 0.8,
@@ -175,6 +176,7 @@ const styles = themed(() => ({
     padding: 16,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   resultTitle: {
     fontFamily: theme.fonts.bold,

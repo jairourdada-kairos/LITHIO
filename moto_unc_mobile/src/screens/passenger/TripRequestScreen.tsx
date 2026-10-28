@@ -8,7 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -94,8 +94,8 @@ export const TripRequestScreen: React.FC<Props> = ({
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.segment} accessibilityRole="radiogroup">
           {[
-            { value: false, label: 'Ahora', icon: 'lightning-bolt' as const },
-            { value: true, label: 'Programar', icon: 'calendar-clock' as const },
+            { value: false, label: 'Ahora', icon: 'flash-outline' as const },
+            { value: true, label: 'Programar', icon: 'calendar-outline' as const },
           ].map((option) => {
             const selected = scheduled === option.value;
             return (
@@ -106,7 +106,7 @@ export const TripRequestScreen: React.FC<Props> = ({
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
               >
-                <MaterialCommunityIcons
+                <Icon
                   name={option.icon}
                   size={18}
                   color={selected ? theme.colors.bgDark : theme.colors.textSecondary}
@@ -165,7 +165,7 @@ export const TripRequestScreen: React.FC<Props> = ({
           {routes.map((r) => {
             const selected = r.id === routeId;
             return (
-              <PressableScale
+              <PressableScale variant="glass"
                 key={r.id}
                 onPress={() => setRouteId(r.id)}
                 style={[styles.routeRow, selected && styles.routeRowActive]}
@@ -201,7 +201,7 @@ export const TripRequestScreen: React.FC<Props> = ({
               <Text style={styles.hint}>Elige la hora del viaje para ver a los conductores.</Text>
             ) : available.length === 0 ? (
               <View style={styles.empty}>
-                <MaterialCommunityIcons name="motorbike-off" size={32} color={theme.colors.textMuted} />
+                <Icon name="motorbike-off" size={32} color={theme.colors.textMuted} />
                 <Text style={styles.emptyText}>No hay conductores disponibles en este momento. Desliza hacia abajo en el inicio para actualizar.</Text>
               </View>
             ) : (
@@ -227,7 +227,7 @@ export const TripRequestScreen: React.FC<Props> = ({
 };
 
 const DriverOption: React.FC<{ driver: Driver; onChoose: () => void }> = ({ driver, onChoose }) => (
-  <PressableScale style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
+  <PressableScale variant="glass" style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
     <Avatar name={driver.name} uri={driver.avatar_url} size={48} ringColor={theme.colors.secondary} />
     <View style={styles.driverText}>
       <Text style={styles.driverName} numberOfLines={1}>{driver.name}</Text>
@@ -235,14 +235,14 @@ const DriverOption: React.FC<{ driver: Driver; onChoose: () => void }> = ({ driv
         {driver.moto_brand_model} · {driver.moto_color}
       </Text>
       <View style={styles.driverMeta}>
-        <MaterialCommunityIcons name="star" size={14} color={theme.colors.gold} />
+        <Icon name="star" size={14} color={theme.colors.gold} />
         <Text style={styles.driverRating}>
           {driver.trips_count > 0 ? driver.rating_avg.toFixed(2) : 'Nuevo'}
         </Text>
         <Text style={styles.driverTrips} numberOfLines={1}>· {driver.trips_count} viajes</Text>
         {driver.helmet_provided ? (
           <View style={styles.helmet}>
-            <MaterialCommunityIcons name="racing-helmet" size={12} color={theme.colors.primary} />
+            <Icon name="racing-helmet" size={12} color={theme.colors.primary} />
             <Text style={styles.helmetText}>Casco</Text>
           </View>
         ) : null}

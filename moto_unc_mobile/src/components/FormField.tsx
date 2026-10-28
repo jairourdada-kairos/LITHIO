@@ -3,10 +3,13 @@
  *
  * Vive fuera de las pantallas a propósito: un componente definido dentro de
  * otro se vuelve a crear en cada render y el teclado se cierra al escribir.
+ *
+ * Campo de cristal teñido: al pasar el puntero el canto se ilumina; con el
+ * foco se marca con el color de acento y un halo suave.
  */
 
-import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps, StyleProp, ViewStyle } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Pressable, Platform, TextInputProps, StyleProp, ViewStyle } from 'react-native';
 import { theme, themed } from '../constants/theme';
 
 interface Props extends Omit<TextInputProps, 'style'> {
@@ -17,9 +20,27 @@ interface Props extends Omit<TextInputProps, 'style'> {
   /** Elemento a la izquierda del campo, p. ej. el selector V / E de la cédula. */
   prefix?: React.ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
+  /** Color del foco: turquesa (pasajero) o coral (conductor). */
+  accent?: string;
 }
 
-export const FormField: React.FC<Props> = ({ label, error, hint, required, prefix, containerStyle, ...inputProps }) => (
+export const FormField: React.FC<Props> = ({
+  label,
+  error,
+  hint,
+  required,
+  prefix,
+  containerStyle,
+  accent = theme.colors.primary,
+  onFocus,
+  onBlur,
+  editable,
+  ...inputProps
+}) => {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const locked = editable === false;
+  return (
   <View style={[styles.group, containerStyle]}>
     <Text style={styles.label}>
       {label}
@@ -27,13 +48,36 @@ export const FormField: React.FC<Props> = ({ label, error, hint, required, prefi
     </Text>
     <View style={styles.inputRow}>
       {prefix}
-      <TextInput
-        style={[styles.input, error ? styles.inputError : null]}
-        placeholderTextColor={theme.colors.textMuted}
-        autoCorrect={false}
-        accessibilityLabel={label}
-        {...inputProps}
-      />
+      <Pressable
+        style={styles.inputCell}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        focusable={false}
+        accessible={false}
+      >
+        <TextInput
+          style={[
+            styles.input,
+            hovered && !focused && !locked ? styles.inputHover : null,
+            focused ? { borderColor: accent, boxShadow: `${theme.glass.focusRing(accent)}, ${theme.glass.shadow}` } : null,
+            error ? styles.inputError : null,
+            locked ? styles.inputLocked : null,
+          ]}
+          placeholderTextColor={theme.colors.textMuted}
+          autoCorrect={false}
+          accessibilityLabel={label}
+          editable={editable}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
+          {...inputProps}
+        />
+      </Pressable>
     </View>
     {error ? (
       <Text style={styles.error} accessibilityLiveRegion="polite">{error}</Text>
@@ -41,7 +85,8 @@ export const FormField: React.FC<Props> = ({ label, error, hint, required, prefi
       <Text style={styles.hint}>{hint}</Text>
     ) : null}
   </View>
-);
+  );
+};
 
 export const fieldStyles = themed(() => ({
   label: {
@@ -64,21 +109,36 @@ const styles = themed(() => ({
     flexDirection: 'row',
     gap: 8,
   },
-  input: {
-    fontFamily: theme.fonts.regular,
+  inputCell: {
     flex: 1,
     minWidth: 0, // Sin esto, en web el input no se encoge y desborda las filas de dos columnas
+  },
+  input: {
+    fontFamily: theme.fonts.regular,
+    minWidth: 0,
     backgroundColor: theme.colors.glassBgStrong,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
+    boxShadow: theme.glass.shadow,
+    // Web: sin el contorno del navegador, el foco lo dibuja el propio cristal.
+    ...(Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', transition: 'border-color 160ms, box-shadow 160ms, background-color 160ms' } as object)
+      : null),
     borderRadius: theme.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 13,
     color: theme.colors.textPrimary,
     fontSize: 15,
   },
+  inputHover: {
+    borderColor: theme.colors.glassBorderHover,
+    backgroundColor: theme.colors.glassHover,
+  },
   inputError: {
     borderColor: theme.colors.error,
+  },
+  inputLocked: {
+    opacity: 0.7,
   },
   error: {
     fontFamily: theme.fonts.regular,

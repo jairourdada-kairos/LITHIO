@@ -7,7 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { Avatar } from '../ui/Avatar';
@@ -85,8 +85,8 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
 
         <View style={styles.fareRow}>
           <View style={styles.paymentTag}>
-            <MaterialCommunityIcons
-              name={diamonds ? 'diamond-stone' : ride.payment_method === 'pago_movil' ? 'cellphone' : 'cash'}
+            <Icon
+              name={diamonds ? 'award-outline' : ride.payment_method === 'pago_movil' ? 'smartphone-outline' : 'pricetags-outline'}
               size={16}
               color={theme.colors.textSecondary}
             />
@@ -98,7 +98,7 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
         </View>
 
         <View style={styles.actions}>
-          <PressableScale
+          <PressableScale variant="glass"
             containerStyle={styles.flex}
             style={styles.reject}
             disabled={busy}
@@ -107,7 +107,7 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
           >
             <Text style={styles.rejectText}>Rechazar</Text>
           </PressableScale>
-          <PressableScale
+          <PressableScale variant="solid" accent={theme.colors.secondary}
             containerStyle={styles.acceptCell}
             style={styles.accept}
             disabled={busy}

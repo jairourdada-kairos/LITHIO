@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
@@ -13,8 +13,6 @@ import { OrbitingElement } from '../../components/brand/OrbitingElement';
 import { ElementTile } from '../../components/brand/ElementTile';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { electronConfiguration, Level, levelProgress } from '../../utils/elements';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Props {
   level: Level;
@@ -28,9 +26,9 @@ const enter = (index: number) =>
   FadeInDown.duration(320).delay(100 + index * 60).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 
 const REASONS: { icon: IconName; color: 'primary' | 'gold' | 'secondary'; text: string }[] = [
-  { icon: 'atom-variant', color: 'primary', text: 'Cada viaje completado, reseña útil y Reacción del día te da Fe. Con tu Fe subes por la tabla periódica.' },
+  { icon: 'atom', color: 'primary', text: 'Cada viaje completado, reseña útil y Reacción del día te da Fe. Con tu Fe subes por la tabla periódica.' },
   { icon: 'gift-outline', color: 'gold', text: 'Algunos elementos desbloquean beneficios: cupones, insignias y ventajas dentro de LITHIO.' },
-  { icon: 'shield-check-outline', color: 'secondary', text: 'Tu elemento muestra a la comunidad tu experiencia y compromiso viajando con LITHIO.' },
+  { icon: 'shield-outline', color: 'secondary', text: 'Tu elemento muestra a la comunidad tu experiencia y compromiso viajando con LITHIO.' },
 ];
 
 export const LevelScreen: React.FC<Props> = ({ level, accent, onBack, onOpenTable }) => {
@@ -67,7 +65,7 @@ export const LevelScreen: React.FC<Props> = ({ level, accent, onBack, onOpenTabl
           <Text style={styles.cardTitle}>¿Para qué sirven los niveles?</Text>
           {REASONS.map((reason) => (
             <View key={reason.icon} style={styles.reason}>
-              <MaterialCommunityIcons name={reason.icon} size={20} color={theme.colors[reason.color]} />
+              <Icon name={reason.icon} size={20} color={theme.colors[reason.color]} />
               <Text style={styles.reasonText}>{reason.text}</Text>
             </View>
           ))}
@@ -85,8 +83,8 @@ export const LevelScreen: React.FC<Props> = ({ level, accent, onBack, onOpenTabl
         ) : null}
 
         <Animated.View entering={enter(3)}>
-          <PressableScale style={[styles.button, { backgroundColor: accent }]} onPress={onOpenTable} accessibilityLabel="Ver la tabla de niveles">
-            <MaterialCommunityIcons name="table-large" size={20} color={theme.colors.bgDark} />
+          <PressableScale variant="solid" accent={accent} style={[styles.button, { backgroundColor: accent }]} onPress={onOpenTable} accessibilityLabel="Ver la tabla de niveles">
+            <Icon name="grid-outline" size={20} color={theme.colors.bgDark} />
             <Text style={styles.buttonText}>Ver la tabla de niveles</Text>
           </PressableScale>
         </Animated.View>
@@ -126,6 +124,7 @@ const styles = themed(() => ({
     padding: 18,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

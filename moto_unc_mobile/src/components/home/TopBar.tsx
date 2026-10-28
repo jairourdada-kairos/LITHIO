@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '../ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { Avatar } from '../ui/Avatar';
 
@@ -24,7 +24,7 @@ export function greeting(date = new Date()): string {
 
 export const TopBar: React.FC<Props> = ({ name, avatarUrl, accent, onPressAvatar }) => (
   <View style={styles.row}>
-    <MaterialCommunityIcons name="atom" size={22} color={accent} />
+    <Icon name="atom" size={22} color={accent} />
     <Text style={styles.brand}>LITHIO</Text>
     <View style={styles.spacer} />
     <Pressable onPress={onPressAvatar} hitSlop={8} accessibilityRole="button" accessibilityLabel="Abrir mi perfil">

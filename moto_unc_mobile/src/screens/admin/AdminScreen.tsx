@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, Alert, Image, ImageURISource } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -41,7 +41,7 @@ const NEXT_STEP: Partial<Record<VerificationStatus, { label: string; status: Ver
   rechazado: { label: 'Reabrir revisión', status: 'en_revision' },
 };
 
-const KIND_ICON = { recarga: 'arrow-bottom-left', retiro: 'bank-transfer-out', taller: 'wrench-outline' } as const;
+const KIND_ICON = { recarga: 'arrow-circle-down-outline', retiro: 'arrow-circle-up-outline', taller: 'settings-2-outline' } as const;
 
 export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
@@ -216,7 +216,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
         {section === 'drivers' ? (
           applications.length === 0 ? (
-            <Empty icon="account-check-outline" text="No hay postulaciones pendientes." />
+            <Empty icon="person-done-outline" text="No hay postulaciones pendientes." />
           ) : (
             applications.map((app) => {
               const next = NEXT_STEP[app.status];
@@ -242,12 +242,12 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </View>
                   <View style={styles.actions}>
                     {app.status !== 'rechazado' ? (
-                      <PressableScale containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reject(app)} disabled={busy}>
+                      <PressableScale variant="glass" containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reject(app)} disabled={busy}>
                         <Text style={styles.secondaryText}>Rechazar</Text>
                       </PressableScale>
                     ) : null}
                     {next ? (
-                      <PressableScale containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]} onPress={() => advance(app)} disabled={busy}>
+                      <PressableScale variant="solid" accent={theme.colors.secondary} containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]} onPress={() => advance(app)} disabled={busy}>
                         <Text style={[styles.primaryText, { color: theme.colors.onSecondary }]}>{busy ? 'Guardando…' : next.label}</Text>
                       </PressableScale>
                     ) : null}
@@ -258,7 +258,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           )
         ) : section === 'routes' ? (
           <>
-            <PressableScale
+            <PressableScale variant="solid" accent={theme.colors.secondary}
               style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]}
               onPress={() => setEditingRoute(null)}
               accessibilityLabel="Crear una ruta nueva"
@@ -266,7 +266,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <Text style={[styles.primaryText, { color: theme.colors.onSecondary }]}>+ Nueva ruta</Text>
             </PressableScale>
             {routes.length === 0 ? (
-              <Empty icon="map-marker-path" text="No hay rutas. Crea la primera." />
+              <Empty icon="navigation-2-outline" text="No hay rutas. Crea la primera." />
             ) : (
               routes.map((route) => {
                 const busy = busyId === `r${route.id}`;
@@ -274,7 +274,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <View key={route.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={styles.kindIcon}>
-                        <MaterialCommunityIcons name="map-marker-path" size={20} color={theme.colors.secondary} />
+                        <Icon name="navigation-2-outline" size={20} color={theme.colors.secondary} />
                       </View>
                       <View style={styles.flex}>
                         <Text style={styles.name}>{route.origin} → {route.destination}</Text>
@@ -285,10 +285,10 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       </View>
                     </View>
                     <View style={styles.actions}>
-                      <PressableScale containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => removeRoute(route)} disabled={busy}>
+                      <PressableScale variant="glass" containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => removeRoute(route)} disabled={busy}>
                         <Text style={styles.secondaryText}>{busy ? 'Eliminando…' : 'Eliminar'}</Text>
                       </PressableScale>
-                      <PressableScale
+                      <PressableScale variant="solid" accent={theme.colors.secondary}
                         containerStyle={styles.flex2}
                         style={[styles.primaryBtn, { backgroundColor: theme.colors.secondary }]}
                         onPress={() => setEditingRoute(route)}
@@ -304,7 +304,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </>
         ) : section === 'vouchers' ? (
           vouchers.length === 0 ? (
-            <Empty icon="school-outline" text="No hay vales «Pasar con 20» por revisar." />
+            <Empty icon="book-open-outline" text="No hay vales «Pasar con 20» por revisar." />
           ) : (
             vouchers.map((voucher) => {
               const busy = busyId === `v${voucher.id}`;
@@ -312,7 +312,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <View key={voucher.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={styles.kindIcon}>
-                      <MaterialCommunityIcons name="school-outline" size={20} color={theme.colors.gold} />
+                      <Icon name="book-open-outline" size={20} color={theme.colors.gold} />
                     </View>
                     <View style={styles.flex}>
                       <Text style={styles.name}>{voucher.subject}</Text>
@@ -322,10 +322,10 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <VoucherEvidence id={voucher.id} />
                   {voucher.note ? <Fact label="Comentario" value={voucher.note} /> : null}
                   <View style={styles.actions}>
-                    <PressableScale containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reviewVoucher(voucher, 'rechazar')} disabled={busy}>
+                    <PressableScale variant="glass" containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reviewVoucher(voucher, 'rechazar')} disabled={busy}>
                       <Text style={styles.secondaryText}>Rechazar</Text>
                     </PressableScale>
-                    <PressableScale containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.gold }]} onPress={() => reviewVoucher(voucher, 'aprobar')} disabled={busy}>
+                    <PressableScale variant="solid" accent={theme.colors.gold} containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.gold }]} onPress={() => reviewVoucher(voucher, 'aprobar')} disabled={busy}>
                       <Text style={[styles.primaryText, { color: theme.colors.bgDark }]}>{busy ? 'Guardando…' : 'Aprobar vale'}</Text>
                     </PressableScale>
                   </View>
@@ -334,7 +334,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             })
           )
         ) : walletItems.length === 0 ? (
-          <Empty icon="wallet-outline" text="No hay movimientos esperando revisión." />
+          <Empty icon="credit-card-outline" text="No hay movimientos esperando revisión." />
         ) : (
           walletItems.map((item) => {
             const busy = busyId === `w${item.id}`;
@@ -342,7 +342,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <View key={item.id} style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={styles.kindIcon}>
-                    <MaterialCommunityIcons name={KIND_ICON[item.kind]} size={20} color={theme.colors.diamond} />
+                    <Icon name={KIND_ICON[item.kind]} size={20} color={theme.colors.diamond} />
                   </View>
                   <View style={styles.flex}>
                     <Text style={styles.name}>{item.label} · ◆ {Math.abs(item.amount).toFixed(2)}</Text>
@@ -355,10 +355,10 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <Fact label="Fecha" value={new Date(item.created_at).toLocaleString('es-VE')} />
                 </View>
                 <View style={styles.actions}>
-                  <PressableScale containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reviewWallet(item, 'rechazar')} disabled={busy}>
+                  <PressableScale variant="glass" containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reviewWallet(item, 'rechazar')} disabled={busy}>
                     <Text style={styles.secondaryText}>Rechazar</Text>
                   </PressableScale>
-                  <PressableScale containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.diamond }]} onPress={() => reviewWallet(item, 'aprobar')} disabled={busy}>
+                  <PressableScale variant="solid" accent={theme.colors.diamond} containerStyle={styles.flex2} style={[styles.primaryBtn, { backgroundColor: theme.colors.diamond }]} onPress={() => reviewWallet(item, 'aprobar')} disabled={busy}>
                     <Text style={[styles.primaryText, { color: theme.colors.bgDark }]}>{busy ? 'Guardando…' : 'Aprobar'}</Text>
                   </PressableScale>
                 </View>
@@ -403,9 +403,9 @@ const Fact: React.FC<{ label: string; value?: string | null }> = ({ label, value
   </View>
 );
 
-const Empty: React.FC<{ icon: React.ComponentProps<typeof MaterialCommunityIcons>['name']; text: string }> = ({ icon, text }) => (
+const Empty: React.FC<{ icon: IconName; text: string }> = ({ icon, text }) => (
   <View style={styles.empty}>
-    <MaterialCommunityIcons name={icon} size={40} color={theme.colors.textMuted} />
+    <Icon name={icon} size={40} color={theme.colors.textMuted} />
     <Text style={styles.muted}>{text}</Text>
   </View>
 );
@@ -427,6 +427,7 @@ const styles = themed(() => ({
     height: 220,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   flex2: {
     flex: 1.6,
@@ -441,6 +442,7 @@ const styles = themed(() => ({
     paddingVertical: 12,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -459,6 +461,7 @@ const styles = themed(() => ({
     padding: 4,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -485,6 +488,7 @@ const styles = themed(() => ({
     gap: 12,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

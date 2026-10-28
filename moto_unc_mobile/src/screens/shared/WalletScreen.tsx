@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
@@ -15,8 +15,6 @@ import { apiService, WalletInfo, WalletTransaction } from '../../services/api';
 import { WalletActionSheet } from '../../components/WalletActionSheet';
 import { formatBs, useBcvRate } from '../../services/rates';
 import type { SessionRole } from '../../services/session';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export type WalletAction = 'recargar' | 'enviar' | 'donar' | 'retirar' | 'taller';
 
@@ -26,14 +24,14 @@ interface Props {
 }
 
 const KIND_ICONS: Record<string, IconName> = {
-  recarga: 'arrow-bottom-left',
-  recepcion: 'arrow-bottom-left',
+  recarga: 'arrow-circle-down-outline',
+  recepcion: 'arrow-circle-down-outline',
   cobro_viaje: 'motorbike',
-  envio: 'send-outline',
-  donacion: 'hand-heart-outline',
+  envio: 'paper-plane-outline',
+  donacion: 'heart-outline',
   pago_viaje: 'motorbike',
-  retiro: 'bank-transfer-out',
-  taller: 'wrench-outline',
+  retiro: 'arrow-circle-up-outline',
+  taller: 'settings-2-outline',
 };
 
 const STATUS_TEXT: Record<string, string> = { pendiente: 'En revisión', aprobado: '', rechazado: 'Rechazado' };
@@ -64,14 +62,14 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
   const actions: { key: WalletAction; label: string; icon: IconName; primary?: boolean }[] =
     role === 'conductor'
       ? [
-          { key: 'retirar', label: 'Retirar', icon: 'bank-transfer-out', primary: true },
-          { key: 'taller', label: 'Taller', icon: 'wrench-outline' },
-          { key: 'enviar', label: 'A un enlace', icon: 'send-outline' },
+          { key: 'retirar', label: 'Retirar', icon: 'arrow-circle-up-outline', primary: true },
+          { key: 'taller', label: 'Taller', icon: 'settings-2-outline' },
+          { key: 'enviar', label: 'A un enlace', icon: 'paper-plane-outline' },
         ]
       : [
-          { key: 'recargar', label: 'Recargar', icon: 'plus', primary: true },
-          { key: 'enviar', label: 'A un enlace', icon: 'send-outline' },
-          { key: 'donar', label: 'Donar', icon: 'hand-heart-outline' },
+          { key: 'recargar', label: 'Recargar', icon: 'plus-outline', primary: true },
+          { key: 'enviar', label: 'A un enlace', icon: 'paper-plane-outline' },
+          { key: 'donar', label: 'Donar', icon: 'heart-outline' },
         ];
 
   return (
@@ -96,7 +94,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
         ) : null}
         <View style={styles.actions}>
           {actions.map((action) => (
-            <PressableScale
+            <PressableScale variant="glass"
               key={action.key}
               containerStyle={styles.flex}
               style={styles.action}
@@ -104,7 +102,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
               accessibilityLabel={action.label}
             >
               <View style={[styles.actionIcon, action.primary ? { backgroundColor: theme.colors.diamond } : null]}>
-                <MaterialCommunityIcons
+                <Icon
                   name={action.icon}
                   size={22}
                   color={action.primary ? theme.colors.bgDark : theme.colors.textPrimary}
@@ -118,7 +116,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
 
       {role === 'pasajero' ? (
         <View style={styles.fund}>
-          <MaterialCommunityIcons name="hand-heart-outline" size={26} color={theme.colors.primary} />
+          <Icon name="heart-outline" size={26} color={theme.colors.primary} />
           <View style={styles.flex}>
             <Text style={styles.fundTitle}>Fondo Solidario LITHIO</Text>
             <Text style={styles.fundBody}>Tus donaciones pagan viajes a estudiantes que lo necesitan.</Text>
@@ -157,7 +155,7 @@ const Movement: React.FC<{ tx: WalletTransaction; divider: boolean }> = ({ tx, d
   return (
     <View style={[styles.movement, divider && styles.divider]}>
       <View style={styles.movementIcon}>
-        <MaterialCommunityIcons name={KIND_ICONS[tx.kind] || 'swap-horizontal'} size={18} color={theme.colors.textSecondary} />
+        <Icon name={KIND_ICONS[tx.kind] || 'swap-outline'} size={18} color={theme.colors.textSecondary} />
       </View>
       <View style={styles.flex}>
         <Text style={styles.movementLabel}>{tx.label}</Text>
@@ -276,6 +274,7 @@ const styles = themed(() => ({
   list: {
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     overflow: 'hidden',

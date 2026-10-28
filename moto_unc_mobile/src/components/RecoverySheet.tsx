@@ -9,7 +9,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { FormField } from './FormField';
@@ -88,7 +88,7 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
             {done ? (
               <>
                 <View style={styles.doneRow}>
-                  <MaterialCommunityIcons name="email-check-outline" size={28} color={theme.colors.success} />
+                  <Icon name="email-outline" size={28} color={theme.colors.success} />
                   <Text style={[styles.message, styles.flex]}>{done}</Text>
                 </View>
                 <PrimaryButton label="Volver a iniciar sesión" onPress={onClose} accent={accent} />
@@ -200,6 +200,7 @@ const styles = themed(() => ({
     padding: 4,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   segmentItem: {
     flex: 1,

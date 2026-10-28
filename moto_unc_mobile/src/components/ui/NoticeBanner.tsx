@@ -8,15 +8,15 @@
 import React, { useEffect } from 'react';
 import { Text, StyleSheet, Pressable, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import type { RideNotice } from '../../hooks/useRideCenter';
 
 // Función (no constante) para leer la paleta activa en cada aviso.
 const tones = () => ({
-  info: { color: theme.colors.primary, icon: 'bell-ring' as const },
-  success: { color: theme.colors.success, icon: 'check-circle' as const },
+  info: { color: theme.colors.primary, icon: 'bell' as const },
+  success: { color: theme.colors.success, icon: 'checkmark-circle-2' as const },
   warning: { color: theme.colors.warning, icon: 'alert-circle' as const },
 });
 
@@ -53,7 +53,7 @@ export const NoticeBanner: React.FC<Props> = ({ notice, onClose, onPress }) => {
         style={[styles.banner, { borderColor: tone.color }]}
         accessibilityRole="alert"
       >
-        <MaterialCommunityIcons name={tone.icon} size={22} color={tone.color} />
+        <Icon name={tone.icon} size={22} color={tone.color} />
         <View style={styles.text}>
           <Text style={styles.title}>{notice.title}</Text>
           <Text style={styles.message} numberOfLines={2}>{notice.message}</Text>

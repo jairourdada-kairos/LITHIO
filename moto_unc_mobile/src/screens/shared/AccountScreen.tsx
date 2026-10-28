@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { getPushStatus, openNotificationSettings, pushSupported, registerForPush } from '../../services/notifications';
 import { Avatar } from '../../components/ui/Avatar';
@@ -19,8 +19,6 @@ import { electronConfiguration, FALLBACK_LEVEL, levelProgress } from '../../util
 import type { AuthUser } from '../../services/auth';
 import type { AccountSummary } from '../../services/api';
 import type { SessionRole } from '../../services/session';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface MenuItem {
   icon: IconName;
@@ -46,9 +44,9 @@ interface Props {
 }
 
 const APPEARANCE: { mode: ThemeMode; label: string; icon: IconName }[] = [
-  { mode: 'light', label: 'Claro', icon: 'white-balance-sunny' },
-  { mode: 'dark', label: 'Oscuro', icon: 'weather-night' },
-  { mode: 'system', label: 'Auto', icon: 'cellphone' },
+  { mode: 'light', label: 'Claro', icon: 'sun-outline' },
+  { mode: 'dark', label: 'Oscuro', icon: 'moon-outline' },
+  { mode: 'system', label: 'Auto', icon: 'smartphone-outline' },
 ];
 
 export const AccountScreen: React.FC<Props> = ({
@@ -95,13 +93,13 @@ export const AccountScreen: React.FC<Props> = ({
 
   const items: MenuItem[] = [
     ...(onOpenAdmin ? [{ icon: 'shield-crown-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
-    { icon: 'card-account-details-outline', label: 'Mis datos', onPress: onOpenProfile },
-    { icon: 'account-multiple-outline', label: 'Enlaces', onPress: onOpenLinks },
+    { icon: 'credit-card-outline', label: 'Mis datos', onPress: onOpenProfile },
+    { icon: 'people-outline', label: 'Enlaces', onPress: onOpenLinks },
     ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
     ...(pushSupported ? [{ icon: 'bell-outline' as IconName, label: 'Notificaciones', onPress: () => void manageNotifications() }] : []),
-    { icon: 'school-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
+    { icon: 'book-open-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
     { icon: 'atom', label: '¿Qué es LITHIO?', onPress: onOpenAbout },
-    { icon: 'logout', label: 'Cerrar sesión', onPress: confirmSignOut, danger: true },
+    { icon: 'log-out-outline', label: 'Cerrar sesión', onPress: confirmSignOut, danger: true },
   ];
 
   return (
@@ -112,7 +110,7 @@ export const AccountScreen: React.FC<Props> = ({
         <Pressable onPress={onEditPhoto} accessibilityRole="button" accessibilityLabel="Cambiar foto de perfil" hitSlop={6}>
           <Avatar name={fullName} uri={user.avatar_url} size={72} ringColor={accent} />
           <View style={[styles.camera, { backgroundColor: accent }]}>
-            <MaterialCommunityIcons name="camera" size={14} color={theme.colors.bgDark} />
+            <Icon name="camera-outline" size={14} color={theme.colors.bgDark} />
           </View>
         </Pressable>
         <View style={styles.flex}>
@@ -168,7 +166,7 @@ export const AccountScreen: React.FC<Props> = ({
                 accessibilityState={{ selected }}
                 accessibilityLabel={`Apariencia ${option.label}`}
               >
-                <MaterialCommunityIcons name={option.icon} size={16} color={selected ? theme.colors.textPrimary : theme.colors.textMuted} />
+                <Icon name={option.icon} size={16} color={selected ? theme.colors.textPrimary : theme.colors.textMuted} />
                 <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{option.label}</Text>
               </Pressable>
             );
@@ -184,9 +182,9 @@ export const AccountScreen: React.FC<Props> = ({
             style={({ pressed }) => [styles.item, index > 0 && styles.itemDivider, pressed && styles.itemPressed]}
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name={item.icon} size={22} color={item.danger ? theme.colors.error : theme.colors.textSecondary} />
+            <Icon name={item.icon} size={22} color={item.danger ? theme.colors.error : theme.colors.textSecondary} />
             <Text style={[styles.itemLabel, item.danger && { color: theme.colors.error }]}>{item.label}</Text>
-            {!item.danger ? <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} /> : null}
+            {!item.danger ? <Icon name="chevron-right-outline" size={22} color={theme.colors.textMuted} /> : null}
           </Pressable>
         ))}
       </View>
@@ -283,6 +281,7 @@ const styles = themed(() => ({
     padding: 18,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -378,6 +377,7 @@ const styles = themed(() => ({
   menu: {
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     overflow: 'hidden',

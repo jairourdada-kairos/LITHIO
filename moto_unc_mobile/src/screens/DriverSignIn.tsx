@@ -85,7 +85,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocia
     >
       <SocialSignIn onUser={enterAsDriver} onNeedsProfile={onSocialSignUp} />
 
-      <FormField
+      <FormField accent={theme.colors.secondary}
         label="Correo electrónico"
         value={email}
         onChangeText={(value) => {
@@ -100,7 +100,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocia
         error={errors.email}
       />
 
-      <FormField
+      <FormField accent={theme.colors.secondary}
         label="Contraseña"
         value={password}
         onChangeText={(value) => {

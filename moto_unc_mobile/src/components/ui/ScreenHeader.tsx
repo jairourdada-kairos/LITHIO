@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme, themed } from '../../constants/theme';
 
 interface Props {
@@ -23,7 +23,7 @@ export const ScreenHeader: React.FC<Props> = ({ title, onBack, right }) => (
         accessibilityRole="button"
         accessibilityLabel="Volver"
       >
-        <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.textPrimary} />
+        <Icon name="arrow-back-outline" size={24} color={theme.colors.textPrimary} />
       </Pressable>
     ) : (
       <View style={styles.back} />

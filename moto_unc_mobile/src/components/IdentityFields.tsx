@@ -94,7 +94,7 @@ interface Props {
 export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent = theme.colors.primary, emailLocked = false }) => (
   <>
     <View style={styles.row}>
-      <FormField
+      <FormField accent={accent}
         label="Nombres"
         required
         containerStyle={styles.half}
@@ -106,7 +106,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
         textContentType="givenName"
         error={errors.name}
       />
-      <FormField
+      <FormField accent={accent}
         label="Apellidos"
         required
         containerStyle={styles.half}
@@ -120,7 +120,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       />
     </View>
 
-    <FormField
+    <FormField accent={accent}
       label="Cédula de identidad"
       required
       value={form.cedula_digits}
@@ -151,7 +151,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       }
     />
 
-    <FormField
+    <FormField accent={accent}
       label="Correo electrónico"
       required
       value={form.email}
@@ -166,7 +166,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       error={errors.email}
     />
 
-    <FormField
+    <FormField accent={accent}
       label="Carrera universitaria"
       required
       value={form.career}
@@ -211,7 +211,7 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       {errors.semester ? <Text style={styles.error}>{errors.semester}</Text> : null}
     </View>
 
-    <FormField
+    <FormField accent={accent}
       label="Teléfono celular"
       required
       value={form.phone}

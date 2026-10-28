@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon, IconName } from '../../components/ui/Icon';
 import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { theme, themed } from '../../constants/theme';
 import { TopBar, greeting } from '../../components/home/TopBar';
@@ -18,8 +18,6 @@ import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import type { AuthUser } from '../../services/auth';
 import type { AccountSummary } from '../../services/api';
 import type { PresetRoute, Ride } from '../../types';
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Props {
   user: AuthUser;
@@ -89,7 +87,7 @@ export const PassengerHome: React.FC<Props> = ({
 
       {activeRide ? (
         <Animated.View entering={enter(1)}>
-          <PressableScale style={styles.activeRide} onPress={onOpenActiveRide} accessibilityLabel="Ver mi viaje en curso">
+          <PressableScale variant="glass" style={styles.activeRide} onPress={onOpenActiveRide} accessibilityLabel="Ver mi viaje en curso">
             <View style={styles.liveDot} />
             <View style={styles.flex}>
               <Text style={styles.activeTitle}>{STATUS_LABEL[activeRide.status] || 'Viaje activo'}</Text>
@@ -97,7 +95,7 @@ export const PassengerHome: React.FC<Props> = ({
                 {activeRide.origin} → {activeRide.destination}
               </Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.primary} />
+            <Icon name="chevron-right-outline" size={24} color={theme.colors.primary} />
           </PressableScale>
         </Animated.View>
       ) : null}
@@ -125,7 +123,7 @@ export const PassengerHome: React.FC<Props> = ({
             </Pressable>
           ))}
         </View>
-        <PressableScale style={styles.primaryButton} onPress={() => onRequestTrip()} accessibilityLabel="Iniciar trayecto">
+        <PressableScale variant="solid" style={styles.primaryButton} onPress={() => onRequestTrip()} accessibilityLabel="Iniciar trayecto">
           <Text style={styles.primaryButtonText}>Iniciar trayecto</Text>
         </PressableScale>
         <Pressable
@@ -134,13 +132,13 @@ export const PassengerHome: React.FC<Props> = ({
           hitSlop={8}
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons name="calendar-clock" size={16} color={theme.colors.primary} />
+          <Icon name="calendar-outline" size={16} color={theme.colors.primary} />
           <Text style={styles.scheduleText}>Programar para después</Text>
         </Pressable>
       </Animated.View>
 
       <Animated.View entering={enter(3)}>
-        <PressableScale style={styles.energy} onPress={onOpenWallet} accessibilityLabel="Abrir billetera">
+        <PressableScale variant="glass" style={styles.energy} onPress={onOpenWallet} accessibilityLabel="Abrir billetera">
           <View style={styles.flex}>
             <Text style={styles.energyLabel}>Diamantes</Text>
             <Text style={[styles.energyValue, { color: theme.colors.diamond }]}>◆ {diamonds.toFixed(2)}</Text>
@@ -150,7 +148,7 @@ export const PassengerHome: React.FC<Props> = ({
             <Text style={styles.energyLabel}>Hierro</Text>
             <Text style={[styles.energyValue, { color: theme.colors.gold }]}>Fe {points}</Text>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
+          <Icon name="chevron-right-outline" size={22} color={theme.colors.textMuted} />
         </PressableScale>
       </Animated.View>
 
@@ -158,27 +156,27 @@ export const PassengerHome: React.FC<Props> = ({
         <Text style={styles.sectionTitle}>Explora</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
           <ExploreCard
-            icon="flask-outline"
+            icon="droplet-outline"
             tint={theme.colors.primary}
             title="Reacción del día"
             caption={quizAnswered ? 'Respondida · vuelve mañana' : '+10 Fe si aciertas'}
             onPress={onOpenQuiz}
           />
           <ExploreCard
-            icon="account-multiple-outline"
+            icon="people-outline"
             tint={theme.colors.secondary}
             title="Tus enlaces"
             caption={linksCount === null ? 'Amigos de viaje' : `${linksCount} ${linksCount === 1 ? 'enlace' : 'enlaces'}`}
             onPress={onOpenLinks}
           />
           <ExploreCard
-            icon="school-outline"
+            icon="book-open-outline"
             tint={theme.colors.gold}
             title="Pasar con 20"
             caption="Carrera gratis por tu 20"
             onPress={onOpenRewards}
           />
-          <PressableScale style={[styles.exploreCard, { borderColor: theme.colors.glassBorder }]} onPress={onOpenAbout}>
+          <PressableScale variant="glass" style={[styles.exploreCard, { borderColor: theme.colors.glassBorder }]} onPress={onOpenAbout}>
             <LithiumAtom size={40} animated={false} />
             <Text style={styles.exploreTitle}>¿Qué es LITHIO?</Text>
             <Text style={styles.exploreCaption}>Nuestro manifiesto</Text>
@@ -202,7 +200,7 @@ const ExploreCard: React.FC<{ icon: IconName; tint: string; title: string; capti
     accessibilityLabel={title}
   >
     <View style={[styles.exploreIcon, { backgroundColor: `${tint}22` }]}>
-      <MaterialCommunityIcons name={icon} size={22} color={tint} />
+      <Icon name={icon} size={22} color={tint} />
     </View>
     <Text style={styles.exploreTitle}>{title}</Text>
     <Text style={styles.exploreCaption}>{caption}</Text>
@@ -352,6 +350,7 @@ const styles = themed(() => ({
     paddingHorizontal: 18,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -391,6 +390,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     backgroundColor: theme.colors.surface,
+    boxShadow: theme.glass.shadow,
   },
   exploreIcon: {
     width: 40,
