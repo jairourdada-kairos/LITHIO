@@ -1,13 +1,12 @@
 /**
  * PassengerSignIn.tsx — Inicio de Sesión / Registro de Pasajero
  *
- * Muestra opciones de auth social (Google, Facebook) y email.
+ * Entrar con Google, Facebook o correo.
  * Navega a PassengerSignUp si el usuario no tiene cuenta.
  */
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme, themed } from '../constants/theme';
 import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
@@ -15,18 +14,21 @@ import { AuthLayout } from '../components/brand/AuthLayout';
 import { FormField } from '../components/FormField';
 import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
-import { PressableScale } from '../components/brand/PressableScale';
+import { SocialSignIn } from '../components/SocialSignIn';
+import { SocialPrefill } from '../services/socialAuth';
 import { validateEmail } from '../utils/validation';
 
 interface Props {
   onSuccess: (user: AuthUser) => void;
   onGoToSignUp: () => void;
+  /** Primera vez con Google/Facebook: completar el registro. */
+  onSocialSignUp: (prefill: SocialPrefill) => void;
   /** Lleva al inicio de sesión del otro rol. */
   onSwitchRole?: () => void;
   onBack: () => void;
 }
 
-export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitchRole, onBack }) => {
+export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocialSignUp, onSwitchRole, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -63,35 +65,9 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSw
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    Alert.alert(
-      `Entrar con ${provider}`,
-      `Muy pronto podrás entrar con ${provider}. Por ahora usa tu correo electrónico.`,
-      [{ text: 'Entendido' }]
-    );
-  };
-
   return (
     <AuthLayout title="Iniciar sesión" subtitle="Pasajero · tu cuenta LITHIO" onBack={onBack}>
-      {/* Opciones sociales: requieren configurar Firebase antes de habilitarlas */}
-      <View style={styles.socialRow}>
-        <PressableScale containerStyle={styles.socialCell} style={styles.socialBtn} onPress={() => handleSocialLogin('Google')}>
-          <MaterialCommunityIcons name="google" size={18} color={theme.colors.textPrimary} />
-          <Text style={styles.socialLabel}>Google</Text>
-          <Text style={styles.soon}>pronto</Text>
-        </PressableScale>
-        <PressableScale containerStyle={styles.socialCell} style={styles.socialBtn} onPress={() => handleSocialLogin('Facebook')}>
-          <MaterialCommunityIcons name="facebook" size={18} color={theme.colors.textPrimary} />
-          <Text style={styles.socialLabel}>Facebook</Text>
-          <Text style={styles.soon}>pronto</Text>
-        </PressableScale>
-      </View>
-
-      <View style={styles.orRow}>
-        <View style={styles.orLine} />
-        <Text style={styles.orText}>o continúa con tu correo</Text>
-        <View style={styles.orLine} />
-      </View>
+      <SocialSignIn onUser={onSuccess} onNeedsProfile={onSocialSignUp} />
 
       <FormField
         label="Correo electrónico"
@@ -155,51 +131,6 @@ const styles = themed(() => ({
   forgotText: {
     fontFamily: theme.fonts.semibold,
     fontSize: 13,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  socialCell: {
-    flex: 1,
-  },
-  socialBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    gap: 8,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
-    backgroundColor: theme.colors.glassBg,
-  },
-  socialLabel: {
-    fontFamily: theme.fonts.semibold,
-    fontSize: 14,
-    color: theme.colors.textPrimary,
-  },
-  soon: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    color: theme.colors.textMuted,
-  },
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 10,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.glassBorder,
-  },
-  orText: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 12,
-    color: theme.colors.textMuted,
   },
   submit: {
     marginTop: 8,

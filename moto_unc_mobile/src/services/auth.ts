@@ -127,7 +127,8 @@ async function register(
   data: PassengerSignUpData | DriverSignUpData,
   password: string
 ): Promise<AuthUser> {
-  await createFirebaseAccount(data.email, password);
+  // Sin contraseña: la cuenta ya existe en Firebase (entró con Google o Facebook).
+  if (password) await createFirebaseAccount(data.email, password);
   const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -158,6 +159,11 @@ export function signUpDriver(
 
 export async function signInWithEmail(email: string, password: string): Promise<AuthUser | null> {
   await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+  return loadOwnProfile();
+}
+
+/** Perfil de LITHIO de la cuenta de Firebase activa; null si aún no se registró. */
+export async function loadOwnProfile(): Promise<AuthUser | null> {
   const response = await fetchWithTimeout(`${API_BASE}/api/users/me`);
   if (response.status === EMAIL_VERIFICATION_REQUIRED) {
     return requestEmailVerification();

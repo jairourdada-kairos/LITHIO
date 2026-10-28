@@ -47,6 +47,12 @@ export const EMPTY_IDENTITY: IdentityForm = {
   phone: '',
 };
 
+/** Formulario vacío, o con el correo y nombre que ya dio Google/Facebook. */
+export function prefillIdentity(prefill?: { email: string; name: string; last_name: string } | null): IdentityForm {
+  if (!prefill) return EMPTY_IDENTITY;
+  return { ...EMPTY_IDENTITY, email: prefill.email, name: prefill.name, last_name: prefill.last_name };
+}
+
 export function validateIdentity(form: IdentityForm): IdentityErrors {
   const errors: IdentityErrors = {
     name: validatePersonName(form.name, 'El nombre'),
@@ -81,9 +87,11 @@ interface Props {
   onChange: <K extends keyof IdentityForm>(field: K, value: IdentityForm[K]) => void;
   /** Color de acento: turquesa para pasajero, coral para conductor. */
   accent?: string;
+  /** El correo viene de Google o Facebook y debe coincidir con esa cuenta. */
+  emailLocked?: boolean;
 }
 
-export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent = theme.colors.primary }) => (
+export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent = theme.colors.primary, emailLocked = false }) => (
   <>
     <View style={styles.row}>
       <FormField
@@ -153,6 +161,8 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       autoCapitalize="none"
       autoComplete="email"
       textContentType="emailAddress"
+      editable={!emailLocked}
+      hint={emailLocked ? 'Es el correo de la cuenta con la que entraste.' : undefined}
       error={errors.email}
     />
 

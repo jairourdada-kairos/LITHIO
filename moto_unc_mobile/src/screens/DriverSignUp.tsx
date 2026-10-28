@@ -23,17 +23,20 @@ import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 import {
-  EMPTY_IDENTITY,
   IdentityErrors,
   IdentityFields,
   IdentityForm,
+  prefillIdentity,
   toIdentityPayload,
   validateIdentity,
 } from '../components/IdentityFields';
 import { validatePassword } from '../utils/validation';
+import { PROVIDER_LABEL, SocialPrefill } from '../services/socialAuth';
 
 interface Props {
   onSuccess: (user: AuthUser) => void;
+  /** Viene de entrar con Google/Facebook: no pide contraseña. */
+  social?: SocialPrefill | null;
   onBack: () => void;
 }
 
@@ -64,9 +67,9 @@ interface FormErrors extends IdentityErrors {
   moto_year?: string;
 }
 
-export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
+export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [identity, setIdentity] = useState<IdentityForm>(EMPTY_IDENTITY);
+  const [identity, setIdentity] = useState<IdentityForm>(() => prefillIdentity(social));
   const [form, setForm] = useState<DriverForm>({
     age: '',
     password: '',
@@ -103,7 +106,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
     if (!form.age || !Number.isInteger(age) || age < 18 || age > 80) {
       newErrors.age = 'Debes tener entre 18 y 80 años para conducir';
     }
-    const passwordError = validatePassword(form.password);
+    const passwordError = social ? undefined : validatePassword(form.password);
     if (passwordError) newErrors.password = passwordError;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -157,7 +160,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         mobile_payment_bank: form.mobile_payment_bank.trim() || undefined,
         mobile_payment_id: form.mobile_payment_id.trim() || undefined,
         bank_account_number: form.bank_account_number.trim() || undefined,
-      }, form.password);
+      }, social ? '' : form.password);
 
       Alert.alert(
         'Postulación enviada',
@@ -181,6 +184,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         errors={errors}
         onChange={updateIdentity}
         accent={theme.colors.secondary}
+        emailLocked={!!social}
       />
 
       <FormField
@@ -193,7 +197,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         error={errors.age}
       />
 
-      <FormField
+      {!social && <FormField
         label="Contraseña"
         required
         value={form.password}
@@ -204,7 +208,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
         autoComplete="new-password"
         textContentType="newPassword"
         error={errors.password}
-      />
+      />}
 
       <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
@@ -387,8 +391,8 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
 
   return (
     <AuthLayout
-      title="Crear cuenta"
-      subtitle="Conductor · Comunidad universitaria"
+      title={social ? 'Completa tu perfil' : 'Crear cuenta'}
+      subtitle={social ? `Conductor · entraste con ${PROVIDER_LABEL[social.provider]}` : 'Conductor · Comunidad universitaria'}
       accent={theme.colors.secondary}
       onBack={onBack}
     >

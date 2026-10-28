@@ -329,3 +329,17 @@ def test_app_version_comes_from_server_settings(client, monkeypatch):
     monkeypatch.setenv("APP_DOWNLOAD_URL", "https://expo.dev/artifacts/eas/lithio.apk")
     assert client.get("/api/app/version").json() == {
         "min_build": 3, "latest_build": 4, "download_url": "https://expo.dev/artifacts/eas/lithio.apk"}
+
+
+def test_whatsapp_message_uses_template_when_configured(monkeypatch):
+    from app.main import whatsapp_ride_message
+    from app.models import Ride
+
+    ride = Ride(origin="UNC", destination="IVIC", fare_amount=2.5, scheduled_time=None)
+    text = whatsapp_ride_message("584141234567", ride, "Sofía")
+    assert text["type"] == "text" and "\n" in text["text"]["body"] and chr(92) + "n" not in text["text"]["body"]
+
+    monkeypatch.setenv("WHATSAPP_TEMPLATE_NAME", "nueva_solicitud")
+    template = whatsapp_ride_message("584141234567", ride, "Sofía")
+    values = [p["text"] for p in template["template"]["components"][0]["parameters"]]
+    assert template["type"] == "template" and values == ["Sofía", "UNC", "IVIC", "$2.50", "inmediato"]

@@ -14,26 +14,29 @@ import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 import {
-  EMPTY_IDENTITY,
   IdentityErrors,
   IdentityFields,
   IdentityForm,
+  prefillIdentity,
   toIdentityPayload,
   validateIdentity,
 } from '../components/IdentityFields';
 import { validatePassword } from '../utils/validation';
+import { PROVIDER_LABEL, SocialPrefill } from '../services/socialAuth';
 
 interface Props {
   onSuccess: (user: AuthUser) => void;
   onBack: () => void;
+  /** Viene de entrar con Google/Facebook: no pide contraseña. */
+  social?: SocialPrefill | null;
 }
 
 interface FormErrors extends IdentityErrors {
   password?: string;
 }
 
-export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
-  const [identity, setIdentity] = useState<IdentityForm>(EMPTY_IDENTITY);
+export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => {
+  const [identity, setIdentity] = useState<IdentityForm>(() => prefillIdentity(social));
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -45,7 +48,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
 
   const validate = (): boolean => {
     const newErrors: FormErrors = { ...validateIdentity(identity) };
-    const passwordError = validatePassword(password);
+    const passwordError = social ? undefined : validatePassword(password);
     if (passwordError) newErrors.password = passwordError;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -56,7 +59,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
 
     setLoading(true);
     try {
-      const user = await signUpPassenger(toIdentityPayload(identity), password);
+      const user = await signUpPassenger(toIdentityPayload(identity), social ? '' : password);
 
       Alert.alert(
         '🎉 ¡Bienvenido/a!',
@@ -71,15 +74,19 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
   };
 
   return (
-    <AuthLayout title="Crear cuenta" subtitle="Pasajero · Comunidad universitaria" onBack={onBack}>
+    <AuthLayout
+      title={social ? 'Completa tu perfil' : 'Crear cuenta'}
+      subtitle={social ? `Pasajero · entraste con ${PROVIDER_LABEL[social.provider]}` : 'Pasajero · Comunidad universitaria'}
+      onBack={onBack}
+    >
         {/* Bono de bienvenida */}
         <View style={styles.bonusBadge}>
           <Text style={styles.bonusText}>🎁 Recibirás 100 Fe al registrarte</Text>
         </View>
 
-        <IdentityFields form={identity} errors={errors} onChange={updateIdentity} />
+        <IdentityFields form={identity} errors={errors} onChange={updateIdentity} emailLocked={!!social} />
 
-        <FormField
+        {!social && <FormField
           label="Contraseña"
           required
           value={password}
@@ -93,7 +100,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack }) => {
           autoComplete="new-password"
           textContentType="newPassword"
           error={errors.password}
-        />
+        />}
 
         <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 

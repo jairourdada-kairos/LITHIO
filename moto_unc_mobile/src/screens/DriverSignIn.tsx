@@ -11,6 +11,8 @@ import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { FormField } from '../components/FormField';
+import { SocialSignIn } from '../components/SocialSignIn';
+import { SocialPrefill } from '../services/socialAuth';
 import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 import { validateEmail } from '../utils/validation';
@@ -18,12 +20,14 @@ import { validateEmail } from '../utils/validation';
 interface Props {
   onSuccess: (user: AuthUser) => void;
   onGoToSignUp: () => void;
+  /** Primera vez con Google/Facebook: completar el registro. */
+  onSocialSignUp: (prefill: SocialPrefill) => void;
   /** Lleva al inicio de sesión del otro rol. */
   onSwitchRole?: () => void;
   onBack: () => void;
 }
 
-export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitchRole, onBack }) => {
+export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocialSignUp, onSwitchRole, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -42,15 +46,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
     try {
       const user = await signInWithEmail(email.trim().toLowerCase(), password);
       if (user) {
-        if (user.role !== 'conductor' && user.role !== 'ambos') {
-          Alert.alert(
-            'Cuenta no autorizada',
-            'Este correo pertenece a un usuario que no tiene acceso como conductor.',
-            [{ text: 'Entendido' }]
-          );
-          return;
-        }
-        onSuccess(user);
+        enterAsDriver(user);
       } else {
         Alert.alert(
           'Cuenta no encontrada',
@@ -68,13 +64,27 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
     }
   };
 
+  const enterAsDriver = (user: AuthUser) => {
+    if (user.role !== 'conductor' && user.role !== 'ambos') {
+      Alert.alert(
+        'Cuenta no autorizada',
+        'Este correo pertenece a un usuario que no tiene acceso como conductor.',
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
+    onSuccess(user);
+  };
+
   return (
     <AuthLayout
       title="Conductor"
-      subtitle="Inicia sesión con tu correo"
+      subtitle="Inicia sesión en tu cuenta"
       accent={theme.colors.secondary}
       onBack={onBack}
     >
+      <SocialSignIn onUser={enterAsDriver} onNeedsProfile={onSocialSignUp} />
+
       <FormField
         label="Correo electrónico"
         value={email}

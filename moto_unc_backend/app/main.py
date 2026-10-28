@@ -208,7 +208,49 @@ async def receive_whatsapp_webhook(request: Request):
     return {"received": True}
 
 
-async def notify_driver_whatsapp(driver: User, ride: Ride) -> str:
+def whatsapp_ride_message(recipient: str, ride: Ride, passenger_name: str) -> dict:
+    """Mensaje de WhatsApp para el conductor con la nueva solicitud.
+
+    Meta solo entrega texto libre si el conductor escribió al número en las
+    últimas 24 h. Para avisos automáticos hace falta una plantilla aprobada:
+    si WHATSAPP_TEMPLATE_NAME está configurada se usa, con 5 variables en este
+    orden: pasajero, origen, destino, tarifa y horario.
+    """
+    schedule = ride.scheduled_time or "inmediato"
+    fare = f"${ride.fare_amount:.2f}"
+    template = os.getenv("WHATSAPP_TEMPLATE_NAME", "").strip()
+    if template:
+        values = [passenger_name, ride.origin, ride.destination, fare, schedule]
+        return {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "template",
+            "template": {
+                "name": template,
+                "language": {"code": os.getenv("WHATSAPP_TEMPLATE_LANGUAGE", "es")},
+                "components": [{"type": "body", "parameters": [{"type": "text", "text": v} for v in values]}],
+            },
+        }
+    return {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "text",
+        "text": {
+            "preview_url": False,
+            "body": (
+                "LITHIO: nueva solicitud de viaje\n"
+                f"Pasajero: {passenger_name}\n"
+                f"Origen: {ride.origin}\n"
+                f"Destino: {ride.destination}\n"
+                f"Tarifa: {fare}\n"
+                f"Horario: {schedule}\n"
+                "Abre LITHIO para aceptarla."
+            ),
+        },
+    }
+
+
+async def notify_driver_whatsapp(driver: User, ride: Ride, passenger_name: str = "") -> str:
     """Envía una alerta por WhatsApp Cloud API cuando las credenciales están configuradas."""
     token = os.getenv("WHATSAPP_ACCESS_TOKEN")
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
@@ -216,21 +258,7 @@ async def notify_driver_whatsapp(driver: User, ride: Ride) -> str:
         return "not_configured"
 
     recipient = "".join(character for character in driver.phone if character.isdigit())
-    payload = json.dumps({
-        "messaging_product": "whatsapp",
-        "to": recipient,
-        "type": "text",
-        "text": {
-            "preview_url": False,
-            "body": (
-                f"LITHIO: nueva solicitud de viaje\\n"
-                f"Origen: {ride.origin}\\n"
-                f"Destino: {ride.destination}\\n"
-                f"Tarifa: ${ride.fare_amount:.2f}\\n"
-                f"Horario: {ride.scheduled_time or 'inmediato'}"
-            )
-        }
-    }).encode("utf-8")
+    payload = json.dumps(whatsapp_ride_message(recipient, ride, passenger_name)).encode("utf-8")
     request = urllib.request.Request(
         f"https://graph.facebook.com/v22.0/{phone_number_id}/messages",
         data=payload,
@@ -241,7 +269,10 @@ async def notify_driver_whatsapp(driver: User, ride: Ride) -> str:
     try:
         await asyncio.to_thread(urllib.request.urlopen, request, timeout=10)
         return "sent"
-    except (urllib.error.URLError, urllib.error.HTTPError):
+    except urllib.error.HTTPError as error:
+        print("WhatsApp rechazó el aviso:", error.code, error.read()[:300])
+        return "failed"
+    except urllib.error.URLError:
         return "failed"
 
 @app.websocket("/ws")
@@ -1075,7 +1106,7 @@ async def request_ride(
     db.commit()
     db.refresh(new_ride)
 
-    whatsapp_status = await notify_driver_whatsapp(driver, new_ride)
+    whatsapp_status = await notify_driver_whatsapp(driver, new_ride, passenger.name)
 
     when = f" · programado {new_ride.scheduled_time}" if new_ride.is_scheduled else ""
     push_service.notify(

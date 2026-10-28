@@ -30,6 +30,7 @@ import { DriverSignIn } from './src/screens/DriverSignIn';
 import { DriverSignUp } from './src/screens/DriverSignUp';
 import { PassengerApp } from './src/shells/PassengerApp';
 import { DriverApp } from './src/shells/DriverApp';
+import { SocialPrefill } from './src/services/socialAuth';
 
 // Ningún mensaje usa alertas nativas: Alert.alert abre el diálogo de LITHIO.
 installAlertBridge();
@@ -75,6 +76,8 @@ export default function App() {
 function AppContent({ scheme }: { scheme: ColorScheme }) {
   const [authStep, setAuthStep] = useState<AuthStep>('restoring');
   const [session, setSession] = useState<Session | null>(null);
+  // Entró con Google/Facebook por primera vez: el registro no pide contraseña.
+  const [socialPrefill, setSocialPrefill] = useState<SocialPrefill | null>(null);
   const [isAboutVisible, setIsAboutVisible] = useState(false);
   const [primerVisible, setPrimerVisible] = useState(false);
   const [requiredUpdate, setRequiredUpdate] = useState<string | null | undefined>(undefined);
@@ -127,6 +130,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
       Alert.alert('No puedes entrar con este rol', denied);
       return;
     }
+    setSocialPrefill(null);
     try {
       await claimDeviceSession();
     } catch (error) {
@@ -171,6 +175,15 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
       );
     }
 
+    // Si se arrepiente de completar el perfil social, se cierra esa sesión de Firebase.
+    const leaveSignUp = (step: AuthStep) => () => {
+      if (socialPrefill) {
+        setSocialPrefill(null);
+        void signOut();
+      }
+      setAuthStep(step);
+    };
+
     if (authStep === 'restoring') {
       return (
         <View style={styles.restoring}>
@@ -184,6 +197,10 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         <DriverSignIn
           onSuccess={startSession('conductor')}
           onGoToSignUp={() => setAuthStep('driver-signup')}
+          onSocialSignUp={(prefill) => {
+            setSocialPrefill(prefill);
+            setAuthStep('driver-signup');
+          }}
           onSwitchRole={() => setAuthStep('passenger-signin')}
           onBack={() => setAuthStep('welcome')}
         />
@@ -195,6 +212,10 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         <PassengerSignIn
           onSuccess={startSession('pasajero')}
           onGoToSignUp={() => setAuthStep('passenger-signup')}
+          onSocialSignUp={(prefill) => {
+            setSocialPrefill(prefill);
+            setAuthStep('passenger-signup');
+          }}
           onSwitchRole={() => setAuthStep('driver-signin')}
           onBack={() => setAuthStep('welcome')}
         />
@@ -202,11 +223,11 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     }
 
     if (authStep === 'passenger-signup') {
-      return <PassengerSignUp onSuccess={startSession('pasajero')} onBack={() => setAuthStep('passenger-signin')} />;
+      return <PassengerSignUp social={socialPrefill} onSuccess={startSession('pasajero')} onBack={leaveSignUp('passenger-signin')} />;
     }
 
     if (authStep === 'driver-signup') {
-      return <DriverSignUp onSuccess={startSession('conductor')} onBack={() => setAuthStep('driver-signin')} />;
+      return <DriverSignUp social={socialPrefill} onSuccess={startSession('conductor')} onBack={leaveSignUp('driver-signin')} />;
     }
 
     return (
