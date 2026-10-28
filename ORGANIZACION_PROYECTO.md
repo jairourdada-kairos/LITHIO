@@ -1,6 +1,6 @@
 # Estructura oficial del proyecto
 
-El producto se denomina **LITHIO**: **Linked Intelligent Transport for Higher Innovative Opportunities** (Transporte Inteligente Vinculado para Oportunidades Innovadoras). Los nombres de carpetas y el identificador Android existentes se conservan como identificadores técnicos para mantener los builds y las instalaciones compatibles.
+El producto se denomina **LITHIO**: **Linked Intelligent Transport for Higher Innovative Opportunities** (Transporte Inteligente Vinculado para Oportunidades Innovadoras). Las carpetas se llaman `lithio_*` y la app de Android usa el identificador `com.lithio.app`.
 
 Este repositorio queda organizado para trabajar en 3 piezas principales:
 
@@ -12,12 +12,11 @@ Este repositorio queda organizado para trabajar en 3 piezas principales:
 
 Usar [lithio_backend](lithio_backend) como fuente oficial de la API.
 
-Comandos de arranque:
+Para arrancarlo: doble clic en `iniciar_servidor.bat`, o desde PowerShell:
 
 ```powershell
 cd lithio_backend
-.\venv\Scripts\Activate.ps1
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Documentación:
@@ -26,34 +25,15 @@ Documentación:
 
 ## Dashboard
 
-El dashboard web queda en [lithio_dashboard](lithio_dashboard).
-
-Para ejecutarlo:
-
-```powershell
-cd lithio_dashboard
-python -m http.server 8080
-```
-
-Abrir:
-
-- http://localhost:8080/
+El dashboard web queda en [lithio_dashboard](lithio_dashboard) y lo sirve el
+propio servidor en http://localhost:8000/dashboard (no hace falta arrancarlo aparte).
 
 ## App móvil
 
-La app móvil queda en [lithio_mobile](lithio_mobile).
-
-Para ejecutarla:
-
-```powershell
-cd lithio_mobile
-npx expo start
-```
-
-## Archivos antiguos o duplicados
-
-La carpeta [app](app) existe como versión antigua, está deshabilitada por seguridad y debe usarse solo como referencia histórica.
-La carpeta oficial para desarrollo es [lithio_backend](lithio_backend).
+La app móvil queda en [lithio_mobile](lithio_mobile). Para probarla con Expo Go
+en la misma Wi-Fi: doble clic en `iniciar_app.bat` (o `iniciar_todo.bat` para
+servidor + app). Para los APK fuera de la Wi-Fi: `iniciar_publico.bat`.
+APK nuevo, actualizaciones y nube: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 
 ## Estado recomendado
 

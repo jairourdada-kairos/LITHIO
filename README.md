@@ -38,7 +38,7 @@ hopeful-galileo/
 ├── lithio_backend/          # Servidor FastAPI
 │   ├── app/
 │   │   ├── database.py        # Configuración SQLAlchemy SQLite
-│   │   ├── models.py          # Modelos User, DriverProfile, Ride, Review, Reward
+│   │   ├── models.py          # Modelos (usuarios, viajes, billetera, Fe, enlaces…)
 │   │   ├── schemas.py         # Validación Pydantic v2 (ConfigDict)
 │   │   ├── seed.py            # Semilla con perfil de Jairo y rutas iniciales
 │   │   └── main.py            # Endpoints REST y WebSockets
@@ -49,7 +49,7 @@ hopeful-galileo/
 └── lithio_mobile/           # App Móvil Expo
     ├── src/
     │   ├── components/        # Header, RoutePicker, DriverCard, ActiveRideCard, etc.
-    │   ├── constants/         # Rutas fijas (UNC/IVIC/Caracas) y Tema Gamificado
+    │   ├── constants/         # Tema visual (Liquid Glass)
     │   ├── services/          # Cliente API híbrido con respaldo offline
     │   └── types/             # Tipado TypeScript
     ├── App.tsx                # Pantalla principal con selector de roles
@@ -98,7 +98,7 @@ cd lithio_backend
 $env:PYTHONPATH="."
 .\venv\Scripts\pytest tests/test_api.py -v
 ```
-El conjunto verifica autenticación, permisos de administrador, privacidad de perfiles, viajes, recompensas y WebSockets.
+El conjunto verifica autenticación, permisos de administrador, privacidad de perfiles, viajes, Fe y niveles, billetera y WebSockets.
 
 ## Autenticación y datos privados
 
@@ -108,7 +108,7 @@ El backend verifica Firebase ID tokens en las rutas privadas. Para configurarlo:
 2. Copia `lithio_mobile/firebase-config.example` a `lithio_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
 3. Configura `lithio_backend/.env` con el ID del proyecto, la clave web pública de Firebase (`FIREBASE_WEB_API_KEY`), el dominio de autenticación y la ruta local a un archivo de cuenta de servicio. No guardes ni compartas el archivo de cuenta de servicio; mantenlo fuera del repositorio.
 4. Para autorizar administradores, coloca sus Firebase UIDs en `ADMIN_FIREBASE_UIDS` (separados por comas) o asigna el rol `admin` directamente en la base de datos con acceso administrativo seguro.
-5. Configura `CORS_ALLOWED_ORIGINS` con los orígenes web que usarás, separados por comas. El dashboard servido por el backend no requiere un origen adicional; el servidor estático local predeterminado en el puerto 8080 sí.
+5. Configura `CORS_ALLOWED_ORIGINS` con los orígenes web que usarás, separados por comas. El dashboard lo sirve el backend en `/dashboard` y no requiere un origen adicional.
 6. Reinicia backend y Expo. Los registros existentes se vinculan a Firebase solo cuando el token presenta el mismo correo verificado.
 
 El dashboard solicita inicio de sesión con Firebase y verifica permisos de administrador en el backend antes de mostrar los datos. Los endpoints de perfil requieren autenticación y devuelven datos solo al propietario o a un administrador autorizado. Los datos financieros del conductor no están en la lista pública; se devuelven al pasajero únicamente dentro de su viaje. Las conexiones WebSocket requieren un mensaje inicial de autenticación con ID token y derivan el usuario del token, no de un ID enviado por el cliente.

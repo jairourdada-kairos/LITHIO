@@ -38,7 +38,8 @@ def list_applications(status: Optional[str] = None, db: Session = Depends(get_db
     if status:
         query = query.filter(DriverProfile.verification_status == status)
     else:
-        query = query.filter(DriverProfile.verification_status != "aprobado")
+        # Las cuentas eliminadas no son postulaciones por revisar.
+        query = query.filter(DriverProfile.verification_status.notin_(("aprobado", "eliminado")))
     result = []
     for profile in query.order_by(DriverProfile.submitted_at).all():
         item = application_payload(profile.user, profile)

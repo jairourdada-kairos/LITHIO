@@ -80,6 +80,17 @@ def update_firebase_email(uid: str, email: str) -> None:
         raise HTTPException(status_code=503, detail="No se pudo cambiar el correo en este momento. Intenta más tarde.") from None
 
 
+def delete_firebase_user(uid: str) -> None:
+    """Borra el acceso de Firebase (correo, Google o Facebook) de una cuenta eliminada."""
+    try:
+        firebase_auth.delete_user(uid, app=_get_firebase_app())
+    except firebase_auth.UserNotFoundError:
+        return
+    except (ValueError, FirebaseError):
+        logger.exception("Firebase user deletion failed.")
+        raise HTTPException(status_code=503, detail="No se pudo eliminar la cuenta en este momento. Intenta más tarde.") from None
+
+
 def verify_firebase_token(token: str) -> FirebaseIdentity:
     try:
         claims = firebase_auth.verify_id_token(

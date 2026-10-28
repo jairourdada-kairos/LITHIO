@@ -353,8 +353,24 @@ En la versión web de LITHIO, el dominio donde se abre debe estar en Firebase �
   **política de privacidad**, URL o instrucciones de **eliminación de datos**,
   ícono de 1024×1024 y categoría. Después cambia **Modo de la app** a
   **Activo**. Con solo `email` y `public_profile` no hace falta revisión de Meta.
-- LITHIO todavía no tiene una página pública de política de privacidad: hay que
-  publicarla antes de este paso.
+- Las dos páginas ya existen en el servidor: `https://<tu-servidor>/privacidad` y
+  `https://<tu-servidor>/eliminar-cuenta` (ver "Páginas legales" abajo). Meta
+  necesita una dirección fija, así que úsalas cuando el servidor esté en la nube.
+
+---
+
+# Páginas legales (Facebook y Google Play)
+
+El servidor publica:
+
+- `/privacidad`: qué datos guarda LITHIO, para qué, con quién se comparten y cómo eliminarlos.
+- `/eliminar-cuenta`: los pasos para borrar la cuenta (en la app: **Cuenta → Mis datos →
+  Eliminar mi cuenta**) y qué se borra.
+
+Para que muestren un correo de contacto, añade `CONTACT_EMAIL=tu@correo` al `.env` del
+servidor y reinícialo. Mientras el servidor esté en esta PC con el túnel, la dirección
+cambia en cada arranque; con el servidor en la nube (sección 4) queda fija, por ejemplo
+`https://TU-DOMINIO.up.railway.app/privacidad`.
 
 ---
 

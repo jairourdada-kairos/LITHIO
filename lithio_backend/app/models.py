@@ -138,18 +138,6 @@ class Review(Base):
     ride = relationship("Ride", back_populates="review")
 
 
-class Reward(Base):
-    __tablename__ = "rewards"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=False)
-    points_cost = Column(Integer, nullable=False)
-    discount_percent = Column(Integer, default=20)
-    icon = Column(String, default="gift")
-    is_active = Column(Boolean, default=True)
-
-
 class WalletTransaction(Base):
     """Movimiento de la billetera de diamantes. El saldo del usuario se actualiza
     en la misma transacción de base de datos que crea este registro."""

@@ -71,16 +71,6 @@ export interface PresetRoute {
   tag: string;
 }
 
-export interface Reward {
-  id: number;
-  title: string;
-  description: string;
-  points_cost: number;
-  discount_percent: number;
-  icon: string;
-  is_active: boolean;
-}
-
 export interface ReviewSubmission {
   ride_id: number;
   rating: number;

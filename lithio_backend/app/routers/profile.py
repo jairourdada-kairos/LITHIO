@@ -15,7 +15,8 @@ from ..auth import get_current_user, get_current_user_any_session
 from ..config import MEDIA_DIR, VENEZUELA_TZ
 from ..database import get_db
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
-from ..models import User
+from ..models import DriverProfile, Link, Ride, User, WalletTransaction
+from ..wallet_service import as_diamonds
 from ..realtime import manager
 from ..validation import email_domain_allowed, format_cedula, normalize_person_name, normalize_phone
 from .. import push_service
@@ -203,6 +204,64 @@ def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user)
     user.profile_updated_at = utcnow()
     db.commit()
     return profile_payload(user)
+
+
+# ---------------- Eliminar la cuenta ----------------
+
+OPEN_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
+
+
+@router.delete("/users/me")
+def delete_my_account(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Elimina la cuenta: borra los datos personales y el acceso.
+
+    Los viajes, reseñas y movimientos de la billetera quedan, pero sin nada que
+    identifique a la persona (el otro participante y la contabilidad los necesitan).
+    """
+    if auth_module.is_admin(user):
+        raise HTTPException(status_code=400, detail="La cuenta del administrador no se puede eliminar desde la app.")
+    open_ride = db.query(Ride.id).filter(
+        (Ride.passenger_id == user.id) | (Ride.driver_id == user.id),
+        Ride.status.in_(OPEN_RIDE_STATUSES),
+    ).first()
+    if open_ride:
+        raise HTTPException(status_code=409, detail="Termina o cancela tu viaje antes de eliminar la cuenta.")
+    if (user.diamonds_cents or 0) > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Tienes ◆ {as_diamonds(user.diamonds_cents):.2f} en tu billetera. Retíralos o dónalos antes de eliminar la cuenta.",
+        )
+    if db.query(WalletTransaction.id).filter(WalletTransaction.user_id == user.id, WalletTransaction.status == "pendiente").first():
+        raise HTTPException(status_code=409, detail="Tienes un movimiento de la billetera en revisión. Espera a que se resuelva.")
+
+    if user.firebase_uid:
+        auth_module.delete_firebase_user(user.firebase_uid)
+    _delete_local_avatar(user.avatar_url)
+
+    db.query(Link).filter((Link.requester_id == user.id) | (Link.addressee_id == user.id)).delete(synchronize_session=False)
+    profile = db.query(DriverProfile).filter(DriverProfile.user_id == user.id).first()
+    if profile:
+        profile.is_available = False
+        profile.verification_status = "eliminado"  # Sale del directorio de conductores
+        for field in ("license_number", "binance_address", "mobile_payment_number", "mobile_payment_bank",
+                      "mobile_payment_id", "bank_account_number", "verification_notes"):
+            setattr(profile, field, None)
+
+    user.name = "Usuario eliminado"
+    user.last_name = None
+    user.age = None
+    user.email = f"eliminado-{user.id}@lithio.invalid"
+    user.phone = ""
+    user.cedula = None
+    user.cedula_hash = None
+    user.career = None
+    user.semester = None
+    user.avatar_url = None
+    user.firebase_uid = None
+    user.push_token = None
+    user.active_session_id = None
+    db.commit()
+    return {"deleted": True}
 
 
 # ---------------- Notificaciones push ----------------

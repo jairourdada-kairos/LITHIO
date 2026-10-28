@@ -237,7 +237,6 @@ def test_admin_endpoints_reject_invalid_data_with_422(client):
     assert client.put(f"/api/admin/routes/{route.json()['id']}", json={"estimated_minutes": "mucho"}, headers=ADMIN).status_code == 422
     assert client.put("/api/admin/drivers/1", json={"rating_avg": 9}, headers=ADMIN).status_code == 422
     assert client.post("/api/admin/drivers", json={"email": "no-es-correo"}, headers=ADMIN).status_code == 422
-    assert client.post("/api/admin/rewards", json={"discount_percent": 150}, headers=ADMIN).status_code == 422
 
 
 def test_sensitive_actions_are_rate_limited_per_user(client):
@@ -465,6 +464,61 @@ def test_rides_completed_before_driver_fe_existed_are_paid_once(client):
     backfill_driver_fe(db)  # Al reiniciar el servidor no se paga otra vez
     db.refresh(driver)
     assert driver.fe_lifetime == before + ride["points_rewarded"]
+
+
+def test_restart_recounts_driver_trips_and_rating_from_the_database(client):
+    from app.database import get_db
+    from app.main import app
+    from app.models import DriverProfile, Ride
+    from app.seed import recompute_driver_stats
+
+    complete_ride(client)
+    db = next(app.dependency_overrides[get_db]())
+    profile = db.query(DriverProfile).filter(DriverProfile.user_id == 1).one()
+    completed = db.query(Ride).filter(Ride.driver_id == 1, Ride.status == "completado").count()
+    profile.trips_count = 0  # Lo que hacía el arranque antes: reiniciar al conductor
+    db.commit()
+
+    recompute_driver_stats(db)
+    db.refresh(profile)
+    assert profile.trips_count == completed >= 1
+
+
+def test_delete_account_erases_personal_data_and_access(client, monkeypatch):
+    from app import auth as auth_module
+    from app.database import get_db
+    from app.main import app
+    from app.models import Ride, User
+
+    deleted_uids = []
+    monkeypatch.setattr(auth_module, "delete_firebase_user", deleted_uids.append)
+    ride = make_ride(client, payment="efectivo")
+    blocked = client.delete("/api/users/me", headers=auth_headers(4))
+    assert blocked.status_code == 409 and "viaje" in blocked.json()["detail"]
+    client.put(f"/api/rides/{ride['id']}/status", json={"status": "cancelado"}, headers=auth_headers(4))
+
+    assert client.delete("/api/users/me", headers=auth_headers(4)).json() == {"deleted": True}
+    db = next(app.dependency_overrides[get_db]())
+    user = db.get(User, 4)
+    assert user.name == "Usuario eliminado" and user.email == "eliminado-4@lithio.invalid"
+    assert user.phone == "" and user.phone_hash is None and user.cedula is None and user.firebase_uid is None
+    assert deleted_uids == ["uid-user-4"]
+    # El viaje queda para el historial del conductor, sin datos de la persona.
+    assert db.get(Ride, ride["id"]).passenger_id == 4
+    # Con su cuenta de Google o correo ya no entra a ese perfil.
+    assert client.get("/api/users/me", headers=auth_headers(4)).status_code != 200
+    # El administrador no se elimina desde la app.
+    assert client.delete("/api/users/me", headers=ADMIN).status_code == 400
+
+
+def test_privacy_and_account_deletion_pages_are_public(client, monkeypatch):
+    monkeypatch.delenv("CONTACT_EMAIL", raising=False)
+    privacy = client.get("/privacidad")
+    assert privacy.status_code == 200 and "Política de privacidad" in privacy.text
+    assert "{contacto}" not in privacy.text
+    monkeypatch.setenv("CONTACT_EMAIL", "soporte@example.test")
+    deletion = client.get("/eliminar-cuenta")
+    assert deletion.status_code == 200 and "mailto:soporte@example.test" in deletion.text
 
 
 def test_welcome_bonus_counts_toward_level_from_registration(client):

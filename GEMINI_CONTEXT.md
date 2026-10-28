@@ -38,19 +38,20 @@ El producto incluye tres piezas:
 │   ├── App.tsx                 # Composición de pantallas y estado principal
 │   └── src/
 │       ├── components/         # Componentes de viaje, rutas, conductor, reseñas y Fe
-│       ├── constants/          # Catálogo de rutas y tema visual
+│       ├── constants/          # Tema visual
 │       ├── screens/            # Bienvenida, autenticación, inicio y programación
 │       ├── services/           # API, Firebase Auth y WebSocket
 │       └── types/              # Tipos TypeScript
-├── app/                        # Implementación anterior; solo referencia histórica
 ├── ORGANIZACION_PROYECTO.md
 ├── README.md
-├── iniciar_backend.bat
-├── iniciar_dashboard.bat
-└── iniciar_mobile.bat
+├── iniciar_servidor.bat        # Servidor en esta PC
+├── iniciar_app.bat             # Expo (app en el teléfono, misma Wi-Fi)
+├── iniciar_todo.bat            # Servidor + Expo
+├── iniciar_publico.bat         # Túnel público para los APK (fuera de la Wi-Fi)
+├── generar_apk.bat / publicar_actualizacion.bat / desplegar_nube.bat
 ```
 
-Todo el proyecto usa el nombre LITHIO: carpetas `lithio_*`, identificador de Android `com.lithio.app` y base `lithio.db`. El backend que se debe ejecutar es `lithio_backend`, no el directorio raíz `app/`. En la raíz también hay bases SQLite históricas; la configuración del backend oficial apunta a `lithio_backend/lithio.db` cuando se inicia desde esa carpeta.
+Todo el proyecto usa el nombre LITHIO: carpetas `lithio_*`, identificador de Android `com.lithio.app` y base `lithio_backend/lithio.db`.
 
 ## 3. Tecnologías y responsabilidades
 
@@ -150,8 +151,8 @@ El formulario contiene un campo “Ciudad principal”, pero el endpoint del bac
 - Hay un perfil de demostración asociado a Jairo y un perfil pasajero de prueba en la lógica de semilla. No se deben tratar estos datos como cuentas de producción ni como credenciales de acceso.
 - Backend: archivo `.env` local con `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `ADMIN_FIREBASE_UIDS`, `FIREBASE_WEB_API_KEY`, `FIREBASE_AUTH_DOMAIN` y `CORS_ALLOWED_ORIGINS`.
 - App: copiar `lithio_mobile/firebase-config.example` a `.env` y completar las variables `EXPO_PUBLIC_FIREBASE_*` y `EXPO_PUBLIC_API_URL`. La URL debe apuntar a una dirección accesible desde el dispositivo, no necesariamente `localhost`.
-- Panel: se puede servir desde el backend en `/dashboard` o como estático desde puerto 8080. Si se sirve aparte, incluir ese origen en `CORS_ALLOWED_ORIGINS`.
-- Scripts Windows existentes: `iniciar_backend.bat`, `iniciar_dashboard.bat`, `iniciar_mobile.bat`. También hay instrucciones en `README.md` y `ORGANIZACION_PROYECTO.md`.
+- Panel: lo sirve el backend en `/dashboard`.
+- Scripts Windows: `iniciar_servidor.bat`, `iniciar_app.bat`, `iniciar_todo.bat`, `iniciar_publico.bat`, `generar_apk.bat`, `publicar_actualizacion.bat` y `desplegar_nube.bat`. También hay instrucciones en `README.md`, `ORGANIZACION_PROYECTO.md` y `DESPLIEGUE.md`.
 - La configuración del paquete móvil indica Expo, Android/iOS/web y mantiene el identificador Android `com.lithio.app`.
 
 ## 9. Lo implementado, lo parcial y lo futuro

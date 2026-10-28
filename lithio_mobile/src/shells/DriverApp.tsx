@@ -253,7 +253,15 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     if (overlay === 'admin') return <AdminScreen onBack={() => setOverlay(null)} />;
     if (overlay === 'links') return <LinksScreen accent={theme.colors.secondary} onBack={() => setOverlay(null)} />;
     if (profileOpen) {
-      return <ProfileScreen user={user} role="conductor" onBack={() => setProfileOpen(false)} onUserChanged={onUserChanged} />;
+      return (
+        <ProfileScreen
+          user={user}
+          role="conductor"
+          onBack={() => setProfileOpen(false)}
+          onUserChanged={onUserChanged}
+          onAccountDeleted={onSignOut}
+        />
+      );
     }
     switch (tab) {
       case 'trips':

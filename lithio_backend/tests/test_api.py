@@ -19,7 +19,6 @@ from app.database import Base, get_db
 User = getattr(models, "User")
 Route = getattr(models, "Route")
 DriverProfile = getattr(models, "DriverProfile")
-Reward = getattr(models, "Reward")
 
 
 def auth_headers(user_id: int) -> dict[str, str]:
@@ -110,7 +109,6 @@ def client(monkeypatch):
         Route(origin="UNC", destination="BIBLIOTECA", fare_usd=1.5, estimated_minutes=8),
         Route(origin="UNC", destination="IVIC", fare_usd=2.0, estimated_minutes=10),
         Route(origin="UNC", destination="CARACAS", fare_usd=6.0, estimated_minutes=35),
-        Reward(title="Descuento", description="Prueba", points_cost=100, discount_percent=20),
     ])
     db.commit()
     db.close()
@@ -542,9 +540,12 @@ def test_review_and_payment_validation(client):
     assert unsupported_payment.status_code == 400
 
 
-def test_rewards_are_public_and_legacy_redeem_is_gone(client):
-    assert client.get("/api/gamification/rewards").status_code == 200
-    # El canje viejo se reemplazó por la tienda de Fe (/api/fe-store).
+def test_legacy_rewards_and_public_leaderboard_are_gone(client):
+    # El catálogo viejo se reemplazó por la tienda de Fe (/api/fe-store), y la
+    # clasificación pública mostraba nombres y Fe de los usuarios sin sesión.
+    # Las apps sin actualizar todavía lo piden al abrir: responde vacío.
+    assert client.get("/api/gamification/rewards").json() == []
+    assert client.get("/api/gamification/leaderboard").status_code == 404
     assert client.post("/api/gamification/redeem?user_id=4", json={"reward_id": 1}, headers=auth_headers(4)).status_code == 404
 
 

@@ -198,24 +198,6 @@ class AdminProfileUpdate(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=30)
 
 
-class AdminRewardIn(BaseModel):
-    title: str = Field(default="Recompensa", min_length=1, max_length=80)
-    description: str = Field(default="", max_length=300)
-    points_cost: int = Field(default=100, ge=0, le=100_000)
-    discount_percent: int = Field(default=0, ge=0, le=100)
-    icon: str = Field(default="star-circle", max_length=40)
-    is_active: bool = True
-
-
-class AdminRewardUpdate(BaseModel):
-    title: Optional[str] = Field(default=None, min_length=1, max_length=80)
-    description: Optional[str] = Field(default=None, max_length=300)
-    points_cost: Optional[int] = Field(default=None, ge=0, le=100_000)
-    discount_percent: Optional[int] = Field(default=None, ge=0, le=100)
-    icon: Optional[str] = Field(default=None, max_length=40)
-    is_active: Optional[bool] = None
-
-
 class AdminRouteResponse(BaseModel):
     id: int
     origin: str
@@ -224,15 +206,6 @@ class AdminRouteResponse(BaseModel):
     estimated_minutes: int
     popular: bool
     tag: Optional[str] = None
-
-class AdminRewardResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    points_cost: int
-    discount_percent: int
-    icon: str
-    is_active: bool
 
 class SwitchRoleRequest(BaseModel):
     new_role: str  # 'pasajero' o 'conductor'
@@ -313,15 +286,3 @@ class ReviewResponse(BaseModel):
     comment: Optional[str]
     points_earned: int
     created_at: datetime
-
-# --- RECOMPENSAS / TIENDA ---
-class RewardResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    title: str
-    description: str
-    points_cost: int
-    discount_percent: int
-    icon: str
-    is_active: bool
-

@@ -38,7 +38,7 @@ import { LinksScreen } from '../screens/shared/LinksScreen';
 import { QuizScreen } from '../screens/shared/QuizScreen';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { FALLBACK_LEVEL } from '../utils/elements';
-import type { Driver, PaymentMethod, PresetRoute, Reward, ReviewSubmission } from '../types';
+import type { Driver, PaymentMethod, PresetRoute, ReviewSubmission } from '../types';
 
 type Tab = 'home' | 'trips' | 'wallet' | 'profile';
 type Overlay =
@@ -65,7 +65,6 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [routes, setRoutes] = useState<PresetRoute[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [rewards, setRewards] = useState<Reward[]>([]);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [linksCount, setLinksCount] = useState<number | null>(null);
   const [quizAnswered, setQuizAnswered] = useState<boolean | null>(null);
@@ -87,15 +86,13 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const loadData = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [routesData, driversData, rewardsData, summaryData] = await Promise.all([
+      const [routesData, driversData, summaryData] = await Promise.all([
         apiService.getPresetRoutes(),
         apiService.getDrivers(),
-        apiService.getRewards(),
         apiService.getSummary('pasajero'),
       ]);
       setRoutes(routesData);
       setDrivers(driversData);
-      setRewards(rewardsData);
       setSummary(summaryData);
       apiService.getLinksCount().then(setLinksCount).catch(() => {});
       apiService.getQuizToday().then((quiz) => setQuizAnswered(quiz.answered)).catch(() => {});
@@ -245,6 +242,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           role="pasajero"
           onBack={() => setOverlay(null)}
           onUserChanged={(changes) => setUser((prev) => ({ ...prev, ...changes }))}
+          onAccountDeleted={onSignOut}
         />
       );
     }

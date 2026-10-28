@@ -1,5 +1,5 @@
 from .database import SessionLocal, engine, Base
-from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward, phone_fingerprint
+from .models import User, DriverProfile, Ride, Review, Route, WorkshopReward, phone_fingerprint
 from .links_service import RIDE_FE, assign_friend_code, award_fe
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
@@ -161,6 +161,18 @@ def backfill_driver_fe(db):
     db.commit()
 
 
+def recompute_driver_stats(db):
+    """Viajes completados y calificación de cada conductor, contados desde la base."""
+    for profile in db.query(DriverProfile).all():
+        profile.trips_count = db.query(Ride).filter(
+            Ride.driver_id == profile.user_id, Ride.status == "completado"
+        ).count()
+        ratings = [rating for (rating,) in db.query(Review.rating).filter(Review.driver_id == profile.user_id)]
+        if ratings:
+            profile.rating_avg = round(sum(ratings) / len(ratings), 2)
+    db.commit()
+
+
 def sync_open_ride_rewards(db):
     """Los viajes aún sin terminar pagan la recompensa vigente (RIDE_FE)."""
     db.query(Ride).filter(
@@ -204,16 +216,7 @@ def migrate_plaintext_columns(db):
     if migrated:
         print(f"Cifrado en reposo: {migrated} valores sensibles heredados fueron cifrados.")
 
-def sync_legacy_reward_copy(db):
-    for reward in db.query(Reward).all():
-        reward.title = reward.title.replace("Monedas Estelares", "Fe").replace("Puntos UNC", "Fe")
-        reward.description = (
-            reward.description
-            .replace("Monedas Estelares", "Fe")
-            .replace("Puntos UNC", "Fe")
-            .replace("+50 pts", "+15 Fe")
-            .replace("+35 Fe", "+15 Fe")
-        )
+def sync_legacy_copy(db):
     for user in db.query(User).all():
         if user.xp_level and "UNC" in user.xp_level:
             user.xp_level = user.xp_level.replace("UNC", "LITHIO")
@@ -229,33 +232,19 @@ def seed_database():
     sync_open_ride_rewards(db)
     seed_workshop(db)
     sync_route_catalog(db)
-    sync_legacy_reward_copy(db)
-
-    # Limpieza defensiva para remover registros heredados y evitar duplicados en la base local
-    stale_users = ["Carlos Silva", "Alejandro Díaz"]
-    stale_driver_ids = db.query(User.id).filter(User.name.in_(stale_users)).all()
-    for (user_id,) in stale_driver_ids:
-        db.query(DriverProfile).filter(DriverProfile.user_id == user_id).delete(synchronize_session=False)
-    db.query(User).filter(User.name.in_(stale_users)).delete(synchronize_session=False)
+    sync_legacy_copy(db)
+    recompute_driver_stats(db)
 
     admin = db.query(User).filter(User.email == "jairourdada@gmail.com").first()
     if admin:
-        # Solo completa lo que falte: nunca pisa la foto, el nombre ni el teléfono
-        # que el administrador cambió desde la app (antes se reiniciaban al arrancar).
+        # Solo completa lo que falte: nunca pisa lo que el administrador cambió
+        # desde la app (foto, nombre, teléfono, moto, viajes ni calificación).
         admin.name = admin.name or "Jairo Eduardo Urdaneta González"
         admin.phone = admin.phone or "+58 412 4091527"
         admin.role = "ambos"
-        admin.xp_level = "Administrador LITHIO 🏍️"
         db.flush()
 
-        existing_driver = db.query(DriverProfile).filter(DriverProfile.user_id == admin.id).first()
-        if existing_driver:
-            existing_driver.moto_brand_model = "Bera SBR 2026"
-            existing_driver.moto_color = "Roja"
-            existing_driver.rating_avg = 0
-            existing_driver.trips_count = 0
-            existing_driver.is_available = True
-        else:
+        if not db.query(DriverProfile).filter(DriverProfile.user_id == admin.id).first():
             db.add(DriverProfile(
                 user_id=admin.id,
                 verification_status="aprobado",
@@ -268,9 +257,6 @@ def seed_database():
                 trips_count=0,
                 current_location_tag="Campus UNC - Edificio Central"
             ))
-        passenger = db.query(User).filter(User.email == "sofia.valero@unc.edu.ve").first()
-        if passenger and passenger.id != 4 and not db.query(User).filter(User.id == 4).first():
-            passenger.id = 4
         db.commit()
         db.close()
         return
@@ -314,44 +300,6 @@ def seed_database():
         xp_level="Viajera Frecuente LITHIO ⭐"
     )
     db.add(sofia)
-
-    # 5. Catálogo de recompensas canjeables con Fe
-    rewards = [
-        Reward(
-            title="Cupón 20% por Fe",
-            description="Gana Fe al completar viajes y dejar reseñas útiles. Canjéalos por descuentos en tus próximos viajes.",
-            points_cost=100,
-            discount_percent=20,
-            icon="star-circle",
-            is_active=True
-        ),
-        Reward(
-            title="Viaje Gratis UNC <-> Biblioteca / IVIC",
-            description="Canjea el Fe acumulado por un viaje en rutas universitarias.",
-            points_cost=250,
-            discount_percent=100,
-            icon="bike",
-            is_active=True
-        ),
-        Reward(
-            title="50% de descuento en Caracas",
-            description="Acumula Fe al viajar y úsalo para obtener un descuento del 50%.",
-            points_cost=400,
-            discount_percent=50,
-            icon="ticket-percent",
-            is_active=True
-        ),
-        Reward(
-            title="Insignia VIP + 15% Extra",
-            description="Tus viajes completados te entregan Fe para desbloquear beneficios de viaje.",
-            points_cost=180,
-            discount_percent=15,
-            icon="trophy",
-            is_active=True
-        ),
-    ]
-    for r in rewards:
-        db.add(r)
 
     db.commit()
     db.close()

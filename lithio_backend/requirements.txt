@@ -1,14 +1,17 @@
-fastapi>=0.110.0
-uvicorn>=0.28.0
-sqlalchemy>=2.0.0
-pydantic>=2.0.0
-python-multipart>=0.0.9
-websockets>=12.0
-python-dotenv>=1.0.0
-firebase-admin>=6.0.0
+# Versiones exactas: la nube (Docker) instala lo mismo que esta PC y un
+# paquete nuevo no puede romper el servidor sin que nadie lo note.
+# Para actualizar: instala la versión nueva en el venv, corre las pruebas y cámbiala aquí.
+fastapi==0.141.1
+uvicorn==0.53.0
+sqlalchemy==2.0.54
+pydantic==2.13.5
+python-multipart==0.0.32
+websockets==17.1
+python-dotenv==1.2.3
+firebase-admin==7.7.0
 # Cifrado en reposo de datos sensibles (Fernet + HMAC)
-cryptography>=42.0.0
+cryptography==50.0.2
 # Driver de PostgreSQL para la base de datos en la nube
-psycopg[binary]>=3.1.18
+psycopg[binary]==3.3.6
 # Validación de correos en el registro (pydantic EmailStr)
-email-validator>=2.1.0
+email-validator==2.3.0

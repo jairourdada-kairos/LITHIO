@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import crypto
 from .database import engine, get_db, Base, SessionLocal
-from .models import User, DriverProfile, Ride, Review, Reward, Route, Coupon
+from .models import User, DriverProfile, Ride, Review, Route, Coupon
 from .auth import (
     EMAIL_VERIFICATION_REQUIRED,
     FirebaseIdentity,
@@ -34,14 +34,12 @@ from .auth import (
     verify_firebase_token,
 )
 from .schemas import (
-    AdminDriverCreate, AdminDriverUpdate, AdminProfileUpdate, AdminRewardIn, AdminRewardUpdate,
+    AdminDriverCreate, AdminDriverUpdate, AdminProfileUpdate,
     AdminRouteIn, AdminRouteUpdate,
     UserResponse, SwitchRoleRequest, DriverCardItem, DriverFinancialResponse,
     AdminProfileResponse, AdminDriverResponse, AdminRouteResponse,
-    AdminRewardResponse,
     ToggleAvailabilityRequest, RideCreate, RideStatusUpdate,
     RideResponse, ReviewCreate, ReviewResponse,
-    RewardResponse,
     PassengerRegisterRequest, DriverRegisterRequest
 )
 from .seed import seed_database
@@ -49,7 +47,7 @@ from . import wallet_service
 from .drivers import is_approved, require_approved_driver
 from .links_service import PRIORITY_LEVEL, REVIEW_FE, RIDE_FE, award_fe, level_for, user_z
 from . import push_service
-from .routers import app_version, driver_applications, fe_store, links, profile, quiz, rates, recovery, ride_details, wallet
+from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, ride_details, wallet
 from .timeutil import utcnow
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
@@ -97,6 +95,7 @@ app.include_router(rates.router)
 app.include_router(ride_details.router)
 app.include_router(recovery.router)
 app.include_router(app_version.router)
+app.include_router(legal.router)
 
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -667,80 +666,6 @@ def update_admin_driver(driver_id: int, data: AdminDriverUpdate, db: Session = D
         "trips_count": profile.trips_count,
         "xp_level": user.xp_level,
     }
-
-
-@app.post(
-    "/api/admin/rewards",
-    status_code=201,
-    response_model=AdminRewardResponse,
-    dependencies=[Depends(require_admin)],
-)
-def create_admin_reward(data: AdminRewardIn, db: Session = Depends(get_db)):
-    payload = data.model_dump()
-    reward = Reward(
-        title=payload.get("title", "Recompensa"),
-        description=payload.get("description", ""),
-        points_cost=int(payload.get("points_cost", 100)),
-        discount_percent=int(payload.get("discount_percent", 0)),
-        icon=payload.get("icon", "star-circle"),
-        is_active=bool(payload.get("is_active", True))
-    )
-    db.add(reward)
-    db.commit()
-    db.refresh(reward)
-    return {
-        "id": reward.id,
-        "title": reward.title,
-        "description": reward.description,
-        "points_cost": reward.points_cost,
-        "discount_percent": reward.discount_percent,
-        "icon": reward.icon,
-        "is_active": reward.is_active,
-    }
-
-
-@app.put(
-    "/api/admin/rewards/{reward_id}",
-    response_model=AdminRewardResponse,
-    dependencies=[Depends(require_admin)],
-)
-def update_admin_reward(reward_id: int, data: AdminRewardUpdate, db: Session = Depends(get_db)):
-    payload = data.model_dump(exclude_unset=True)
-    reward = db.query(Reward).filter(Reward.id == reward_id).first()
-    if not reward:
-        raise HTTPException(status_code=404, detail="Recompensa no encontrada")
-
-    for field in ("title", "description", "icon"):
-        if field in payload:
-            setattr(reward, field, payload[field])
-    if "points_cost" in payload:
-        reward.points_cost = int(payload["points_cost"])
-    if "discount_percent" in payload:
-        reward.discount_percent = int(payload["discount_percent"])
-    if "is_active" in payload:
-        reward.is_active = bool(payload["is_active"])
-
-    db.commit()
-    db.refresh(reward)
-    return {
-        "id": reward.id,
-        "title": reward.title,
-        "description": reward.description,
-        "points_cost": reward.points_cost,
-        "discount_percent": reward.discount_percent,
-        "icon": reward.icon,
-        "is_active": reward.is_active,
-    }
-
-
-@app.delete("/api/admin/rewards/{reward_id}", dependencies=[Depends(require_admin)])
-def delete_admin_reward(reward_id: int, db: Session = Depends(get_db)):
-    reward = db.query(Reward).filter(Reward.id == reward_id).first()
-    if not reward:
-        raise HTTPException(status_code=404, detail="Recompensa no encontrada")
-    db.delete(reward)
-    db.commit()
-    return {"message": "Recompensa eliminada correctamente"}
 
 
 # -------------------------------------------------------------
@@ -1491,34 +1416,9 @@ def create_review(
     db.refresh(new_review)
     return new_review
 
-@app.get("/api/gamification/rewards", response_model=List[RewardResponse])
-def get_rewards(db: Session = Depends(get_db)):
-    """Retorna las recompensas disponibles para canjear con Fe."""
-    return db.query(Reward).filter(Reward.is_active == True).all()
 
-@app.get("/api/gamification/leaderboard")
-def get_leaderboard(db: Session = Depends(get_db)):
-    """Tabla de clasificación de la comunidad LITHIO"""
-    top_drivers = db.query(User).join(DriverProfile).order_by(DriverProfile.trips_count.desc()).limit(5).all()
-    top_passengers = db.query(User).order_by(User.points.desc()).limit(5).all()
-
-    return {
-        "top_drivers": [
-            {
-                "name": u.name,
-                "trips": u.driver_profile.trips_count,
-                "rating": u.driver_profile.rating_avg,
-                "badge": u.xp_level,
-                "moto": u.driver_profile.moto_brand_model
-            }
-            for u in top_drivers if u.driver_profile
-        ],
-        "top_passengers": [
-            {
-                "name": u.name,
-                "points": u.points,
-                "badge": u.xp_level
-            }
-            for u in top_passengers
-        ]
-    }
+@app.get("/api/gamification/rewards")
+def legacy_rewards():
+    """El catálogo viejo se reemplazó por la tienda de Fe; las apps sin actualizar
+    todavía lo piden al abrir. Borrar cuando todas tengan la versión de oct. 2026."""
+    return []

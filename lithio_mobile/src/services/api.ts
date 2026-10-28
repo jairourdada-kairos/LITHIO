@@ -1,4 +1,4 @@
-import { Driver, Ride, RideStatus, Reward, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
+import { Driver, Ride, RideStatus, ReviewSubmission, PresetRoute, PaymentMethod } from '../types';
 import { Platform } from 'react-native';
 import { authenticatedFetch, getFirebaseIdToken } from './firebase';
 import { getDeviceSession } from './deviceSession';
@@ -364,6 +364,12 @@ export const apiService = {
     return response.json();
   },
 
+  /** Borra los datos personales y el acceso de la cuenta (no se puede deshacer). */
+  async deleteMyAccount(): Promise<void> {
+    const response = await authenticatedFetch(`${API_BASE}/api/users/me`, { method: 'DELETE' });
+    await assertOk(response);
+  },
+
   async getMyProfile(): Promise<MyProfile> {
     const response = await authenticatedFetch(`${API_BASE}/api/users/me/profile`);
     await assertOk(response);
@@ -566,11 +572,4 @@ export const apiService = {
     await assertOk(response);
     return response.json();
   },
-
-  async getRewards(): Promise<Reward[]> {
-    const response = await fetch(`${API_BASE}/api/gamification/rewards`);
-    await assertOk(response);
-    return response.json();
-  },
-
 };

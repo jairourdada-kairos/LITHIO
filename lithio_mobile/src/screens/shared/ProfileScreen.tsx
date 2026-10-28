@@ -4,10 +4,14 @@
  * Nombre, apellido, correo y teléfono se pueden cambiar una vez cada 7 días
  * (el servidor lo hace cumplir). La foto se cambia cuando quieras desde la
  * cuenta. La cédula llega enmascarada y no se edita aquí.
+ *
+ * Al final: la política de privacidad y "Eliminar mi cuenta" (lo exigen Google
+ * Play y Facebook). El servidor bloquea la eliminación con un viaje abierto o
+ * saldo en la billetera y explica qué falta.
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -16,6 +20,7 @@ import { roleColors } from '../../components/ui/RoleBadge';
 import { FormField } from '../../components/FormField';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
 import { apiService, MyProfile } from '../../services/api';
+import { API_BASE } from '../../config/api';
 import { normalizePhone, validateEmail, validatePersonName, validatePhone } from '../../utils/validation';
 import type { AuthUser } from '../../services/auth';
 import type { SessionRole } from '../../services/session';
@@ -26,6 +31,8 @@ interface Props {
   onBack: () => void;
   /** Refleja los datos nuevos en el resto de la app. */
   onUserChanged?: (changes: Partial<AuthUser>) => void;
+  /** La cuenta ya no existe: cierra la sesión y vuelve a la bienvenida. */
+  onAccountDeleted: () => void;
 }
 
 type Draft = { name: string; last_name: string; email: string; phone: string };
@@ -41,7 +48,7 @@ function formatWhen(iso: string): string {
   return date.toLocaleString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 }
 
-export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChanged }) => {
+export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChanged, onAccountDeleted }) => {
   const insets = useSafeAreaInsets();
   const accent = roleColors(role).accent;
   const [profile, setProfile] = useState<MyProfile | null>(null);
@@ -121,6 +128,33 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
               Alert.alert('No se pudieron guardar tus datos', error instanceof Error ? error.message : 'Intenta de nuevo.');
             } finally {
               setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccount = () => {
+    Alert.alert(
+      '¿Eliminar tu cuenta?',
+      'Se borran tus datos personales y ya no podrás entrar con este correo. Tus Fe y tu nivel se pierden. Tus viajes quedan en el historial del otro participante como «Usuario eliminado». No se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await apiService.deleteMyAccount();
+              Alert.alert('Cuenta eliminada', 'Borramos tus datos. Gracias por usar LITHIO.');
+              onAccountDeleted();
+            } catch (error) {
+              Alert.alert('No se pudo eliminar la cuenta', error instanceof Error ? error.message : 'Intenta de nuevo.');
+            } finally {
+              setDeleting(false);
             }
           },
         },
@@ -215,6 +249,24 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                   ? `Podrás editar tus datos de nuevo el ${formatWhen(profile.next_edit_at)}. Tu foto la puedes cambiar cuando quieras desde tu cuenta.`
                   : 'Puedes editar tu nombre, correo y teléfono una vez cada 7 días. Tu cédula, teléfono y datos de pago se guardan cifrados.'}
               </Text>
+              <View style={styles.dangerZone}>
+                <Pressable
+                  onPress={() => void Linking.openURL(`${API_BASE}/privacidad`).catch(() => undefined)}
+                  style={styles.linkRow}
+                  accessibilityRole="link"
+                >
+                  <Text style={[styles.edit, { color: accent }]}>Política de privacidad</Text>
+                </Pressable>
+                <Pressable
+                  onPress={deleteAccount}
+                  disabled={deleting}
+                  style={styles.deleteButton}
+                  accessibilityRole="button"
+                  accessibilityHint="Borra tus datos personales; no se puede deshacer"
+                >
+                  <Text style={styles.deleteText}>{deleting ? 'Eliminando…' : 'Eliminar mi cuenta'}</Text>
+                </Pressable>
+              </View>
             </>
           )}
         </ScrollView>
@@ -286,5 +338,27 @@ const styles = themed(() => ({
     lineHeight: 18,
     color: theme.colors.textMuted,
     textAlign: 'center',
+  },
+  dangerZone: {
+    gap: 12,
+    marginTop: 8,
+  },
+  linkRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  deleteButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+  },
+  deleteText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 15,
+    color: theme.colors.error,
   },
 }));
