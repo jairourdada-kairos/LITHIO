@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
 } from '@firebase/auth';
 import { authenticatedFetch, getFirebaseAuth } from './firebase';
@@ -164,4 +165,30 @@ export async function signInWithEmail(email: string, password: string): Promise<
   if (response.status === 404 || response.status === 403) return null;
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
+}
+
+/** Firebase envía (en español) el enlace para crear una contraseña nueva. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const auth = getFirebaseAuth();
+  auth.languageCode = 'es';
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    // No se revela si el correo existe: solo se informan errores de formato o de red.
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+    if (code === 'auth/user-not-found') return;
+    throw error;
+  }
+}
+
+/** Con la cédula: devuelve el correo de la cuenta parcialmente oculto y le envía el enlace. */
+export async function recoverAccountByCedula(cedula: string): Promise<string> {
+  const response = await fetch(`${API_BASE}/api/auth/recover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cedula }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  const body = await response.json();
+  return body.masked_email;
 }

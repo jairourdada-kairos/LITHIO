@@ -285,3 +285,38 @@ def test_owner_sees_full_cedula_others_only_masked(client):
     assert mine["career"] == "Ingeniería en Informática" and mine["semester"] == "5"
     # En las demás respuestas sigue enmascarada.
     assert "****" in client.get("/api/users/me", headers=auth_headers(4)).json()["cedula"]
+
+
+# --- Recuperar cuenta --------------------------------------------------------------
+
+def test_recover_account_by_cedula_sends_reset_and_masks_email(client, monkeypatch):
+    from app import crypto
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+    from app.routers import recovery
+
+    sent = []
+    monkeypatch.setattr(recovery, "send_password_reset", sent.append)
+    db = next(app.dependency_overrides[get_db]())
+    user = db.get(User, 4)
+    user.cedula, user.cedula_hash = "V12345678", crypto.blind_index("V12345678")
+    db.commit()
+
+    found = client.post("/api/auth/recover", json={"cedula": "v-12.345.678"})
+    assert found.status_code == 200
+    assert found.json() == {"masked_email": "s***a@example.test"}  # sofia@example.test
+    assert sent == ["sofia@example.test"]  # El correo completo nunca sale en la respuesta
+
+    assert client.post("/api/auth/recover", json={"cedula": "V-99999999"}).status_code == 404
+    assert client.post("/api/auth/recover", json={"cedula": "hola123"}).status_code == 422
+    for _ in range(3):
+        client.post("/api/auth/recover", json={"cedula": "V-99999999"})
+    assert client.post("/api/auth/recover", json={"cedula": "V-12345678"}).status_code == 429
+
+
+def test_mask_email():
+    from app.routers.recovery import mask_email
+
+    assert mask_email("jairourdada@gmail.com") == "j*********a@gmail.com"
+    assert mask_email("ab@x.com") == "a*@x.com"

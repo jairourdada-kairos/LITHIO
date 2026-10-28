@@ -13,6 +13,7 @@ import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { FormField } from '../components/FormField';
+import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 import { PressableScale } from '../components/brand/PressableScale';
 import { validateEmail } from '../utils/validation';
@@ -30,6 +31,7 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSw
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const handleEmailLogin = async () => {
     const newErrors = {
@@ -122,6 +124,10 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSw
         onSubmitEditing={handleEmailLogin}
       />
 
+      <Pressable onPress={() => setRecoveryVisible(true)} style={styles.forgot} accessibilityRole="button" hitSlop={8}>
+        <Text style={[styles.forgotText, { color: theme.colors.primary }]}>¿Olvidaste tu contraseña o tu correo?</Text>
+      </Pressable>
+
       <PrimaryButton label="Continuar →" onPress={handleEmailLogin} loading={loading} style={styles.submit} />
 
       <Pressable style={styles.linkRow} onPress={onGoToSignUp} accessibilityRole="button" hitSlop={8}>
@@ -135,11 +141,21 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSw
           <Text style={[styles.linkText, { color: theme.colors.secondary }]}>¿Eres conductor? Entra por aquí</Text>
         </Pressable>
       ) : null}
+      <RecoverySheet visible={recoveryVisible} accent={theme.colors.primary} initialEmail={email} onClose={() => setRecoveryVisible(false)} />
     </AuthLayout>
   );
 };
 
 const styles = themed(() => ({
+  forgot: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  forgotText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+  },
   socialRow: {
     flexDirection: 'row',
     gap: 12,

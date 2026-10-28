@@ -11,6 +11,7 @@ import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { FormField } from '../components/FormField';
+import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
 import { validateEmail } from '../utils/validation';
 
@@ -27,6 +28,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const handleEmailLogin = async () => {
     const newErrors = {
@@ -104,6 +106,10 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
         onSubmitEditing={handleEmailLogin}
       />
 
+      <Pressable onPress={() => setRecoveryVisible(true)} style={styles.forgot} accessibilityRole="button" hitSlop={8}>
+        <Text style={[styles.forgotText, { color: theme.colors.secondary }]}>¿Olvidaste tu contraseña o tu correo?</Text>
+      </Pressable>
+
       <PrimaryButton
         label="Entrar como conductor →"
         onPress={handleEmailLogin}
@@ -123,11 +129,21 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSwitc
           <Text style={[styles.linkText, { color: theme.colors.primary }]}>¿Viajas como pasajero? Entra por aquí</Text>
         </Pressable>
       ) : null}
+      <RecoverySheet visible={recoveryVisible} accent={theme.colors.secondary} initialEmail={email} onClose={() => setRecoveryVisible(false)} />
     </AuthLayout>
   );
 };
 
 const styles = themed(() => ({
+  forgot: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  forgotText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+  },
   submit: {
     marginTop: 8,
     marginBottom: 20,
