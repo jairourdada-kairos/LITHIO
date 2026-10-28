@@ -71,6 +71,12 @@ $metro = Start-Tunnel 8082 (Join-Path $env:TEMP 'lithio-tunel-app.log')
 $appUrl = $metro.Url
 $expUrl = $appUrl -replace '^https://', 'exps://'
 
+# Google y Facebook solo inician sesion en la web desde dominios autorizados en Firebase.
+Push-Location (Join-Path $Root 'lithio_backend')
+& .\venv\Scripts\python.exe -m app.authorize_domain $appUrl
+if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: en la web, Google no funcionara hasta autorizar este dominio en Firebase.' -ForegroundColor Yellow }
+Pop-Location
+
 # Variables del proceso: tienen prioridad sobre el .env y no lo modifican.
 $env:EXPO_PUBLIC_API_URL = $url
 $env:EXPO_PACKAGER_PROXY_URL = $appUrl
