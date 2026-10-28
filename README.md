@@ -63,7 +63,9 @@ hopeful-galileo/
 ```
 
 Guías: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) (nube, APK, actualizaciones, Google,
-Facebook y WhatsApp) y [docs/ORGANIZACION_PROYECTO.md](docs/ORGANIZACION_PROYECTO.md).
+Facebook y WhatsApp), [docs/ORGANIZACION_PROYECTO.md](docs/ORGANIZACION_PROYECTO.md) y, para
+quien no programa, la guía en Word y el video de `docs/guia/` (cómo está hecho el código y
+cómo editarlo desde VS Code).
 
 ---
 

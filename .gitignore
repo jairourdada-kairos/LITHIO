@@ -43,3 +43,5 @@ lithio_backend/evidence/
 # Firebase para Android (se envía a EAS como variable de archivo)
 lithio_mobile/google-services.json
 lithio_backend/.ruff_cache/
+# Video de la guía (22 MB): se comparte aparte, no va en el historial
+docs/guia/*.mp4
