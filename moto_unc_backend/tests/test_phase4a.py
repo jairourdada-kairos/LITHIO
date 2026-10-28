@@ -197,6 +197,18 @@ def test_cancelled_diamond_ride_is_refunded(client):
     assert balance(client, 4) == 5
 
 
+
+def test_diamond_payment_requires_minimum_fare(client):
+    give_diamonds(client, 4, 5)
+    payload = {"driver_id": 1, "origin": "UNC", "destination": "IVIC", "payment_method": "diamantes", "fare_amount": 0.49}
+    too_small = client.post("/api/rides?passenger_id=4", json=payload, headers=auth_headers(4))
+    assert too_small.status_code == 400 and "0.50" in too_small.json()["detail"]
+    assert balance(client, 4) == 5
+
+    payload["fare_amount"] = 0.5
+    assert client.post("/api/rides?passenger_id=4", json=payload, headers=auth_headers(4)).status_code == 200
+    assert balance(client, 4) == 4.5
+
 # --- Enlaces -------------------------------------------------------------------
 
 def test_links_request_accept_and_remove(client):

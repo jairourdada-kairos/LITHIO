@@ -6,6 +6,9 @@ import { apiService, FeCoupon } from '../services/api';
 import { formatBs, useBcvRate } from '../services/rates';
 import { pickDocumentPhoto } from '../services/avatar';
 
+/** Mínimo para pagar un viaje con diamantes (igual que en el servidor). */
+export const MIN_DIAMOND_PAYMENT = 0.5;
+
 interface RequestRideModalProps {
   visible: boolean;
   driver: Driver | null;
@@ -37,19 +40,40 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
   const [couponId, setCouponId] = useState<number | undefined>(undefined);
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [diamonds, setDiamonds] = useState<number | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     setCouponId(undefined);
     setReceiptUri(null);
+    setDiamonds(null);
     apiService
       .getFeStore()
       .then((store) => setCoupons(store.coupons.filter((c) => c.status === 'activo')))
       .catch(() => setCoupons([]));
+    apiService
+      .getWallet()
+      .then((wallet) => setDiamonds(wallet.balance))
+      .catch(() => setDiamonds(null));
   }, [visible]);
 
   const coupon = coupons.find((c) => c.id === couponId);
   const finalFare = coupon ? Math.round(fareAmount * (100 - coupon.percent)) / 100 : fareAmount;
+
+  // Diamantes: la tarifa debe ser de ◆ 0.50 o más y el saldo debe alcanzar.
+  const diamondBlock =
+    finalFare < MIN_DIAMOND_PAYMENT
+      ? `Mínimo ◆ ${MIN_DIAMOND_PAYMENT.toFixed(2)}`
+      : diamonds === null
+        ? 'Saldo no disponible'
+        : diamonds < finalFare
+          ? 'Saldo insuficiente'
+          : null;
+
+  // Si un cupón deja la tarifa por debajo del mínimo, se vuelve a efectivo.
+  useEffect(() => {
+    if (paymentMethod === 'diamantes' && diamondBlock) setPaymentMethod('efectivo');
+  }, [paymentMethod, diamondBlock]);
 
   if (!driver) return null;
 
@@ -125,7 +149,34 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                 </Text>
               </TouchableOpacity>
 
+              {/* Diamantes de la billetera */}
+              <TouchableOpacity
+                style={[
+                  styles.paymentBtn,
+                  paymentMethod === 'diamantes' && styles.paymentBtnActive,
+                  diamondBlock ? styles.paymentBtnDisabled : null,
+                ]}
+                onPress={() => setPaymentMethod('diamantes')}
+                disabled={Boolean(diamondBlock)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: paymentMethod === 'diamantes', disabled: Boolean(diamondBlock) }}
+                accessibilityHint={diamondBlock ?? undefined}
+              >
+                <Text style={[styles.paymentIcon, { color: theme.colors.diamond }]}>◆</Text>
+                <Text style={[styles.paymentText, paymentMethod === 'diamantes' && styles.paymentTextActive]}>
+                  Diamantes
+                </Text>
+                <Text style={styles.paymentSub}>
+                  {diamondBlock ?? `◆ ${(diamonds ?? 0).toFixed(2)}`}
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {paymentMethod === 'diamantes' ? (
+              <Text style={[styles.referenceHint, styles.diamondHint]}>
+                Se retienen ◆ {finalFare.toFixed(2)} de tu billetera y pasan al conductor al terminar el viaje. Si se cancela, te los devolvemos.
+              </Text>
+            ) : null}
 
             {/* Campo para Referencia de Pago Móvil */}
             {paymentMethod === 'pago_movil' && (
@@ -426,7 +477,7 @@ const styles = themed(() => ({
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
   },
   paymentBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.6,
   },
   paymentIcon: {
     fontFamily: theme.fonts.regular,
@@ -440,6 +491,15 @@ const styles = themed(() => ({
   },
   paymentTextActive: {
     color: theme.colors.primary,
+  },
+  paymentSub: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+  },
+  diamondHint: {
+    marginBottom: 14,
   },
   referenceContainer: {
     marginBottom: 14,

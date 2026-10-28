@@ -1066,6 +1066,12 @@ async def request_ride(
         if not coupon:
             raise HTTPException(status_code=400, detail="Ese cupón no está disponible.")
         fare = round(fare * (100 - coupon.percent) / 100, 2)
+    # round() y no to_cents(): con un cupón del 100 % la tarifa es 0 y to_cents la rechaza con otro mensaje.
+    if ride_data.payment_method == "diamantes" and round(fare * 100) < wallet_service.MIN_RIDE_PAYMENT_CENTS:
+        raise HTTPException(
+            status_code=400,
+            detail="El mínimo para pagar con diamantes es ◆ 0.50. Elige efectivo o Pago Móvil para este viaje.",
+        )
     if ride_data.payment_method == "diamantes" and (passenger.diamonds_cents or 0) < wallet_service.to_cents(fare):
         raise HTTPException(status_code=400, detail="No tienes diamantes suficientes para este viaje. Recarga tu billetera.")
     if ride_data.is_scheduled:

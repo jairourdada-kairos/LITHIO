@@ -323,6 +323,9 @@ def test_mask_email():
 
 
 def test_app_version_comes_from_server_settings(client, monkeypatch):
+    # Independiente del .env local, que puede tener ya una versión publicada.
+    for name in ("APP_MIN_BUILD", "APP_LATEST_BUILD", "APP_DOWNLOAD_URL"):
+        monkeypatch.delenv(name, raising=False)
     assert client.get("/api/app/version").json() == {"min_build": 0, "latest_build": 0, "download_url": None}
     monkeypatch.setenv("APP_MIN_BUILD", "3")
     monkeypatch.setenv("APP_LATEST_BUILD", "4")

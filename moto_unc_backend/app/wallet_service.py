@@ -20,6 +20,7 @@ from .timeutil import utcnow
 MAX_TRANSFER_CENTS = 5_000          # 50 ◆ por envío
 MAX_DAILY_OUTGOING_CENTS = 10_000   # 100 ◆ al día entre envíos y donaciones
 MAX_TOPUP_CENTS = 50_000            # 500 ◆ por recarga
+MIN_RIDE_PAYMENT_CENTS = 50         # 0.50 ◆: mínimo para pagar un viaje con diamantes
 
 
 def to_cents(amount: float) -> int:
