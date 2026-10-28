@@ -10,6 +10,7 @@ import React from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { theme, themed } from '../../constants/theme';
+import { getPushStatus, openNotificationSettings, pushSupported, registerForPush } from '../../services/notifications';
 import { Avatar } from '../../components/ui/Avatar';
 import { RoleBadge, roleColors } from '../../components/ui/RoleBadge';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
@@ -77,11 +78,27 @@ export const AccountScreen: React.FC<Props> = ({
       { text: 'Cerrar sesión', style: 'destructive', onPress: onSignOut },
     ]);
 
+  const manageNotifications = async () => {
+    const status = await getPushStatus();
+    if (status === 'granted') {
+      await registerForPush();
+      Alert.alert('Notificaciones activadas', 'Te avisaremos de tus viajes y de tu billetera aunque tengas la app cerrada.');
+    } else if (status === 'denied') {
+      Alert.alert('Notificaciones desactivadas', 'Las desactivaste antes. Actívalas en los ajustes del teléfono: Notificaciones → LITHIO.', [
+        { text: 'Ahora no', style: 'cancel' },
+        { text: 'Abrir ajustes', onPress: openNotificationSettings },
+      ]);
+    } else if (await registerForPush()) {
+      Alert.alert('Notificaciones activadas', 'Listo: te avisaremos de lo importante.');
+    }
+  };
+
   const items: MenuItem[] = [
     ...(onOpenAdmin ? [{ icon: 'shield-crown-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
     { icon: 'card-account-details-outline', label: 'Mis datos', onPress: onOpenProfile },
     { icon: 'account-multiple-outline', label: 'Enlaces', onPress: onOpenLinks },
     ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
+    ...(pushSupported ? [{ icon: 'bell-outline' as IconName, label: 'Notificaciones', onPress: () => void manageNotifications() }] : []),
     { icon: 'school-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
     { icon: 'atom', label: '¿Qué es LITHIO?', onPress: onOpenAbout },
     { icon: 'logout', label: 'Cerrar sesión', onPress: confirmSignOut, danger: true },

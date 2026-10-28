@@ -10,7 +10,8 @@
  * aviso propio de LITHIO por WebSocket.
  */
 
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -38,9 +39,51 @@ async function saveToken(token: string | null): Promise<void> {
   });
 }
 
+export type PushStatus = 'unsupported' | 'granted' | 'denied' | 'undetermined';
+
+/** Estado del permiso sin preguntar nada al usuario. */
+export async function getPushStatus(): Promise<PushStatus> {
+  if (!pushSupported) return 'unsupported';
+  const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return 'granted';
+  return status === 'denied' && !canAskAgain ? 'denied' : 'undetermined';
+}
+
+const PRIMER_KEY = 'lithio.pushPrimerDismissedAt';
+const PRIMER_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** ¿Mostrar la pantalla que invita a activar las notificaciones? (no se insiste por 7 días) */
+export async function shouldOfferPush(): Promise<boolean> {
+  if ((await getPushStatus()) !== 'undetermined') return false;
+  try {
+    const dismissed = Number(await AsyncStorage.getItem(PRIMER_KEY));
+    return !dismissed || Date.now() - dismissed > PRIMER_COOLDOWN_MS;
+  } catch {
+    return true;
+  }
+}
+
+export async function dismissPushOffer(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PRIMER_KEY, String(Date.now()));
+  } catch {
+    // Sin almacenamiento: se volverá a ofrecer la próxima vez.
+  }
+}
+
+/** Si el permiso ya está dado, registra el teléfono sin preguntar nada. */
+export async function syncPushIfGranted(): Promise<void> {
+  if ((await getPushStatus()) === 'granted') await registerForPush();
+}
+
+/** Si el usuario las rechazó antes, solo se pueden activar en los ajustes del teléfono. */
+export function openNotificationSettings(): void {
+  void Linking.openSettings();
+}
+
 /** Pide permiso y registra este teléfono para recibir notificaciones. No lanza errores. */
-export async function registerForPush(): Promise<void> {
-  if (!pushSupported) return;
+export async function registerForPush(): Promise<boolean> {
+  if (!pushSupported) return false;
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -52,7 +95,7 @@ export async function registerForPush(): Promise<void> {
     }
     let { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
-    if (status !== 'granted') return; // La app sigue funcionando; solo no llegan avisos fuera de ella.
+    if (status !== 'granted') return false; // La app sigue funcionando; solo no llegan avisos fuera de ella.
 
     // Android: token nativo de Firebase; el servidor envía directo por FCM con su
     // propia cuenta de servicio (no hay que subir claves a Expo).
@@ -60,13 +103,15 @@ export async function registerForPush(): Promise<void> {
     if (Platform.OS === 'android') {
       const { data: token } = await Notifications.getDevicePushTokenAsync();
       await saveToken(String(token));
-      return;
+      return true;
     }
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     await saveToken(token);
+    return true;
   } catch (error) {
     console.warn('No se pudieron activar las notificaciones push', error);
+    return false;
   }
 }
 

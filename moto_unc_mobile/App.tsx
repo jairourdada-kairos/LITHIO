@@ -17,7 +17,8 @@ import { AuthUser } from './src/services/auth';
 import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { onSessionReplaced } from './src/services/deviceSession';
 import { initApiBase } from './src/config/api';
-import { registerForPush, unregisterPush } from './src/services/notifications';
+import { dismissPushOffer, registerForPush, shouldOfferPush, syncPushIfGranted, unregisterPush } from './src/services/notifications';
+import { NotificationPrimer } from './src/components/NotificationPrimer';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -73,6 +74,13 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   const [authStep, setAuthStep] = useState<AuthStep>('restoring');
   const [session, setSession] = useState<Session | null>(null);
   const [isAboutVisible, setIsAboutVisible] = useState(false);
+  const [primerVisible, setPrimerVisible] = useState(false);
+
+  // Con permiso ya dado se registra en silencio; si nunca se preguntó, se invita con la pantalla de LITHIO.
+  const setUpPush = useCallback(async () => {
+    await syncPushIfGranted();
+    if (await shouldOfferPush()) setPrimerVisible(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +91,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         if (cancelled) return;
         if (restored) {
           setSession(restored);
-          void registerForPush();
+          void setUpPush();
         }
         setAuthStep('welcome');
       });
@@ -113,7 +121,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     }
     await saveSessionRole(role);
     setSession({ user, role });
-    void registerForPush();
+    void setUpPush();
   };
 
   // Política de sesión única: si la cuenta se abre en otro dispositivo, este sale.
@@ -205,6 +213,20 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
       />
       {renderScreen()}
+      {session ? (
+        <NotificationPrimer
+          visible={primerVisible}
+          role={session.role}
+          onActivate={async () => {
+            await registerForPush();
+            setPrimerVisible(false);
+          }}
+          onLater={() => {
+            void dismissPushOffer();
+            setPrimerVisible(false);
+          }}
+        />
+      ) : null}
       <FeedbackHost />
     </View>
   );
