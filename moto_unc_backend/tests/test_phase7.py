@@ -320,3 +320,12 @@ def test_mask_email():
 
     assert mask_email("jairourdada@gmail.com") == "j*********a@gmail.com"
     assert mask_email("ab@x.com") == "a*@x.com"
+
+
+def test_app_version_comes_from_server_settings(client, monkeypatch):
+    assert client.get("/api/app/version").json() == {"min_build": 0, "latest_build": 0, "download_url": None}
+    monkeypatch.setenv("APP_MIN_BUILD", "3")
+    monkeypatch.setenv("APP_LATEST_BUILD", "4")
+    monkeypatch.setenv("APP_DOWNLOAD_URL", "https://expo.dev/artifacts/eas/lithio.apk")
+    assert client.get("/api/app/version").json() == {
+        "min_build": 3, "latest_build": 4, "download_url": "https://expo.dev/artifacts/eas/lithio.apk"}

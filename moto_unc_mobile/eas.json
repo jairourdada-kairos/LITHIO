@@ -9,7 +9,8 @@
       "android": {
         "buildType": "apk",
         "autoIncrement": true
-      }
+      },
+      "channel": "preview"
     }
   }
 }

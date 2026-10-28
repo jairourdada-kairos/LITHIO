@@ -49,7 +49,7 @@ from . import wallet_service
 from .drivers import is_approved, require_approved_driver
 from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
 from . import push_service
-from .routers import driver_applications, fe_store, links, profile, quiz, rates, recovery, ride_details, wallet
+from .routers import app_version, driver_applications, fe_store, links, profile, quiz, rates, recovery, ride_details, wallet
 from .timeutil import utcnow
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
@@ -96,6 +96,7 @@ app.include_router(fe_store.router)
 app.include_router(rates.router)
 app.include_router(ride_details.router)
 app.include_router(recovery.router)
+app.include_router(app_version.router)
 
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)

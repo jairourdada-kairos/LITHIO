@@ -1,6 +1,6 @@
 import { FeedbackHost, installAlertBridge } from './src/components/ui/Feedback';
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View, Alert, StatusBar, AppState } from 'react-native';
+import { StyleSheet, View, Alert, StatusBar, AppState, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
@@ -19,6 +19,8 @@ import { onSessionReplaced } from './src/services/deviceSession';
 import { initApiBase } from './src/config/api';
 import { dismissPushOffer, registerForPush, shouldOfferPush, syncPushIfGranted, unregisterPush } from './src/services/notifications';
 import { NotificationPrimer } from './src/components/NotificationPrimer';
+import { checkAppVersion } from './src/services/appVersion';
+import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
 import { AuthScreen } from './src/screens/AuthScreen';
@@ -75,6 +77,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isAboutVisible, setIsAboutVisible] = useState(false);
   const [primerVisible, setPrimerVisible] = useState(false);
+  const [requiredUpdate, setRequiredUpdate] = useState<string | null | undefined>(undefined);
 
   // Con permiso ya dado se registra en silencio; si nunca se preguntó, se invita con la pantalla de LITHIO.
   const setUpPush = useCallback(async () => {
@@ -86,6 +89,18 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     let cancelled = false;
     // En el APK, primero se averigua la dirección vigente del servidor.
     initApiBase()
+      .then(async () => {
+        // Cambios nativos: el servidor puede exigir (o sugerir) un APK más nuevo.
+        const version = await checkAppVersion();
+        if (version?.required) setRequiredUpdate(version.downloadUrl);
+        else if (version?.suggested && version.downloadUrl) {
+          const url = version.downloadUrl;
+          Alert.alert('Hay una versión nueva de LITHIO', 'Trae mejoras para tu teléfono. Instálala encima de esta; tus datos se mantienen.', [
+            { text: 'Ahora no', style: 'cancel' },
+            { text: 'Descargar', onPress: () => void Linking.openURL(url) },
+          ]);
+        }
+      })
       .then(restoreSession)
       .then((restored) => {
         if (cancelled) return;
@@ -147,6 +162,7 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   }, []);
 
   const renderScreen = () => {
+    if (requiredUpdate !== undefined) return <UpdateRequiredScreen downloadUrl={requiredUpdate} />;
     if (session) {
       return session.role === 'conductor' ? (
         <DriverApp key={`d-${session.user.id}`} user={session.user} onSignOut={endSession} />
