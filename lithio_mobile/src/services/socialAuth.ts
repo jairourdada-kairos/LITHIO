@@ -11,6 +11,7 @@
  */
 
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
 import {
   AuthCredential,
   FacebookAuthProvider,
@@ -29,6 +30,8 @@ export const PROVIDER_LABEL: Record<SocialProvider, string> = { google: 'Google'
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
+// Solo el APK con este identificador está registrado en Google y Facebook.
+const SOCIAL_ANDROID_APP = 'com.lithio.app';
 
 /** Datos que el proveedor ya conoce, para no volver a pedirlos en el registro. */
 export interface SocialPrefill {
@@ -45,6 +48,9 @@ export function socialUnavailableReason(provider: SocialProvider): string | null
   if (Platform.OS === 'web') return null;
   if (!isInstalledApp) {
     return `En Expo Go no se puede entrar con ${PROVIDER_LABEL[provider]}. Usa tu correo o instala el APK de LITHIO.`;
+  }
+  if (Platform.OS === 'android' && Application.applicationId !== SOCIAL_ANDROID_APP) {
+    return `Para entrar con ${PROVIDER_LABEL[provider]} instala la versión nueva de LITHIO.`;
   }
   const configured = provider === 'google' ? GOOGLE_WEB_CLIENT_ID : FACEBOOK_APP_ID;
   return configured ? null : `Muy pronto podrás entrar con ${PROVIDER_LABEL[provider]}. Por ahora usa tu correo electrónico.`;

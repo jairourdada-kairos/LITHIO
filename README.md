@@ -12,7 +12,7 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 1. **Rendimiento Ultraliviano:** Cero lag, animaciones a 60 fps y mínimo consumo de memoria y datos móviles.
 2. **Selección Directa de Conductores:** El estudiante visualiza su ruta y selecciona con un toque a su conductor preferido o conocido (con datos de su moto, placa, reputación y disponibilidad).
 3. **Doble Rol Integrado (Pasajero y Conductor):** En la misma app, el usuario puede alternar con un toque entre pedir una carrera o recibir solicitudes entrantes en su apartado de **Conductor**.
-4. **Recompensas Fe:** Acumulación de 35 Fe por viaje completado y 20 Fe por reseña útil. Tienda para canjear descuentos y beneficios de viaje.
+4. **Recompensas Fe:** Acumulación de 15 Fe por viaje completado (pasajero y conductor) y 5 Fe por reseña útil. Tienda para canjear descuentos y beneficios de viaje.
 5. **Métodos de Pago:** Efectivo y Pago Móvil entre pasajero y conductor. Los Diamantes, recargas y transferencias están pendientes de autenticación y proveedores de pago seguros.
 6. **Cobertura Estratégica:** Rectorado y Campus UNC, IVIC, San Antonio de los Altos, Los Teques y bajada por la Panamericana a Caracas (Plaza Venezuela / La Hoyada).
 

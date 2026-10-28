@@ -47,7 +47,7 @@ from .schemas import (
 from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
-from .links_service import PRIORITY_LEVEL, award_fe, level_for, user_z
+from .links_service import PRIORITY_LEVEL, REVIEW_FE, RIDE_FE, award_fe, level_for, user_z
 from . import push_service
 from .routers import app_version, driver_applications, fe_store, links, profile, quiz, rates, recovery, ride_details, wallet
 from .timeutil import utcnow
@@ -1105,7 +1105,7 @@ async def request_ride(
         payment_method=ride_data.payment_method,
         payment_reference=ride_data.payment_reference,
         fare_amount=fare,
-        points_rewarded=35
+        points_rewarded=RIDE_FE
     )
     log_status(new_ride, "solicitado")
     db.add(new_ride)
@@ -1471,14 +1471,14 @@ def create_review(
         rating=rev_data.rating,
         badges=rev_data.badges,
         comment=comment,
-        points_earned=20
+        points_earned=REVIEW_FE
     )
     db.add(new_review)
 
-    # Cada reseña útil suma 20 Fe al pasajero.
+    # Cada reseña útil suma Fe al pasajero.
     passenger = db.query(User).filter(User.id == passenger_id).first()
     if passenger:
-        award_fe(passenger, 20)
+        award_fe(passenger, REVIEW_FE)
 
     # Recalcular promedio de estrellas del conductor
     driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()

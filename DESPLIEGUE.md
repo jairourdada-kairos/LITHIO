@@ -197,6 +197,12 @@ una librería nativa, el ícono o el nombre. En ese caso sube `version` en
 
 # Entrar con Google y Facebook
 
+**Estado (28 oct 2026):** Google ya está configurado para el APK v4
+(`com.lithio.app`): proveedor activo en Firebase, app Android "LITHIO App" con
+las huellas de la firma de Expo, e `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` en el
+`.env` y en Expo. Los pasos de abajo sirven para repetirlo (por ejemplo, si
+cambia la firma). Facebook sigue pendiente.
+
 El código ya está listo. Mientras falten las claves, los botones dicen "Muy pronto".
 
 |          | En la web             | En el APK v3 (el que ya tienen)                                  |

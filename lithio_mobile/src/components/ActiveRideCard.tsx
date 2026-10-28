@@ -252,7 +252,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnGold]}
                 onPress={onOpenReview}
               >
-                <Text style={styles.btnTextDark}>⭐ Calificar y ganar +20 Fe</Text>
+                <Text style={styles.btnTextDark}>⭐ Calificar y ganar +5 Fe</Text>
               </TouchableOpacity>
             ) : canCancel ? (
               <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">

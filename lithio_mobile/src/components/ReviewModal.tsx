@@ -114,7 +114,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
           <View style={styles.rewardNotice}>
             <Text style={styles.rewardIcon}>🪙</Text>
             <Text style={styles.rewardNoticeText}>
-              ¡Recibirás <Text style={styles.boldText}>+20 Fe</Text> si tu reseña aporta detalles útiles!
+              ¡Recibirás <Text style={styles.boldText}>+5 Fe</Text> si tu reseña aporta detalles útiles!
             </Text>
           </View>
 

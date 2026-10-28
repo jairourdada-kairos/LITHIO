@@ -106,7 +106,7 @@ class Ride(Base):
     payment_method = Column(String, default="efectivo")  # 'efectivo', 'pago_movil', 'puntos'
     payment_reference = Column(EncryptedString, nullable=True)
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
-    points_rewarded = Column(Integer, default=50)
+    points_rewarded = Column(Integer, default=15)
     # El conductor también gana el Fe del viaje; marca que ya se le pagó (una sola vez).
     driver_fe_awarded = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utcnow)
@@ -132,7 +132,7 @@ class Review(Base):
     rating = Column(Integer, nullable=False)  # 1 a 5 estrellas
     badges = Column(String, default="Manejo seguro,Casco limpio")  # Etiquetas seleccionadas
     comment = Column(Text, nullable=True)
-    points_earned = Column(Integer, default=20)  # Puntos ganados por dejar feedback
+    points_earned = Column(Integer, default=5)  # Fe ganado por dejar una reseña útil
     created_at = Column(DateTime, default=utcnow)
 
     ride = relationship("Ride", back_populates="review")

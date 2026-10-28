@@ -149,6 +149,11 @@ def bond_type(rides: int) -> str:
     return "nuevo"
 
 
+# Fe que gana cada uno (pasajero y conductor) por viaje completado, y el pasajero por reseña útil.
+RIDE_FE = 15
+REVIEW_FE = 5
+
+
 def award_fe(user: User, amount: int) -> None:
     """Suma Fe al saldo canjeable y al histórico que define el nivel."""
     user.points = (user.points or 0) + amount

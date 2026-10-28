@@ -80,7 +80,7 @@ Todo el proyecto usa el nombre LITHIO: carpetas `lithio_*`, identificador de And
 - Listado de conductores para seleccionar directamente. Las tarjetas muestran datos públicos del conductor, moto, disponibilidad, valoración, viajes y nivel; no deben exponer información financiera.
 - Solicitud de viaje inmediato o programado con selección de efectivo o Pago Móvil y campo de referencia para Pago Móvil.
 - Tarjeta del viaje con sus estados; el backend acredita Fe al pasajero al completarse el viaje.
-- Reseña posterior al viaje con estrellas, etiquetas y comentario. El backend exige que sea un viaje completado y que el texto tenga al menos 25 caracteres, cuatro palabras distintas y describa el viaje para otorgar los 20 Fe.
+- Reseña posterior al viaje con estrellas, etiquetas y comentario. El backend exige que sea un viaje completado y que el texto tenga al menos 25 caracteres, cuatro palabras distintas y describa el viaje para otorgar los 5 Fe.
 - Tienda de recompensas: ver saldo/costo, canjear Fe y mostrar el código generado por el backend.
 
 ### Modo conductor
@@ -210,8 +210,8 @@ La API tiene endpoints para pendientes y transiciones, pero la app no conecta a�
 
 - El saldo se almacena como entero `User.points`, mostrado en UI como Fe.
 - El registro de usuario otorga 100 Fe de bienvenida.
-- Cada viaje exitoso otorga 35 Fe al pasajero; el backend incrementa también el contador de viajes del conductor.
-- Una reseña elegible otorga 20 Fe al pasajero. Debe corresponder a su viaje completado, no existir otra para ese viaje, tener 25 caracteres, cuatro palabras distintas y al menos una palabra relacionada con la experiencia del viaje.
+- Cada viaje exitoso otorga 15 Fe al pasajero y 15 Fe al conductor; el backend incrementa también el contador de viajes del conductor.
+- Una reseña elegible otorga 5 Fe al pasajero. Debe corresponder a su viaje completado, no existir otra para ese viaje, tener 25 caracteres, cuatro palabras distintas y al menos una palabra relacionada con la experiencia del viaje.
 - El catálogo de recompensas permite definir costo y porcentaje de descuento; el canje descuenta el costo si el saldo alcanza y genera un código con formato `LITHIO-<descuento>OFF-<user_id>`.
 - Existe leaderboard de conductores y pasajeros en el backend.
 

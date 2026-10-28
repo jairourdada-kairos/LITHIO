@@ -1,6 +1,6 @@
 from .database import SessionLocal, engine, Base
 from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward, phone_fingerprint
-from .links_service import assign_friend_code, award_fe
+from .links_service import RIDE_FE, assign_friend_code, award_fe
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
 from datetime import datetime
@@ -161,6 +161,15 @@ def backfill_driver_fe(db):
     db.commit()
 
 
+def sync_open_ride_rewards(db):
+    """Los viajes aún sin terminar pagan la recompensa vigente (RIDE_FE)."""
+    db.query(Ride).filter(
+        Ride.status.in_(("solicitado", "aceptado", "en_camino", "en_curso")),
+        Ride.points_rewarded != RIDE_FE,
+    ).update({"points_rewarded": RIDE_FE}, synchronize_session=False)
+    db.commit()
+
+
 WORKSHOP_CATALOG = [
     {"title": "Cambio de aceite", "description": "Aceite y mano de obra en el taller aliado.", "cost_cents": 800, "icon": "oil"},
     {"title": "Ajuste de cadena", "description": "Tensado y lubricación de la cadena.", "cost_cents": 300, "icon": "link-variant"},
@@ -202,7 +211,8 @@ def sync_legacy_reward_copy(db):
             reward.description
             .replace("Monedas Estelares", "Fe")
             .replace("Puntos UNC", "Fe")
-            .replace("+50 pts", "+35 Fe")
+            .replace("+50 pts", "+15 Fe")
+            .replace("+35 Fe", "+15 Fe")
         )
     for user in db.query(User).all():
         if user.xp_level and "UNC" in user.xp_level:
@@ -216,6 +226,7 @@ def seed_database():
     migrate_plaintext_columns(db)
     backfill_user_fields(db)
     backfill_driver_fe(db)
+    sync_open_ride_rewards(db)
     seed_workshop(db)
     sync_route_catalog(db)
     sync_legacy_reward_copy(db)

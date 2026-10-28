@@ -486,7 +486,7 @@ def test_ride_flow_and_gamification(client):
         assert response.status_code == 200
 
     after = client.get("/api/users/me", headers=auth_headers(4)).json()["points"]
-    assert after == before + 35
+    assert after == before + 15
 
     review = client.post(
         "/api/reviews?passenger_id=4",
@@ -499,7 +499,8 @@ def test_ride_flow_and_gamification(client):
         headers=auth_headers(4),
     )
     assert review.status_code == 200
-    assert review.json()["points_earned"] == 20
+    assert review.json()["points_earned"] == 5
+    assert client.get("/api/users/me", headers=auth_headers(4)).json()["points"] == after + 5
 
 
 def test_review_and_payment_validation(client):

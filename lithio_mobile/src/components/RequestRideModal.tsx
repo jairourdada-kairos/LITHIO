@@ -247,7 +247,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
             <View style={styles.rewardBanner}>
               <Text style={styles.rewardIcon}>🎁</Text>
               <Text style={styles.rewardText}>
-                ¡Ganarás <Text style={styles.rewardBold}>+35 Fe</Text> al completar este viaje!
+                ¡Ganarás <Text style={styles.rewardBold}>+15 Fe</Text> al completar este viaje!
               </Text>
             </View>
 
