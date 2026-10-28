@@ -57,6 +57,8 @@ export interface Ride {
   driver_bank_account_number?: string;
   driver_binance_address?: string;
   has_receipt?: boolean;
+  /** Teléfono del otro participante (solo con el viaje aceptado). */
+  counterpart_phone?: string | null;
 }
 
 export interface PresetRoute {

@@ -15,6 +15,7 @@ import type { SessionRole } from '../services/session';
 import type { Ride, RideStatus } from '../types';
 
 const TERMINAL: RideStatus[] = ['cancelado', 'rechazado'];
+const CONTACT_STATUSES: RideStatus[] = ['aceptado', 'en_camino', 'en_curso'];
 
 export interface RideNotice {
   title: string;
@@ -88,6 +89,8 @@ export function useRideCenter(userId: number, role: SessionRole) {
         } else if (role === 'pasajero' || ride.status !== 'solicitado') {
           // Conserva los datos de pago que solo llegan por HTTP.
           setActiveRide(current?.id === ride.id ? { ...current, ...ride } : ride);
+          // Al aceptarse llegan por HTTP el teléfono del otro y los datos de pago.
+          if (CONTACT_STATUSES.includes(ride.status) && !current?.counterpart_phone) void refresh();
         }
         if (role === 'pasajero' && PASSENGER_NOTICES[ride.status]) {
           setNotice(PASSENGER_NOTICES[ride.status]!);
@@ -127,6 +130,7 @@ export function useRideCenter(userId: number, role: SessionRole) {
         if (activeRef.current?.id === ride.id) setActiveRide(null);
       } else {
         setActiveRide({ ...(activeRef.current?.id === ride.id ? activeRef.current : ride), status });
+        if (CONTACT_STATUSES.includes(status) && !activeRef.current?.counterpart_phone) void refresh();
       }
       return result;
     },

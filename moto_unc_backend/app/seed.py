@@ -1,5 +1,5 @@
 from .database import SessionLocal, engine, Base
-from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward
+from .models import User, DriverProfile, Reward, Ride, Review, Route, WorkshopReward, phone_fingerprint
 from .links_service import assign_friend_code
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
@@ -82,6 +82,7 @@ ADDED_COLUMNS = {
     "users": {
         "cedula": "TEXT",
         "cedula_hash": "VARCHAR(64)",
+        "phone_hash": "VARCHAR(64)",
         "career": "VARCHAR",
         "semester": "VARCHAR",
         "diamonds_cents": "INTEGER NOT NULL DEFAULT 0",
@@ -135,6 +136,7 @@ def ensure_columns(db):
     if "cedula_hash" not in {index["name"] for index in inspector.get_indexes("users")}:
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_cedula_hash ON users (cedula_hash)"))
     db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_friend_code ON users (friend_code)"))
+    db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_phone_hash ON users (phone_hash)"))
     db.commit()
 
 
@@ -142,6 +144,8 @@ def backfill_user_fields(db):
     """Código de enlace para todos y Fe histórico mínimo igual al saldo actual."""
     for user in db.query(User).filter(User.friend_code.is_(None)).all():
         assign_friend_code(db, user)
+    for user in db.query(User).filter(User.phone_hash.is_(None)).all():
+        user.phone_hash = phone_fingerprint(user.phone)
     db.execute(text("UPDATE users SET fe_lifetime = points WHERE fe_lifetime < points"))
     db.commit()
 

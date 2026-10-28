@@ -47,6 +47,17 @@ export function validateEmail(value: string): string | undefined {
   return undefined;
 }
 
+/** Registro: solo cuentas reales de Gmail (igual que ALLOWED_EMAIL_DOMAINS del servidor). */
+const GMAIL_DOMAINS = ['gmail.com', 'googlemail.com'];
+
+export function validateGmail(value: string): string | undefined {
+  const invalid = validateEmail(value);
+  if (invalid) return invalid;
+  const domain = value.trim().toLowerCase().split('@').pop() ?? '';
+  if (!GMAIL_DOMAINS.includes(domain)) return 'Usa tu correo de Gmail (termina en @gmail.com)';
+  return undefined;
+}
+
 export function validateCareer(value: string): string | undefined {
   const cleaned = collapseSpaces(value);
   if (!cleaned) return 'La carrera es obligatoria';

@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint, Date, UniqueConstraint
+import re
+
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint, Date, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .crypto import EncryptedString
+from .crypto import EncryptedString, blind_index
+from .validation import normalize_phone
 from .database import Base
 from .timeutil import utcnow
 
@@ -18,6 +21,7 @@ class User(Base):
     phone = Column(EncryptedString, nullable=False)
     cedula = Column(EncryptedString, nullable=True)
     cedula_hash = Column(String(64), nullable=True, unique=True, index=True)  # Índice ciego para evitar duplicados
+    phone_hash = Column(String(64), nullable=True, index=True)  # Índice ciego: recuperar la cuenta con el teléfono
     career = Column(String, nullable=True)  # Carrera universitaria
     semester = Column(String, nullable=True)
     role = Column(String, default="pasajero")  # 'pasajero', 'conductor', 'ambos'
@@ -251,3 +255,20 @@ class PerkGrant(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     z = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=utcnow)
+
+
+def phone_fingerprint(phone: str | None) -> str | None:
+    """Índice ciego del teléfono normalizado (+58 412 1234567); sin descifrar nada se puede buscar."""
+    if not phone:
+        return None
+    try:
+        value = normalize_phone(phone)
+    except ValueError:
+        value = re.sub(r"\D", "", phone)  # Teléfonos viejos fuera de formato
+    return blind_index(value)
+
+
+@event.listens_for(User, "before_insert")
+@event.listens_for(User, "before_update")
+def _sync_phone_hash(mapper, connection, user: User) -> None:
+    user.phone_hash = phone_fingerprint(user.phone)

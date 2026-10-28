@@ -346,3 +346,82 @@ def test_whatsapp_message_uses_template_when_configured(monkeypatch):
     template = whatsapp_ride_message("584141234567", ride, "Sofía")
     values = [p["text"] for p in template["template"]["components"][0]["parameters"]]
     assert template["type"] == "template" and values == ["Sofía", "UNC", "IVIC", "$2.50", "inmediato"]
+
+
+def test_recover_account_by_phone(client, monkeypatch):
+    from app.database import get_db
+    from app.main import app
+    from app.models import User
+    from app.routers import recovery
+
+    sent = []
+    monkeypatch.setattr(recovery, "send_password_reset", sent.append)
+    db = next(app.dependency_overrides[get_db]())
+    db.get(User, 4).phone = "+58 414 5550001"  # El índice ciego se actualiza al guardar
+    db.commit()
+
+    found = client.post("/api/auth/recover", json={"phone": "0414-555.0001"})
+    assert found.status_code == 200 and found.json() == {"masked_email": "s***a@example.test"}
+    assert sent == ["sofia@example.test"]
+
+    assert client.post("/api/auth/recover", json={"phone": "0414-9999999"}).status_code == 404
+    assert client.post("/api/auth/recover", json={}).status_code == 422
+    assert client.post("/api/auth/recover", json={"phone": "0414-5550001", "cedula": "V-12345678"}).status_code == 422
+
+    db.get(User, 5).phone = "+58 414 5550001"
+    db.commit()
+    assert client.post("/api/auth/recover", json={"phone": "04145550001"}).status_code == 409
+
+
+def test_only_verified_gmail_accounts_can_enter(client, monkeypatch):
+    from app import auth
+    from app.auth import FirebaseIdentity
+    from tests.test_api import VALID_REGISTRATION
+
+    monkeypatch.setenv("ALLOWED_EMAIL_DOMAINS", "gmail.com,googlemail.com")
+    monkeypatch.setenv("REQUIRE_VERIFIED_EMAIL", "true")
+
+    # Registro con un correo que no es Gmail: rechazado.
+    not_gmail = client.post("/api/passengers/register", json=VALID_REGISTRATION, headers={"Authorization": "Bearer test-new-user"})
+    assert not_gmail.status_code == 422 and "Gmail" in not_gmail.text
+
+    # Cuenta existente con correo que no es Gmail: no entra.
+    blocked = client.get("/api/users/me", headers={"Authorization": "Bearer test-user-4"})
+    assert blocked.status_code == 403 and "Gmail" in blocked.json()["detail"]
+    assert blocked.headers["X-Email-Domain"] == "not-allowed"
+
+    # Gmail sin verificar: 428 con el aviso para la pantalla "Verifica tu correo".
+    original = auth.verify_firebase_token
+    gmail = {"gmail-unverified": False, "gmail-verified": True}
+
+    def fake(token):
+        if token in gmail:
+            return FirebaseIdentity("uid-user-4", "sofia@gmail.com", gmail[token])
+        return original(token)
+
+    monkeypatch.setattr(auth, "verify_firebase_token", fake)
+    unverified = client.get("/api/users/me", headers={"Authorization": "Bearer gmail-unverified"})
+    assert unverified.status_code == 428 and unverified.headers["X-Email-Verification"] == "required"
+    assert client.get("/api/users/me", headers={"Authorization": "Bearer gmail-verified"}).status_code == 200
+
+    # El administrador nunca queda bloqueado (su correo de prueba no es Gmail).
+    assert client.get("/api/users/me", headers={"Authorization": "Bearer test-admin"}).status_code == 200
+
+
+def test_cancel_rules_and_phone_contact_during_ride(client):
+    ride = make_ride(client)
+    path = f"/api/rides/{ride['id']}/status"
+    # Antes de aceptarse no se comparte el teléfono.
+    assert client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()["counterpart_phone"] is None
+
+    client.put(path, json={"status": "aceptado"}, headers=auth_headers(1))
+    passenger_view = client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()
+    driver_view = client.get("/api/rides/active/1?role=conductor", headers=auth_headers(1)).json()
+    assert passenger_view["counterpart_phone"] and driver_view["counterpart_phone"]
+    assert passenger_view["counterpart_phone"] != driver_view["counterpart_phone"]
+
+    client.put(path, json={"status": "en_curso"}, headers=auth_headers(1))
+    # Con el pasajero a bordo, el pasajero ya no puede cancelar; el conductor sí.
+    passenger_cancel = client.put(path, json={"status": "cancelado"}, headers=auth_headers(4))
+    assert passenger_cancel.status_code == 400 and "conductor" in passenger_cancel.json()["detail"]
+    assert client.put(path, json={"status": "cancelado"}, headers=auth_headers(1)).status_code == 200

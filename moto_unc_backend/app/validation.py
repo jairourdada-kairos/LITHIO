@@ -4,6 +4,7 @@ La app móvil aplica las mismas reglas (src/utils/validation.ts) para avisar
 antes de enviar, pero la fuente de verdad es este módulo: el backend nunca
 confía en lo que valida el cliente.
 """
+import os
 import re
 
 # Operadoras móviles venezolanas: Movilnet (416, 426), Movistar (414, 424), Digitel (412, 422).
@@ -70,3 +71,20 @@ def normalize_semester(value: str) -> str:
         if cleaned.casefold() == option.casefold():
             return option
     raise ValueError("Selecciona un semestre del 1 al 12, Egresado o Personal / Docente.")
+
+
+def allowed_email_domains() -> set[str]:
+    """Dominios aceptados (ALLOWED_EMAIL_DOMAINS). Vacío = cualquiera; por defecto solo Gmail."""
+    raw = os.getenv("ALLOWED_EMAIL_DOMAINS", "gmail.com,googlemail.com")
+    return {domain.strip().lower() for domain in raw.split(",") if domain.strip()}
+
+
+def email_domain_allowed(email: str | None) -> bool:
+    domains = allowed_email_domains()
+    return not domains or (email or "").rsplit("@", 1)[-1].lower() in domains
+
+
+def require_allowed_email(email: str) -> str:
+    if not email_domain_allowed(email):
+        raise ValueError("LITHIO solo acepta cuentas reales de Gmail. Usa un correo que termine en @gmail.com.")
+    return email

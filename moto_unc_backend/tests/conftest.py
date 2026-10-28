@@ -9,6 +9,10 @@ os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["LITHIO_ENCRYPTION_KEYS"] = Fernet.generate_key().decode()
 os.environ["LITHIO_HASH_KEY"] = Fernet.generate_key().decode()
 os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="lithio-media-")
+# Las cuentas de prueba usan @example.test: la regla "solo Gmail verificado"
+# se prueba aparte, activándola en su propio test.
+os.environ["ALLOWED_EMAIL_DOMAINS"] = ""
+os.environ["REQUIRE_VERIFIED_EMAIL"] = "false"
 
 
 import pytest  # noqa: E402

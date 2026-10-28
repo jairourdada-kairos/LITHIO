@@ -3,8 +3,8 @@
  *
  * - Olvidé mi contraseña: con el correo, Firebase envía un enlace para crear
  *   una contraseña nueva.
- * - Olvidé mi correo: con la cédula, el servidor muestra el correo de la
- *   cuenta parcialmente oculto y le envía el mismo enlace.
+ * - Olvidé mi correo: con la cédula o con el número de teléfono, el servidor
+ *   muestra el correo de la cuenta parcialmente oculto y le envía el mismo enlace.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,10 +15,11 @@ import { theme, themed } from '../constants/theme';
 import { FormField } from './FormField';
 import { PrimaryButton } from './brand/PrimaryButton';
 import { friendlyMessage } from './ui/Feedback';
-import { recoverAccountByCedula, sendPasswordReset } from '../services/auth';
+import { recoverAccount, sendPasswordReset } from '../services/auth';
 import { validateEmail } from '../utils/validation';
 
 type Mode = 'password' | 'email';
+type Lookup = 'cedula' | 'phone';
 
 interface Props {
   visible: boolean;
@@ -33,6 +34,8 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
   const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
   const [cedula, setCedula] = useState('');
+  const [lookup, setLookup] = useState<Lookup>('cedula');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [done, setDone] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,8 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
     setMode('password');
     setEmail(initialEmail ?? '');
     setCedula('');
+    setPhone('');
+    setLookup('cedula');
     setError(undefined);
     setDone(null);
   }, [visible, initialEmail]);
@@ -56,8 +61,11 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
         setError(invalid);
         return;
       }
-    } else if (cedula.replace(/\D/g, '').length < 6) {
+    } else if (lookup === 'cedula' && cedula.replace(/\D/g, '').length < 6) {
       setError('Escribe tu cédula, por ejemplo V-12345678.');
+      return;
+    } else if (lookup === 'phone' && phone.replace(/\D/g, '').length < 10) {
+      setError('Escribe tu celular, por ejemplo 0412-1234567.');
       return;
     }
     setLoading(true);
@@ -66,7 +74,7 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
         await sendPasswordReset(email.trim());
         setDone(`Si ${email.trim()} tiene una cuenta en LITHIO, te llegará un correo con un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.`);
       } else {
-        const masked = await recoverAccountByCedula(cedula.trim());
+        const masked = await recoverAccount(lookup === 'cedula' ? { cedula: cedula.trim() } : { phone: phone.trim() });
         setDone(`Tu correo de LITHIO es ${masked}. Te enviamos ahí un enlace para crear una contraseña nueva; después entra con ese correo.`);
       }
     } catch (e) {
@@ -133,16 +141,55 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
                   </>
                 ) : (
                   <>
-                    <Text style={styles.message}>Escribe tu cédula. Te mostraremos tu correo (parcialmente oculto, por seguridad) y te enviaremos ahí el enlace para cambiar la contraseña.</Text>
-                    <FormField
-                      label="Cédula"
-                      placeholder="V-12345678"
-                      autoCapitalize="characters"
-                      value={cedula}
-                      onChangeText={setCedula}
-                      error={error}
-                      maxLength={14}
-                    />
+                    <Text style={styles.message}>Identifícate con tu cédula o con el celular de tu cuenta. Te mostraremos tu correo (parcialmente oculto, por seguridad) y te enviaremos ahí el enlace para cambiar la contraseña.</Text>
+                    <View style={styles.lookupRow} accessibilityRole="radiogroup">
+                      {([
+                        { value: 'cedula', label: 'Con mi cédula', icon: 'credit-card-outline' },
+                        { value: 'phone', label: 'Con mi teléfono', icon: 'phone-outline' },
+                      ] as const).map((option) => {
+                        const selected = lookup === option.value;
+                        return (
+                          <Pressable
+                            key={option.value}
+                            onPress={() => {
+                              setLookup(option.value);
+                              setError(undefined);
+                            }}
+                            style={[styles.lookupChip, selected && { borderColor: accent, backgroundColor: `${accent}1F` }]}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected }}
+                          >
+                            <Icon name={option.icon} size={16} color={selected ? accent : theme.colors.textSecondary} />
+                            <Text style={[styles.lookupText, selected && { color: accent }]}>{option.label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {lookup === 'cedula' ? (
+                      <FormField
+                        label="Cédula"
+                        placeholder="V-12345678"
+                        autoCapitalize="characters"
+                        value={cedula}
+                        onChangeText={setCedula}
+                        error={error}
+                        maxLength={14}
+                        accent={accent}
+                      />
+                    ) : (
+                      <FormField
+                        label="Celular de tu cuenta"
+                        placeholder="0412-1234567"
+                        keyboardType="phone-pad"
+                        autoComplete="tel"
+                        textContentType="telephoneNumber"
+                        value={phone}
+                        onChangeText={setPhone}
+                        error={error}
+                        maxLength={17}
+                        accent={accent}
+                      />
+                    )}
                   </>
                 )}
                 <PrimaryButton label="Enviar enlace" onPress={submit} loading={loading} accent={accent} />
@@ -218,6 +265,27 @@ const styles = themed(() => ({
   },
   segmentTextActive: {
     color: theme.colors.bgDark,
+  },
+  lookupRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  lookupChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 42,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  lookupText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
   },
   doneRow: {
     flexDirection: 'row',

@@ -14,12 +14,20 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User
+from .validation import email_domain_allowed
 
 logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
 
 # 428 Precondition Required: la app responde enviando el correo de verificación.
 EMAIL_VERIFICATION_REQUIRED = 428
+# La app reconoce este encabezado y muestra la pantalla "Verifica tu correo".
+EMAIL_VERIFICATION_HEADERS = {"X-Email-Verification": "required"}
+
+
+def require_verified_email() -> bool:
+    """REQUIRE_VERIFIED_EMAIL=false desactiva la verificación (solo para pruebas)."""
+    return os.getenv("REQUIRE_VERIFIED_EMAIL", "true").strip().lower() not in {"0", "false", "no"}
 
 
 @dataclass(frozen=True)
@@ -112,10 +120,32 @@ def get_firebase_identity(
     return verify_firebase_token(credentials.credentials)
 
 
+def enforce_email_policy(identity: FirebaseIdentity, user: User) -> User:
+    """Para entrar hace falta una cuenta real: correo de Gmail y verificado.
+
+    El administrador queda exento para que el panel nunca se bloquee.
+    """
+    if is_admin(user):
+        return user
+    if not email_domain_allowed(identity.email):
+        raise HTTPException(
+            status_code=403,
+            detail="LITHIO solo acepta cuentas reales de Gmail. Pide al administrador que cambie tu correo a uno @gmail.com.",
+            headers={"X-Email-Domain": "not-allowed"},
+        )
+    if require_verified_email() and not identity.email_verified:
+        raise HTTPException(
+            status_code=EMAIL_VERIFICATION_REQUIRED,
+            detail="Verifica tu correo de Gmail para entrar: abre el enlace que te enviamos.",
+            headers=EMAIL_VERIFICATION_HEADERS,
+        )
+    return user
+
+
 def get_user_for_identity(identity: FirebaseIdentity, db: Session) -> User:
     user = db.query(User).filter(User.firebase_uid == identity.uid).first()
     if user:
-        return user
+        return enforce_email_policy(identity, user)
 
     if identity.email:
         user = (
@@ -129,11 +159,12 @@ def get_user_for_identity(identity: FirebaseIdentity, db: Session) -> User:
                 raise HTTPException(
                     status_code=EMAIL_VERIFICATION_REQUIRED,
                     detail="Este correo ya tiene un perfil en LITHIO. Verifica tu correo para vincularlo a tu cuenta.",
+                    headers=EMAIL_VERIFICATION_HEADERS,
                 )
             user.firebase_uid = identity.uid
             db.commit()
             db.refresh(user)
-            return user
+            return enforce_email_policy(identity, user)
 
     raise HTTPException(
         status_code=403,

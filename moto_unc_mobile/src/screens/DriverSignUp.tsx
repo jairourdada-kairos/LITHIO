@@ -7,6 +7,7 @@
  * 2. Datos de la moto + métodos de pago (Binance, pago móvil, banco)
  */
 
+import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
 import {
   View,
@@ -168,6 +169,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         [{ text: 'Ver mi postulación', onPress: () => onSuccess(user) }]
       );
     } catch (e: any) {
+      if (isEmailVerificationPending(e)) return;
       Alert.alert('Error al registrarse', e.message || 'Inténtalo de nuevo.');
     } finally {
       setLoading(false);

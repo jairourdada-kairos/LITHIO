@@ -17,7 +17,7 @@ from ..database import get_db
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import User
 from ..realtime import manager
-from ..validation import format_cedula, normalize_person_name, normalize_phone
+from ..validation import email_domain_allowed, format_cedula, normalize_person_name, normalize_phone
 from .. import push_service
 from ..timeutil import utcnow
 
@@ -185,6 +185,8 @@ def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user)
         raise HTTPException(status_code=422, detail=str(error)) from None
     if data.email is not None:
         changes["email"] = str(data.email).strip().lower()
+        if not email_domain_allowed(changes["email"]):
+            raise HTTPException(status_code=400, detail="LITHIO solo acepta cuentas reales de Gmail. Usa un correo @gmail.com.")
     changes = {field: value for field, value in changes.items() if value != getattr(user, field)}
     if not changes:
         raise HTTPException(status_code=400, detail="No cambiaste ningún dato.")

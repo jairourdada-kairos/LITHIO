@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
 } from '@firebase/auth';
 import { authenticatedFetch, getFirebaseAuth } from './firebase';
+import { EmailVerificationPending } from './emailGate';
 import { API_BASE } from '../config/api';
 
 const REQUEST_TIMEOUT_MS = 8000;
@@ -40,22 +41,48 @@ async function readError(response: Response): Promise<string> {
 // Firebase (p. ej. la cuenta del administrador): solo se vincula con el correo verificado.
 const EMAIL_VERIFICATION_REQUIRED = 428;
 
-async function requestEmailVerification(): Promise<never> {
+const RESEND_COOLDOWN_MS = 60_000;
+let lastVerificationSentAt = 0;
+
+/** Envía (en español) el enlace para verificar el correo. Espera 1 min entre envíos. */
+export async function sendVerificationEmail(force = false): Promise<boolean> {
   const user = getFirebaseAuth().currentUser;
-  let sent = false;
-  if (user) {
-    try {
-      await sendEmailVerification(user);
-      sent = true;
-    } catch {
-      // Demasiados envíos seguidos: el enlace anterior sigue sirviendo.
-    }
+  if (!user || user.emailVerified) return false;
+  if (!force && Date.now() - lastVerificationSentAt < RESEND_COOLDOWN_MS) return true;
+  getFirebaseAuth().languageCode = 'es';
+  try {
+    await sendEmailVerification(user);
+    lastVerificationSentAt = Date.now();
+    return true;
+  } catch {
+    // Demasiados envíos seguidos: el enlace anterior sigue sirviendo.
+    return false;
   }
-  throw new Error(
-    sent
-      ? `Este correo ya tiene un perfil en LITHIO. Te enviamos un enlace de verificación a ${user?.email}. Ábrelo (revisa también spam) y luego inicia sesión con este mismo correo y contraseña.`
-      : 'Este correo ya tiene un perfil en LITHIO. Abre el enlace de verificación que te enviamos por correo y luego inicia sesión.'
-  );
+}
+
+/** Segundos que faltan para poder reenviar el enlace. */
+export function verificationCooldownSeconds(): number {
+  return Math.max(0, Math.ceil((lastVerificationSentAt + RESEND_COOLDOWN_MS - Date.now()) / 1000));
+}
+
+/** Tras abrir el enlace: recarga la cuenta y renueva el token con el correo ya verificado. */
+export async function refreshEmailVerified(): Promise<boolean> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) return false;
+  await user.reload();
+  if (!user.emailVerified) return false;
+  await user.getIdToken(true);
+  return true;
+}
+
+export function currentAccountEmail(): string | null {
+  return getFirebaseAuth().currentUser?.email ?? null;
+}
+
+async function requestEmailVerification(): Promise<never> {
+  await sendVerificationEmail();
+  // La pantalla "Verifica tu correo" ya se abrió (ver emailGate): sin otro aviso.
+  throw new EmailVerificationPending();
 }
 
 export interface AuthUser {
@@ -168,6 +195,8 @@ export async function loadOwnProfile(): Promise<AuthUser | null> {
   if (response.status === EMAIL_VERIFICATION_REQUIRED) {
     return requestEmailVerification();
   }
+  // Cuenta que no es Gmail: se explica el motivo en lugar de "cuenta no encontrada".
+  if (response.status === 403 && response.headers.get('X-Email-Domain')) throw new Error(await readError(response));
   if (response.status === 404 || response.status === 403) return null;
   if (!response.ok) throw new Error(await readError(response));
   return response.json();
@@ -187,12 +216,12 @@ export async function sendPasswordReset(email: string): Promise<void> {
   }
 }
 
-/** Con la cédula: devuelve el correo de la cuenta parcialmente oculto y le envía el enlace. */
-export async function recoverAccountByCedula(cedula: string): Promise<string> {
+/** Con la cédula o el teléfono: devuelve el correo de la cuenta parcialmente oculto y le envía el enlace. */
+export async function recoverAccount(identity: { cedula: string } | { phone: string }): Promise<string> {
   const response = await fetch(`${API_BASE}/api/auth/recover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cedula }),
+    body: JSON.stringify(identity),
   });
   if (!response.ok) throw new Error(await readError(response));
   const body = await response.json();

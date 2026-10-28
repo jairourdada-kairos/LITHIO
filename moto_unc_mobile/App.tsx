@@ -13,7 +13,9 @@ import {
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { ColorScheme, theme, themed } from './src/constants/theme';
 import { ThemeModeProvider } from './src/theme/ThemeMode';
-import { AuthUser } from './src/services/auth';
+import { AuthUser, loadOwnProfile } from './src/services/auth';
+import { isEmailVerificationPending, onEmailVerificationRequired } from './src/services/emailGate';
+import { VerifyEmailScreen } from './src/screens/VerifyEmailScreen';
 import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { onSessionReplaced } from './src/services/deviceSession';
 import { initApiBase } from './src/config/api';
@@ -84,6 +86,9 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   const [isAboutVisible, setIsAboutVisible] = useState(false);
   const [primerVisible, setPrimerVisible] = useState(false);
   const [requiredUpdate, setRequiredUpdate] = useState<string | null | undefined>(undefined);
+  // La cuenta aún no verificó su Gmail: se muestra "Verifica tu correo".
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [pendingRole, setPendingRole] = useState<SessionRole | null>(null);
 
   // Con permiso ya dado se registra en silencio; si nunca se preguntó, se invita con la pantalla de LITHIO.
   const setUpPush = useCallback(async () => {
@@ -140,6 +145,8 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     };
   }, []);
 
+  useEffect(() => onEmailVerificationRequired(() => setVerifyingEmail(true)), []);
+
   const startSession = (role: SessionRole) => async (user: AuthUser) => {
     const denied = roleAccessError(user, role);
     if (denied) {
@@ -151,6 +158,12 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     try {
       await claimDeviceSession();
     } catch (error) {
+      // Sin verificar: la sesión de Firebase se conserva para comprobarlo después.
+      if (isEmailVerificationPending(error)) {
+        setPendingRole(role);
+        setVerifyingEmail(true);
+        return;
+      }
       await signOut();
       Alert.alert('No se pudo iniciar sesión', error instanceof Error ? error.message : 'Intenta de nuevo.');
       return;
@@ -182,8 +195,47 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     setAuthStep('welcome');
   }, []);
 
+  // Correo verificado: entra con el rol que estaba eligiendo (o el guardado).
+  const finishEmailVerification = async () => {
+    setVerifyingEmail(false);
+    try {
+      const restored = await restoreSession();
+      if (restored) {
+        setSession(restored);
+        void setUpPush();
+        return;
+      }
+      const user = await loadOwnProfile();
+      if (!user) {
+        setAuthStep('welcome');
+        return;
+      }
+      const role: SessionRole = pendingRole ?? (authStep.startsWith('driver') ? 'conductor' : 'pasajero');
+      await startSession(role)(user);
+    } catch (error) {
+      if (!isEmailVerificationPending(error)) {
+        Alert.alert('No se pudo iniciar sesión', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      }
+    }
+  };
+
   const renderScreen = () => {
     if (requiredUpdate !== undefined) return <UpdateRequiredScreen downloadUrl={requiredUpdate} />;
+    if (verifyingEmail && !session) {
+      const driver = pendingRole === 'conductor' || (!pendingRole && authStep.startsWith('driver'));
+      return (
+        <VerifyEmailScreen
+          accent={driver ? theme.colors.secondary : theme.colors.primary}
+          onVerified={() => void finishEmailVerification()}
+          onUseOtherAccount={() => {
+            setVerifyingEmail(false);
+            setPendingRole(null);
+            void signOut();
+            setAuthStep('welcome');
+          }}
+        />
+      );
+    }
     if (session) {
       return session.role === 'conductor' ? (
         <DriverApp key={`d-${session.user.id}`} user={session.user} onSignOut={endSession} />

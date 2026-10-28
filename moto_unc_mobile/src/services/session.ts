@@ -6,6 +6,7 @@
  * El rol elegido se recuerda para restaurar la sesión al reabrir la app.
  */
 
+import { EmailVerificationPending } from './emailGate';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from '@firebase/auth';
 import { getFirebaseAuth, authenticatedFetch } from './firebase';
@@ -40,6 +41,7 @@ export async function saveSessionRole(role: SessionRole): Promise<void> {
 /** Toma la cuenta para este dispositivo: cualquier otro queda desconectado. */
 export async function claimDeviceSession(): Promise<void> {
   const response = await authenticatedFetch(`${API_BASE}/api/sessions`, { method: 'POST' });
+  if (response.status === 428) throw new EmailVerificationPending();
   if (!response.ok) throw new Error('No se pudo iniciar la sesión en este dispositivo. Intenta de nuevo.');
   const body = await response.json();
   await setDeviceSession(body.session_id);

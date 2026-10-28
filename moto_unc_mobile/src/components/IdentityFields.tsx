@@ -17,7 +17,7 @@ import {
   normalizePhone,
   validateCareer,
   validateCedulaDigits,
-  validateEmail,
+  validateGmail,
   validatePersonName,
   validatePhone,
   validateSemester,
@@ -58,7 +58,7 @@ export function validateIdentity(form: IdentityForm): IdentityErrors {
     name: validatePersonName(form.name, 'El nombre'),
     last_name: validatePersonName(form.last_name, 'El apellido'),
     cedula_digits: validateCedulaDigits(form.cedula_digits),
-    email: validateEmail(form.email),
+    email: validateGmail(form.email),
     career: validateCareer(form.career),
     semester: validateSemester(form.semester),
     phone: validatePhone(form.phone),
@@ -152,17 +152,17 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
     />
 
     <FormField accent={accent}
-      label="Correo electrónico"
+      label="Correo de Gmail"
       required
       value={form.email}
       onChangeText={(v) => onChange('email', v)}
-      placeholder="maria@unc.edu.ve"
+      placeholder="maria@gmail.com"
       keyboardType="email-address"
       autoCapitalize="none"
       autoComplete="email"
       textContentType="emailAddress"
       editable={!emailLocked}
-      hint={emailLocked ? 'Es el correo de la cuenta con la que entraste.' : undefined}
+      hint={emailLocked ? 'Es el correo de la cuenta con la que entraste.' : 'Te enviaremos un enlace para verificar que es tuyo.'}
       error={errors.email}
     />
 

@@ -4,6 +4,7 @@
  * Permite entrar con correo y ofrece la opción de crear cuenta si no existe.
  */
 
+import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
 import { Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { theme, themed } from '../constants/theme';
@@ -58,6 +59,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocia
         );
       }
     } catch (error: any) {
+      if (isEmailVerificationPending(error)) return;
       Alert.alert('Error', error?.message || 'No se pudo conectar con el servidor. Verifica tu conexión.');
     } finally {
       setLoading(false);

@@ -115,7 +115,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Session-Id"],
     # La app web necesita leerla para cerrar la sesión cuando otro dispositivo entra.
-    expose_headers=["X-Session-Replaced"],
+    expose_headers=["X-Session-Replaced", "X-Email-Verification", "X-Email-Domain"],
 )
 
 # Montar Dashboard Web (HTML / CSS / JS)
@@ -152,6 +152,10 @@ def serialize_ride_for_socket(ride: Ride) -> dict:
         "points_rewarded": ride.points_rewarded,
         "created_at": ride.created_at.isoformat() if ride.created_at else None,
     }
+
+
+# Estados en los que pasajero y conductor pueden llamarse.
+CONTACT_RIDE_STATUSES = {"aceptado", "en_camino", "en_curso"}
 
 
 def get_active_ride(db: Session, user_id: int) -> Ride | None:
@@ -1196,6 +1200,10 @@ def get_active_ride_for_user(
     res = RideResponse.model_validate(ride)
     res.passenger_name = ride.passenger.name
     res.driver_name = ride.driver.name
+    # Con el viaje aceptado, cada uno ve el teléfono del otro para poder llamarlo.
+    if ride.status in CONTACT_RIDE_STATUSES:
+        counterpart = ride.driver if current_user.id == ride.passenger_id else ride.passenger
+        res.counterpart_phone = counterpart.phone if counterpart else None
     if current_user.id == ride.passenger_id and ride.status in {"aceptado", "en_camino", "en_curso"}:
         profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
         if profile:
@@ -1333,6 +1341,13 @@ async def update_ride_status(
         raise HTTPException(status_code=403, detail="Solo el conductor asignado puede actualizar este estado.")
     if update.status == "cancelado" and current_user.id not in {ride.passenger_id, ride.driver_id}:
         raise HTTPException(status_code=403, detail="Solo los participantes pueden cancelar este viaje.")
+    # Con el pasajero a bordo, solo el conductor puede cancelar: así nadie viaja y
+    # luego cancela para recuperar los diamantes retenidos.
+    if update.status == "cancelado" and ride.status == "en_curso" and current_user.id != ride.driver_id:
+        raise HTTPException(
+            status_code=400,
+            detail="El viaje ya empezó. Si hay un problema, pídele al conductor que lo cancele.",
+        )
 
     transitions = {
         "solicitado": {"aceptado", "rechazado", "cancelado"},

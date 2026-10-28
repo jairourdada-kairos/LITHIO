@@ -6,6 +6,7 @@
  * teléfono y contraseña.
  */
 
+import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { theme, themed } from '../constants/theme';
@@ -67,6 +68,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
         [{ text: '¡Genial!', onPress: () => onSuccess(user) }]
       );
     } catch (e: any) {
+      if (isEmailVerificationPending(e)) return;
       Alert.alert('Error al registrarse', e.message || 'Inténtalo de nuevo.');
     } finally {
       setLoading(false);

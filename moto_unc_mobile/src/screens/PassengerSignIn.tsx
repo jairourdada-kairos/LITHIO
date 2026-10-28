@@ -5,6 +5,7 @@
  * Navega a PassengerSignUp si el usuario no tiene cuenta.
  */
 
+import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { theme, themed } from '../constants/theme';
@@ -59,6 +60,7 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSo
         );
       }
     } catch (error) {
+      if (isEmailVerificationPending(error)) return;
       Alert.alert('Error al iniciar sesión', error instanceof Error ? error.message : 'Verifica tus credenciales y conexión.');
     } finally {
       setLoading(false);

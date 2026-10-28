@@ -189,7 +189,11 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const cancelRide = () => {
     const ride = rides.activeRide;
     if (!ride) return;
-    Alert.alert('Cancelar viaje', '¿Seguro que quieres cancelar esta solicitud?', [
+    const message =
+      ride.status === 'solicitado'
+        ? '¿Seguro que quieres cancelar esta solicitud?'
+        : `¿Seguro que quieres cancelar el viaje? ${ride.driver_name || 'El conductor'} recibirá un aviso${ride.payment_method === 'diamantes' ? ' y te devolvemos los diamantes' : ''}.`;
+    Alert.alert('Cancelar viaje', message, [
       { text: 'No', style: 'cancel' },
       {
         text: 'Sí, cancelar',

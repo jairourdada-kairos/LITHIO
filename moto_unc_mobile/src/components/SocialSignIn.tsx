@@ -5,6 +5,7 @@
  * registro con su correo y nombre ya escritos (onNeedsProfile).
  */
 
+import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { Icon } from './ui/Icon';
@@ -44,6 +45,7 @@ export const SocialSignIn: React.FC<Props> = ({ onUser, onNeedsProfile, dividerL
       if ('user' in result) onUser(result.user);
       else if ('prefill' in result) onNeedsProfile(result.prefill);
     } catch (error) {
+      if (isEmailVerificationPending(error)) return;
       Alert.alert('No se pudo entrar', error instanceof Error ? error.message : 'Inténtalo de nuevo.');
     } finally {
       setBusy(null);

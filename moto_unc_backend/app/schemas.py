@@ -44,7 +44,7 @@ class RegistrationFields(BaseModel):
     @field_validator("email")
     @classmethod
     def _email(cls, value: str) -> str:
-        return value.lower()
+        return validation.require_allowed_email(value.lower())
 
     @field_validator("career")
     @classmethod
@@ -292,6 +292,8 @@ class RideResponse(BaseModel):
     driver_bank_account_number: Optional[str] = None
     driver_binance_address: Optional[str] = None
     has_receipt: bool = False
+    # Teléfono del otro participante; solo con el viaje aceptado y para el viaje activo.
+    counterpart_phone: Optional[str] = None
 
 # --- RESEÑAS & GAMIFICACIÓN ---
 class ReviewCreate(BaseModel):

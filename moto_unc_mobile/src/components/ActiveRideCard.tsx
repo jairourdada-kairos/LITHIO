@@ -1,6 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
 import { theme, themed } from '../constants/theme';
+import { Icon } from './ui/Icon';
+import { PressableScale } from './brand/PressableScale';
 import { Ride, RideStatus, UserRole } from '../types';
 import { formatBs, useBcvRate } from '../services/rates';
 
@@ -78,6 +80,20 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
 
   const details = getStatusDetails();
 
+  // Llamar: la app Teléfono se abre con el número ya escrito; solo falta tocar "Llamar".
+  const counterpartName = (isDriver ? ride.passenger_name : ride.driver_name) || (isDriver ? 'el pasajero' : 'el conductor');
+  const phone = ride.counterpart_phone;
+  const canCall = Boolean(phone) && ['aceptado', 'en_camino', 'en_curso'].includes(ride.status);
+  const callCounterpart = () => {
+    if (!phone) return;
+    void Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`).catch(() => undefined);
+  };
+
+  // Cancelar: los dos antes de empezar; con el pasajero a bordo, solo el conductor.
+  const canCancel = isDriver
+    ? ['aceptado', 'en_camino', 'en_curso'].includes(ride.status)
+    : ['solicitado', 'aceptado', 'en_camino'].includes(ride.status);
+
   return (
     <View style={styles.container}>
       {/* Banner de Estado */}
@@ -145,6 +161,28 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
         )}
 
+        {canCall ? (
+          <View style={styles.contactBox}>
+            <PressableScale
+              variant="glass"
+              accent={isDriver ? theme.colors.secondary : theme.colors.primary}
+              style={styles.callBtn}
+              onPress={callCounterpart}
+              accessibilityLabel={`Llamar a ${counterpartName}`}
+              accessibilityHint="Abre la app Teléfono con el número listo para llamar"
+            >
+              <View style={[styles.callIcon, { backgroundColor: isDriver ? theme.colors.secondary : theme.colors.primary }]}>
+                <Icon name="phone-outline" size={20} color={theme.colors.bgDark} />
+              </View>
+              <View style={styles.callText}>
+                <Text style={styles.callTitle} numberOfLines={1}>Llamar a {counterpartName.split(' ')[0]}</Text>
+                <Text style={styles.callHint} numberOfLines={1}>{phone}</Text>
+              </View>
+              <Icon name="chevron-right-outline" size={20} color={theme.colors.textMuted} />
+            </PressableScale>
+          </View>
+        ) : null}
+
         {/* Acciones para el Conductor */}
         {isDriver ? (
           <View style={styles.actionsBox}>
@@ -199,6 +237,12 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 </Text>
               </View>
             )}
+
+            {canCancel && (
+              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
+                <Text style={styles.btnTextRed}>✕ Cancelar viaje</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           /* Acciones para el Pasajero */
@@ -210,16 +254,13 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
               >
                 <Text style={styles.btnTextDark}>⭐ Calificar y ganar +20 Fe</Text>
               </TouchableOpacity>
-            ) : (
-              ride.status === 'solicitado' && (
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.btnOutline]}
-                  onPress={onCancel}
-                >
-                  <Text style={styles.btnTextRed}>✕ Cancelar Solicitud</Text>
-                </TouchableOpacity>
-              )
-            )}
+            ) : canCancel ? (
+              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
+                <Text style={styles.btnTextRed}>{ride.status === 'solicitado' ? '✕ Cancelar solicitud' : '✕ Cancelar viaje'}</Text>
+              </TouchableOpacity>
+            ) : ride.status === 'en_curso' ? (
+              <Text style={styles.onboardHint}>Ya vas a bordo. Si hay un problema, llama al conductor o pídele que cancele el viaje.</Text>
+            ) : null}
           </View>
         )}
       </View>
@@ -310,6 +351,47 @@ const styles = themed(() => ({
   },
   actionsBox: {
     gap: 8,
+  },
+  contactBox: {
+    marginBottom: 12,
+  },
+  callBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  callIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  callText: {
+    flex: 1,
+    gap: 2,
+  },
+  callTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+  },
+  callHint: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  onboardHint: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
   },
   driverButtonsRow: {
     flexDirection: 'row',

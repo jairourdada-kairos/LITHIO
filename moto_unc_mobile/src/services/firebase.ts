@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { getDeviceSession, notifySessionReplaced } from './deviceSession';
+import { notifyEmailVerificationRequired } from './emailGate';
 import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
@@ -70,5 +71,7 @@ export async function authenticatedFetch(
   const response = await fetch(url, { ...init, headers });
   // Otro dispositivo inició sesión con esta cuenta: este la cierra.
   if (response.status === 401 && response.headers.get('X-Session-Replaced')) notifySessionReplaced();
+  // La cuenta aún no verificó su correo de Gmail: App muestra "Verifica tu correo".
+  if (response.status === 428 && response.headers.get('X-Email-Verification')) notifyEmailVerificationRequired();
   return response;
 }
