@@ -9,6 +9,7 @@
 import React from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { Icon, IconName } from '../../components/ui/Icon';
+import { VersionTag } from '../../components/ui/VersionTag';
 import { theme, themed } from '../../constants/theme';
 import { getPushStatus, openNotificationSettings, pushSupported, registerForPush } from '../../services/notifications';
 import { Avatar } from '../../components/ui/Avatar';
@@ -194,6 +195,7 @@ export const AccountScreen: React.FC<Props> = ({
           ? '¿Quieres conducir? Cierra sesión y entra por "Soy Conductor".'
           : '¿Quieres viajar como pasajero? Cierra sesión y entra por "Soy Pasajero".'}
       </Text>
+      <VersionTag />
     </ScrollView>
   );
 };

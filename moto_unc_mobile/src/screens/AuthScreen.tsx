@@ -12,6 +12,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Icon, IconName } from '../components/ui/Icon';
 import Animated, { Easing, FadeIn, FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VersionTag } from '../components/ui/VersionTag';
 import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from '../components/brand/LithiumAtom';
 import { LatticeBackground } from '../components/brand/LatticeBackground';
@@ -119,6 +120,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
           <Text style={styles.footerNote}>
             Al registrarte aceptas los Términos de Servicio de la comunidad LITHIO
           </Text>
+          <VersionTag />
         </Animated.View>
       </View>
     </ScrollView>

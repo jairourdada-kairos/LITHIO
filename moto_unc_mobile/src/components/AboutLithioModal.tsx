@@ -10,6 +10,7 @@ import React from 'react';
 import { Modal, View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Icon, IconName } from './ui/Icon';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VersionTag } from './ui/VersionTag';
 import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from './brand/LithiumAtom';
 import { LatticeBackground } from './brand/LatticeBackground';
@@ -145,6 +146,8 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               Innovación tecnológica nacida en la universidad, al servicio de quienes la hacen posible.
             </Text>
           </View>
+
+          <VersionTag variant="card" />
 
           <Pressable onPress={onClose} style={styles.doneBtn} accessibilityRole="button">
             <Text style={styles.doneText}>Entendido</Text>
