@@ -12,7 +12,7 @@
 
 # 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
 $ErrorActionPreference = 'Continue'
-Set-Location (Join-Path $PSScriptRoot 'lithio_mobile')
+Set-Location (Join-Path (Split-Path -Parent $PSScriptRoot) 'lithio_mobile')
 
 $message = Read-Host 'Que cambio en esta actualizacion? (ej. "Nuevo diseno de la billetera")'
 if (-not $message) { $message = 'Mejoras de LITHIO' }

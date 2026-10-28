@@ -6,7 +6,7 @@
 
 import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
-import { Text, StyleSheet, Alert, Pressable } from 'react-native';
+import { Text, Alert, Pressable } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { signInWithEmail } from '../services/auth';
 import { AuthUser } from '../services/auth';

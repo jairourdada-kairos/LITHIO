@@ -3,7 +3,6 @@ from .models import User, DriverProfile, Ride, Review, Route, WorkshopReward, ph
 from .links_service import RIDE_FE, assign_friend_code, award_fe
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
-from datetime import datetime
 
 ROUTE_CATALOG = [
     {

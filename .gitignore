@@ -42,3 +42,4 @@ lithio_backend/evidence/
 
 # Firebase para Android (se envía a EAS como variable de archivo)
 lithio_mobile/google-services.json
+lithio_backend/.ruff_cache/

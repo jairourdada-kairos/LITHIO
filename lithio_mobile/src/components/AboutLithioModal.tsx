@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Modal, View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Modal, View, Text, ScrollView, Pressable } from 'react-native';
 import { Icon, IconName } from './ui/Icon';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VersionTag } from './ui/VersionTag';

@@ -1,7 +1,7 @@
 """Billetera de diamantes: saldo, recargas, envíos a enlaces, donaciones al
 Fondo Solidario, retiros y canjes del taller aliado para conductores."""
 from ..rate_limit import rate_limit
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,7 +13,7 @@ from ..auth import get_current_user, require_admin
 from ..database import get_db
 from ..drivers import require_approved_driver
 from ..links_service import are_linked
-from ..models import DriverProfile, User, WalletTransaction, WorkshopReward
+from ..models import User, WalletTransaction, WorkshopReward
 from ..realtime import manager
 from .. import push_service
 

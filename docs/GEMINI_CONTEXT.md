@@ -32,7 +32,7 @@ El producto incluye tres piezas:
 │   │   └── seed.py             # Migración ligera y datos iniciales
 │   ├── tests/test_api.py       # Pruebas de API, permisos, viajes y gamificación
 │   ├── requirements.txt
-│   └── firebase-config.example
+│   └── .env.example
 ├── lithio_dashboard/         # Panel administrativo web (HTML/CSS/JS)
 ├── lithio_mobile/            # Aplicación React Native / Expo
 │   ├── App.tsx                 # Composición de pantallas y estado principal
@@ -42,7 +42,8 @@ El producto incluye tres piezas:
 │       ├── screens/            # Bienvenida, autenticación, inicio y programación
 │       ├── services/           # API, Firebase Auth y WebSocket
 │       └── types/              # Tipos TypeScript
-├── ORGANIZACION_PROYECTO.md
+├── docs/                       # DESPLIEGUE, ORGANIZACION_PROYECTO y este archivo
+├── scripts/                    # PowerShell que usan los .bat (no se abren directo)
 ├── README.md
 ├── iniciar_servidor.bat        # Servidor en esta PC
 ├── iniciar_app.bat             # Expo (app en el teléfono, misma Wi-Fi)
@@ -131,7 +132,7 @@ El flujo de estados implementado es `solicitado → aceptado → en_camino → e
 - Los datos financieros del conductor se exponen a su propietario en `/api/users/me/financial` y al pasajero solo en el contexto del viaje cuando procede; la lista pública usa un esquema limitado.
 - El panel no muestra contenido de administración hasta validar la sesión Firebase y consultar `/api/admin/me`.
 - CORS usa una lista de orígenes configurada y rechaza `*`.
-- Las credenciales de Firebase Admin deben permanecer fuera del repositorio. Los archivos `firebase-config.example` son plantillas sin credenciales funcionales.
+- Las credenciales de Firebase Admin deben permanecer fuera del repositorio. Los archivos `.env.example` son plantillas sin credenciales funcionales.
 
 ## 7. Panel administrativo
 
@@ -150,7 +151,7 @@ El formulario contiene un campo “Ciudad principal”, pero el endpoint del bac
 - `seed.py` crea las tablas y el catálogo inicial de rutas/recompensas, sincroniza nombres antiguos hacia Fe/LITHIO y añade de forma compatible columnas de Pago Móvil que podrían faltar en una base previa.
 - Hay un perfil de demostración asociado a Jairo y un perfil pasajero de prueba en la lógica de semilla. No se deben tratar estos datos como cuentas de producción ni como credenciales de acceso.
 - Backend: archivo `.env` local con `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `ADMIN_FIREBASE_UIDS`, `FIREBASE_WEB_API_KEY`, `FIREBASE_AUTH_DOMAIN` y `CORS_ALLOWED_ORIGINS`.
-- App: copiar `lithio_mobile/firebase-config.example` a `.env` y completar las variables `EXPO_PUBLIC_FIREBASE_*` y `EXPO_PUBLIC_API_URL`. La URL debe apuntar a una dirección accesible desde el dispositivo, no necesariamente `localhost`.
+- App: copiar `lithio_mobile/.env.example` a `.env` y completar las variables `EXPO_PUBLIC_FIREBASE_*` y `EXPO_PUBLIC_API_URL`. La URL debe apuntar a una dirección accesible desde el dispositivo, no necesariamente `localhost`.
 - Panel: lo sirve el backend en `/dashboard`.
 - Scripts Windows: `iniciar_servidor.bat`, `iniciar_app.bat`, `iniciar_todo.bat`, `iniciar_publico.bat`, `generar_apk.bat`, `publicar_actualizacion.bat` y `desplegar_nube.bat`. También hay instrucciones en `README.md`, `ORGANIZACION_PROYECTO.md` y `DESPLIEGUE.md`.
 - La configuración del paquete móvil indica Expo, Android/iOS/web y mantiene el identificador Android `com.lithio.app`.

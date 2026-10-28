@@ -6,7 +6,6 @@ y solo lo ven el pasajero, el conductor de ese viaje y el administrador.
 import json
 import secrets
 from ..rate_limit import rate_limit
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse

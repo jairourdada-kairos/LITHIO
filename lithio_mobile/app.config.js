@@ -3,12 +3,12 @@
  *
  * google-services.json (Firebase para Android, necesario para las
  * notificaciones push) no se sube a GitHub. En la compilación de EAS llega como
- * variable de tipo archivo GOOGLE_SERVICES_JSON (la crea generar_apk.ps1); en
+ * variable de tipo archivo GOOGLE_SERVICES_JSON (la crea scripts/generar_apk.ps1); en
  * esta PC se usa el archivo de la carpeta del proyecto si existe.
  *
  * Acceso con Google: el plugin lee los datos de google-services.json.
  * Acceso con Facebook: solo se incluye si EXPO_PUBLIC_FACEBOOK_APP_ID y
- * FACEBOOK_CLIENT_TOKEN están definidos (ver DESPLIEGUE.md).
+ * FACEBOOK_CLIENT_TOKEN están definidos (ver docs/DESPLIEGUE.md).
  */
 const fs = require('fs');
 const path = require('path');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
+import { Text, View, TouchableOpacity, Linking } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Icon } from './ui/Icon';
 import { PressableScale } from './brand/PressableScale';

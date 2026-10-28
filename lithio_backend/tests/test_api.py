@@ -16,9 +16,9 @@ from app.auth import FirebaseIdentity
 from app.seed import migrate_plaintext_columns
 from app.database import Base, get_db
 
-User = getattr(models, "User")
-Route = getattr(models, "Route")
-DriverProfile = getattr(models, "DriverProfile")
+User = models.User
+Route = models.Route
+DriverProfile = models.DriverProfile
 
 
 def auth_headers(user_id: int) -> dict[str, str]:

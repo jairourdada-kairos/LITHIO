@@ -1,7 +1,7 @@
 """Foto de perfil y tabla de niveles."""
 import secrets
 from ..rate_limit import rate_limit
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from pathlib import Path
 from typing import Optional
 

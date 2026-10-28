@@ -109,7 +109,7 @@ def answer_today(data: AnswerIn, user: User = Depends(get_current_user), db: Ses
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Ya respondiste la Reacción de hoy. Vuelve mañana.")
+        raise HTTPException(status_code=409, detail="Ya respondiste la Reacción de hoy. Vuelve mañana.") from None
     return {
         "correct": is_correct,
         "correct_index": correct,

@@ -8,7 +8,7 @@
 # que iniciar_todo.bat sigue funcionando igual para uso en tu Wi-Fi.
 
 $ErrorActionPreference = 'Continue'
-$Root = $PSScriptRoot
+$Root = Split-Path -Parent $PSScriptRoot
 $Log = Join-Path $env:TEMP 'lithio-tunel.log'
 
 $cloudflared = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
@@ -61,7 +61,7 @@ Write-Host "Servidor publico: $url" -ForegroundColor Green
 # El APK lee esta direccion desde Firebase al abrirse (cambia en cada arranque).
 Push-Location (Join-Path $Root 'lithio_backend')
 & .\venv\Scripts\python.exe -m app.publish_address $url
-if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: el APK no sabra la direccion nueva hasta configurar Firestore (ver DESPLIEGUE.md).' -ForegroundColor Yellow }
+if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: el APK no sabra la direccion nueva hasta configurar Firestore (ver docs/DESPLIEGUE.md).' -ForegroundColor Yellow }
 Pop-Location
 
 # La app tambien sale por Cloudflare (https). El tunel de Expo fallaba: se caia

@@ -7,7 +7,7 @@
  *
  * - Web: ventana de Google/Facebook de Firebase (signInWithPopup).
  * - APK: SDK nativo de Google / Facebook. Requieren compilar el APK con las
- *   claves (ver DESPLIEGUE.md); en Expo Go no existen.
+ *   claves (ver docs/DESPLIEGUE.md); en Expo Go no existen.
  */
 
 import { Platform } from 'react-native';

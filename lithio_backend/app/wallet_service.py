@@ -7,7 +7,6 @@
 - Cada cambio de saldo queda registrado en WalletTransaction en la misma
   transacción de base de datos.
 """
-from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException

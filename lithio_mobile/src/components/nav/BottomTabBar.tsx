@@ -8,7 +8,6 @@
  * debajo. Cada pestaña reacciona al puntero, al toque y al foco del teclado.
  */
 
-import React from 'react';
 import { View, Text } from 'react-native';
 import { filledIcon, Icon, IconName } from '../ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

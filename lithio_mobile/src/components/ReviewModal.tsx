@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View, Modal, TouchableOpacity, TextInput } from 'react-native';
+import { Alert, Text, View, Modal, TouchableOpacity, TextInput } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { ReviewSubmission } from '../types';
 

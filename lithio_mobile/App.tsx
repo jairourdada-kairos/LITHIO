@@ -1,6 +1,6 @@
 import { FeedbackHost, installAlertBridge } from './src/components/ui/Feedback';
-import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View, Alert, StatusBar, AppState, Linking } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Alert, StatusBar, AppState, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {

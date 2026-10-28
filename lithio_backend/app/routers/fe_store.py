@@ -5,7 +5,6 @@ así que canjear nunca hace perder nivel.
 """
 import secrets
 from ..rate_limit import rate_limit
-from datetime import datetime
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile

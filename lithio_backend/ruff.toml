@@ -1,0 +1,11 @@
+# Revisión de código: .\venv\Scripts\python.exe -m ruff check app tests
+target-version = "py312"
+
+[lint]
+select = ["F", "B", "E9", "PLE"]
+# B008: Depends()/File() en los argumentos es la forma normal de FastAPI.
+ignore = ["B008"]
+
+[lint.per-file-ignores]
+# El fixture `client` se importa de test_api y pytest lo inyecta por nombre.
+"tests/*" = ["F811"]

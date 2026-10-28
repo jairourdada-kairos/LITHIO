@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Modal, TouchableOpacity, TextInput, ScrollView, Image } from 'react-native';
+import { Text, View, Modal, TouchableOpacity, TextInput, ScrollView, Image } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
 import { apiService, FeCoupon } from '../services/api';
@@ -17,7 +17,6 @@ interface RequestRideModalProps {
   fareAmount: number;
   isScheduled: boolean;
   scheduledTime: string;
-  userPoints: number;
   onClose: () => void;
   onConfirm: (paymentMethod: PaymentMethod, reference?: string, couponId?: number, receiptUri?: string) => void;
 }
@@ -30,7 +29,6 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   fareAmount,
   isScheduled,
   scheduledTime,
-  userPoints,
   onClose,
   onConfirm,
 }) => {

@@ -8,7 +8,7 @@
 
 import { isEmailVerificationPending } from '../services/emailGate';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { signUpPassenger, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';

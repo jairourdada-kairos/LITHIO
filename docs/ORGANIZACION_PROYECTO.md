@@ -4,13 +4,13 @@ El producto se denomina **LITHIO**: **Linked Intelligent Transport for Higher In
 
 Este repositorio queda organizado para trabajar en 3 piezas principales:
 
-- Backend: [lithio_backend](lithio_backend)
-- Dashboard web: [lithio_dashboard](lithio_dashboard)
-- App móvil: [lithio_mobile](lithio_mobile)
+- Backend: [lithio_backend](../lithio_backend)
+- Dashboard web: [lithio_dashboard](../lithio_dashboard)
+- App móvil: [lithio_mobile](../lithio_mobile)
 
 ## Backend principal
 
-Usar [lithio_backend](lithio_backend) como fuente oficial de la API.
+Usar [lithio_backend](../lithio_backend) como fuente oficial de la API.
 
 Para arrancarlo: doble clic en `iniciar_servidor.bat`, o desde PowerShell:
 
@@ -25,12 +25,12 @@ Documentación:
 
 ## Dashboard
 
-El dashboard web queda en [lithio_dashboard](lithio_dashboard) y lo sirve el
+El dashboard web queda en [lithio_dashboard](../lithio_dashboard) y lo sirve el
 propio servidor en http://localhost:8000/dashboard (no hace falta arrancarlo aparte).
 
 ## App móvil
 
-La app móvil queda en [lithio_mobile](lithio_mobile). Para probarla con Expo Go
+La app móvil queda en [lithio_mobile](../lithio_mobile). Para probarla con Expo Go
 en la misma Wi-Fi: doble clic en `iniciar_app.bat` (o `iniciar_todo.bat` para
 servidor + app). Para los APK fuera de la Wi-Fi: `iniciar_publico.bat`.
 APK nuevo, actualizaciones y nube: ver [DESPLIEGUE.md](DESPLIEGUE.md).
@@ -39,10 +39,10 @@ APK nuevo, actualizaciones y nube: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 
 Para empezar a practicar y desarrollar la aplicación, usar esta base:
 
-1. Backend en [lithio_backend](lithio_backend)
-2. Dashboard en [lithio_dashboard](lithio_dashboard)
-3. App móvil en [lithio_mobile](lithio_mobile)
-4. Repositorio limpio con [ .gitignore ](.gitignore)
+1. Backend en [lithio_backend](../lithio_backend)
+2. Dashboard en [lithio_dashboard](../lithio_dashboard)
+3. App móvil en [lithio_mobile](../lithio_mobile)
+4. Repositorio limpio con [.gitignore](../.gitignore)
 
 ## Tareas rápidas
 

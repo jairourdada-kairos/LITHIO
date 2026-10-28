@@ -2,7 +2,6 @@ import re
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, CheckConstraint, Date, UniqueConstraint, event
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from .crypto import EncryptedString, blind_index
 from .validation import normalize_phone
 from .database import Base

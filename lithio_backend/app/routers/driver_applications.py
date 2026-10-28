@@ -1,6 +1,5 @@
 """Postulación de conductores: el conductor sigue su estado y el
 administrador revisa datos, cita la inspección de la moto y da la luz verde."""
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Text, StyleSheet, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
+import { Text, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
 import { theme, themed } from '../../constants/theme';
 import { PressableScale } from './PressableScale';
 

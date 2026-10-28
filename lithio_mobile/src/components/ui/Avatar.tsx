@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image } from 'react-native';
 import { theme, themed } from '../../constants/theme';
 import { resolveMediaUrl } from '../../services/avatar';
 

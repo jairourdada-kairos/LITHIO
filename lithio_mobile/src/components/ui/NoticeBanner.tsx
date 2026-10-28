@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { Text, StyleSheet, Pressable, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
 import { Icon } from './Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

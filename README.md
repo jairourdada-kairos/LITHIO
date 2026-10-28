@@ -13,7 +13,7 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 2. **Selección Directa de Conductores:** El estudiante visualiza su ruta y selecciona con un toque a su conductor preferido o conocido (con datos de su moto, placa, reputación y disponibilidad).
 3. **Doble Rol Integrado (Pasajero y Conductor):** En la misma app, el usuario puede alternar con un toque entre pedir una carrera o recibir solicitudes entrantes en su apartado de **Conductor**.
 4. **Recompensas Fe:** Acumulación de 15 Fe por viaje completado (pasajero y conductor) y 5 Fe por reseña útil. Tienda para canjear descuentos y beneficios de viaje.
-5. **Métodos de Pago:** Efectivo y Pago Móvil entre pasajero y conductor. Los Diamantes, recargas y transferencias están pendientes de autenticación y proveedores de pago seguros.
+5. **Métodos de Pago:** Efectivo, Pago Móvil y Diamantes (◆, desde 0.50). La billetera tiene recargas, envíos, donaciones y retiros que revisa el administrador.
 6. **Cobertura Estratégica:** Rectorado y Campus UNC, IVIC, San Antonio de los Altos, Los Teques y bajada por la Panamericana a Caracas (Plaza Venezuela / La Hoyada).
 
 ---
@@ -33,28 +33,37 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 
 ```text
 hopeful-galileo/
-├── .vscode/
-│   └── tasks.json             # Tareas para correr backend, app y tests en 1 clic
-├── lithio_backend/          # Servidor FastAPI
+├── *.bat                      # Doble clic: iniciar_servidor, iniciar_app, iniciar_todo,
+│                              # iniciar_publico, generar_apk, publicar_actualizacion, desplegar_nube
+├── scripts/                   # PowerShell que usan esos .bat
+├── docs/                      # DESPLIEGUE (nube, APK, Google, Facebook, WhatsApp),
+│                              # ORGANIZACION_PROYECTO y GEMINI_CONTEXT
+├── Dockerfile, railway.json   # Servidor en la nube (Railway)
+├── lithio_backend/            # Servidor FastAPI
 │   ├── app/
-│   │   ├── database.py        # Configuración SQLAlchemy SQLite
-│   │   ├── models.py          # Modelos (usuarios, viajes, billetera, Fe, enlaces…)
-│   │   ├── schemas.py         # Validación Pydantic v2 (ConfigDict)
-│   │   ├── seed.py            # Semilla con perfil de Jairo y rutas iniciales
-│   │   └── main.py            # Endpoints REST y WebSockets
-│   ├── tests/
-│   │   └── test_api.py        # Pruebas automatizadas (pytest)
-│   ├── requirements.txt
-│   └── venv/
-└── lithio_mobile/           # App Móvil Expo
+│   │   ├── main.py            # Viajes, registro, conductores, reseñas y WebSocket
+│   │   ├── routers/           # Billetera, perfil, Fe, enlaces, Reacción, páginas legales…
+│   │   ├── legal/             # /privacidad y /eliminar-cuenta
+│   │   ├── models.py          # Tablas SQLAlchemy
+│   │   ├── schemas.py         # Validación Pydantic v2
+│   │   └── seed.py            # Columnas nuevas y datos iniciales al arrancar
+│   ├── tests/                 # Pruebas automatizadas (pytest)
+│   ├── requirements.txt       # Versiones exactas (nube y PC)
+│   └── requirements-dev.txt   # + pytest, httpx y ruff (solo desarrollo)
+├── lithio_dashboard/          # Panel del administrador (lo sirve el backend en /dashboard)
+└── lithio_mobile/             # App Expo (Android y web)
+    ├── App.tsx                # Sesión, verificación de correo y rol
     ├── src/
-    │   ├── components/        # Header, RoutePicker, DriverCard, ActiveRideCard, etc.
-    │   ├── constants/         # Tema visual (Liquid Glass)
-    │   ├── services/          # Cliente API híbrido con respaldo offline
-    │   └── types/             # Tipado TypeScript
-    ├── App.tsx                # Pantalla principal con selector de roles
-    └── package.json
+    │   ├── shells/            # App del pasajero y del conductor
+    │   ├── screens/           # Pantallas
+    │   ├── components/        # Componentes (viaje, billetera, Liquid Glass…)
+    │   ├── services/          # API, Firebase, sesión, notificaciones, actualizaciones
+    │   └── constants/         # Tema visual
+    └── scripts/               # Generador de íconos
 ```
+
+Guías: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) (nube, APK, actualizaciones, Google,
+Facebook y WhatsApp) y [docs/ORGANIZACION_PROYECTO.md](docs/ORGANIZACION_PROYECTO.md).
 
 ---
 
@@ -73,8 +82,7 @@ hopeful-galileo/
 #### Terminal 1: Backend
 ```powershell
 cd lithio_backend
-.\venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 > La documentación Swagger interactiva estará disponible en: **http://127.0.0.1:8000/docs**
 
@@ -95,8 +103,12 @@ Para validar que todos los flujos de negocio (solicitud, aceptación, cambio de 
 
 ```powershell
 cd lithio_backend
-$env:PYTHONPATH="."
-.\venv\Scripts\pytest tests/test_api.py -v
+.\venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # solo la primera vez
+.\venv\Scripts\python.exe -m pytest -q          # todas las pruebas
+.\venv\Scripts\python.exe -m ruff check app tests   # revisión de código
+
+cd ..\lithio_mobile
+npm run typecheck                                # tipos y código sin uso de la app
 ```
 El conjunto verifica autenticación, permisos de administrador, privacidad de perfiles, viajes, Fe y niveles, billetera y WebSockets.
 
@@ -105,7 +117,7 @@ El conjunto verifica autenticación, permisos de administrador, privacidad de pe
 El backend verifica Firebase ID tokens en las rutas privadas. Para configurarlo:
 
 1. Crea una app web en Firebase y habilita el proveedor **Correo/contraseña**.
-2. Copia `lithio_mobile/firebase-config.example` a `lithio_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
+2. Copia `lithio_mobile/.env.example` a `lithio_mobile/.env` y completa la configuración web de Firebase y `EXPO_PUBLIC_API_URL`.
 3. Configura `lithio_backend/.env` con el ID del proyecto, la clave web pública de Firebase (`FIREBASE_WEB_API_KEY`), el dominio de autenticación y la ruta local a un archivo de cuenta de servicio. No guardes ni compartas el archivo de cuenta de servicio; mantenlo fuera del repositorio.
 4. Para autorizar administradores, coloca sus Firebase UIDs en `ADMIN_FIREBASE_UIDS` (separados por comas) o asigna el rol `admin` directamente en la base de datos con acceso administrativo seguro.
 5. Configura `CORS_ALLOWED_ORIGINS` con los orígenes web que usarás, separados por comas. El dashboard lo sirve el backend en `/dashboard` y no requiere un origen adicional.

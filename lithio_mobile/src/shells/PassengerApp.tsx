@@ -77,7 +77,6 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const rides = useRideCenter(user.id, 'pasajero');
-  const points = summary?.points ?? user.points;
 
   const loadSummary = useCallback(() => {
     apiService.getSummary('pasajero').then(setSummary).catch(() => {});
@@ -393,7 +392,6 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           fareAmount={pending?.selection.route.fare_usd || 0}
           isScheduled={Boolean(pending?.selection.isScheduled)}
           scheduledTime={pending?.selection.scheduledTime || ''}
-          userPoints={points}
           onClose={() => setPending(null)}
           onConfirm={confirmRide}
         />

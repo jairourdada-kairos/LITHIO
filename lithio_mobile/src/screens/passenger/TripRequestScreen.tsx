@@ -12,7 +12,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Animated, { ReduceMotion, SlideInLeft, SlideInRight } from 'react-native-reanimated';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';

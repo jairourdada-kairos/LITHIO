@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from typing import List, Dict, Set
+from sqlalchemy.orm import Session, contains_eager, joinedload
+from typing import List
 import hashlib
 import hmac
 import json
@@ -17,7 +17,7 @@ import os
 import re
 import urllib.request
 import urllib.error
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from . import crypto
 from .database import engine, get_db, Base, SessionLocal
@@ -206,7 +206,7 @@ async def receive_whatsapp_webhook(request: Request):
     try:
         payload = json.loads(raw_body)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Cuerpo no válido")
+        raise HTTPException(status_code=400, detail="Cuerpo no válido") from None
     print("WhatsApp webhook recibido:", payload.get("object", "unknown"))
     return {"received": True}
 
@@ -357,7 +357,7 @@ def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
     except Exception:
-        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+        raise HTTPException(status_code=503, detail="Base de datos no disponible") from None
     return {"status": "ok", "environment": config.APP_ENV}
 
 
@@ -766,7 +766,7 @@ def commit_registration(db: Session, user: User) -> User:
     except IntegrityError:
         # Dos registros simultáneos con la misma cédula o correo.
         db.rollback()
-        raise HTTPException(status_code=409, detail="Ya existe una cuenta con esa cédula o correo.")
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con esa cédula o correo.") from None
     db.refresh(user)
     return user
 
@@ -908,7 +908,14 @@ def register_driver(
 @app.get("/api/drivers", response_model=List[DriverCardItem])
 def list_drivers(db: Session = Depends(get_db)):
     """Retorna el listado de conductores con su estado, moto y nivel"""
-    drivers = db.query(DriverProfile).join(User).filter(DriverProfile.verification_status == "aprobado").all()
+    # Una sola consulta: el usuario de cada conductor llega con el mismo JOIN.
+    drivers = (
+        db.query(DriverProfile)
+        .join(User)
+        .options(contains_eager(DriverProfile.user))
+        .filter(DriverProfile.verification_status == "aprobado")
+        .all()
+    )
     busy_driver_ids = {
         driver_id
         for (driver_id,) in db.query(Ride.driver_id).filter(Ride.status.in_(BUSY_RIDE_STATUSES)).distinct()
@@ -1010,7 +1017,7 @@ async def request_ride(
         try:
             scheduled_at = datetime.strptime(ride_data.scheduled_time or "", "%Y-%m-%d %H:%M")
         except ValueError:
-            raise HTTPException(status_code=400, detail="La hora programada debe tener el formato AAAA-MM-DD HH:MM.")
+            raise HTTPException(status_code=400, detail="La hora programada debe tener el formato AAAA-MM-DD HH:MM.") from None
         now_in_venezuela = datetime.now(VENEZUELA_TZ).replace(tzinfo=None)
         if scheduled_at <= now_in_venezuela:
             raise HTTPException(status_code=400, detail="La hora programada ya pasó. Elige una fecha y hora futuras.")
@@ -1165,7 +1172,11 @@ def list_my_rides(
     scope=scheduled: programados que siguen pendientes.
     role=pasajero|conductor limita a los viajes de la sesión actual.
     """
-    query = db.query(Ride).filter(participant_filter(current_user.id, role))
+    query = (
+        db.query(Ride)
+        .options(joinedload(Ride.passenger), joinedload(Ride.driver))
+        .filter(participant_filter(current_user.id, role))
+    )
     if scope == "history":
         query = query.filter(Ride.status.in_(["completado", "cancelado", "rechazado"]))
     elif scope == "scheduled":

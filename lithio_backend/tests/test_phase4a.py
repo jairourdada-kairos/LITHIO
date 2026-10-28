@@ -1,6 +1,5 @@
 """Fase 4A: postulación de conductores, billetera de diamantes, enlaces,
 niveles por elemento y Reacción del día."""
-import pytest
 from sqlalchemy import text
 
 from app.links_service import level_for, threshold_for

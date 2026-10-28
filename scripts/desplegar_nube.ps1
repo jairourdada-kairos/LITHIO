@@ -1,6 +1,6 @@
 # Despliega el backend de LITHIO en Railway (servidor 24/7, sin depender de esta PC).
 #
-# Uso: doble clic en desplegar_nube.bat  (o: powershell -ExecutionPolicy Bypass -File desplegar_nube.ps1)
+# Uso: doble clic en desplegar_nube.bat  (o: powershell -ExecutionPolicy Bypass -File scripts\desplegar_nube.ps1)
 #
 # Lo unico manual es iniciar sesion en Railway en el navegador. Los secretos
 # (claves de cifrado y cuenta de servicio de Firebase) se leen de esta PC y se
@@ -10,7 +10,7 @@
 # 'Continue': en PowerShell 5.1, con 'Stop' cualquier aviso que un programa
 # escribe en stderr detiene el script. Los fallos se detectan con $LASTEXITCODE.
 $ErrorActionPreference = 'Continue'
-$Root = $PSScriptRoot
+$Root = Split-Path -Parent $PSScriptRoot
 $Backend = Join-Path $Root 'lithio_backend'
 $Mobile = Join-Path $Root 'lithio_mobile'
 $Service = 'lithio-api'

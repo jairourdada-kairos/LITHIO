@@ -3,11 +3,11 @@
 # Uso: doble clic en generar_apk.bat.
 # La compilacion se hace en los servidores de Expo (EAS), no en esta PC.
 # El APK no lleva una direccion fija: al abrirse lee de Firebase la direccion
-# que publica iniciar_publico.bat (ver DESPLIEGUE.md, seccion APK).
+# que publica iniciar_publico.bat (ver docs/DESPLIEGUE.md, seccion APK).
 
 # 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
 $ErrorActionPreference = 'Continue'
-$Mobile = Join-Path $PSScriptRoot 'lithio_mobile'
+$Mobile = Join-Path (Split-Path -Parent $PSScriptRoot) 'lithio_mobile'
 Set-Location $Mobile
 
 # Parametro con nombre: con @args, el envoltorio npx.ps1 pierde los argumentos.
@@ -19,7 +19,7 @@ function Eas {
 
 if (-not (Test-Path 'google-services.json')) {
   Write-Host 'ERROR: falta lithio_mobile\google-services.json (Firebase para Android).' -ForegroundColor Red
-  Write-Host 'Descargalo desde la consola de Firebase: ver DESPLIEGUE.md, seccion APK, paso 1.'
+  Write-Host 'Descargalo desde la consola de Firebase: ver docs/DESPLIEGUE.md, seccion APK, paso 1.'
   exit 1
 }
 

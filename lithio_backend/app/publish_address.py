@@ -4,10 +4,10 @@ La dirección del túnel de Cloudflare cambia cada vez que se abre el modo
 público. El APK de LITHIO la lee de config/server al abrirse, así que sigue
 funcionando sin una dirección fija ni un servidor pagado.
 
-Uso (lo hace iniciar_publico.ps1): python -m app.publish_address https://xxxx.trycloudflare.com
+Uso (lo hace scripts/iniciar_publico.ps1): python -m app.publish_address https://xxxx.trycloudflare.com
 
 Requisitos en la consola de Firebase: base de datos Firestore creada y una
-regla que permita leer config/server (ver DESPLIEGUE.md).
+regla que permita leer config/server (ver docs/DESPLIEGUE.md).
 """
 import json
 import os
