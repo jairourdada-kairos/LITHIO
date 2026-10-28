@@ -4,7 +4,7 @@
  * Para pasajero y conductor: ruta, fecha, línea de tiempo de estados, monto
  * (USD y Bs, con cupón si hubo), método y referencia de pago, comprobante,
  * calificación y la otra persona del viaje. El pasajero de un viaje pagado
- * por Pago Móvil puede adjuntar o cambiar la captura del comprobante.
+ * por Pago Móvil, o su conductor, pueden adjuntar o cambiar la captura del comprobante.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -75,7 +75,8 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
     try {
       await apiService.uploadRideReceipt(rideId, await photoFormValue(uri, 'comprobante.jpg'));
       await load();
-      Alert.alert('Comprobante guardado', 'Quedó adjunto a este viaje y el conductor puede verlo.');
+      const other = ride?.viewer_role === 'conductor' ? 'el pasajero' : 'el conductor';
+      Alert.alert('Comprobante guardado', `Quedó adjunto a este viaje; ${other} y el administrador pueden verlo.`);
     } catch (error) {
       Alert.alert('No se pudo guardar el comprobante', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
@@ -154,7 +155,9 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
               </>
             ) : (
               <Text style={styles.muted}>
-                {ride.viewer_role === 'conductor' ? 'El pasajero aún no adjuntó el comprobante.' : 'Aún no adjuntaste la captura del pago.'}
+                {ride.viewer_role === 'conductor'
+                  ? 'Aún no hay captura. Si el pasajero te la mandó por otro lado, adjúntala tú.'
+                  : 'Aún no adjuntaste la captura del pago.'}
               </Text>
             )}
             {ride.can_upload_receipt ? (

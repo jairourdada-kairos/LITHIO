@@ -10,7 +10,7 @@
  *   claves (ver docs/DESPLIEGUE.md); en Expo Go no existen.
  */
 
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import * as Application from 'expo-application';
 import {
   AuthCredential,
@@ -49,8 +49,12 @@ export function socialUnavailableReason(provider: SocialProvider): string | null
     // En el iPhone, la web agregada a la pantalla de inicio no puede abrir la
     // ventana de Google/Facebook (Safari la abre aparte y no vuelve a la app).
     const standaloneIos = typeof navigator !== 'undefined' && (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    return standaloneIos
-      ? `En la app agregada a tu pantalla de inicio no se puede entrar con ${PROVIDER_LABEL[provider]}. Entra con tu correo, o abre LITHIO en Safari.`
+    if (standaloneIos) {
+      return `En la app agregada a tu pantalla de inicio no se puede entrar con ${PROVIDER_LABEL[provider]}. Entra con tu correo, o abre LITHIO en Safari.`;
+    }
+    // Facebook se activa con configurar_facebook.bat, que también escribe este identificador.
+    return provider === 'facebook' && !FACEBOOK_APP_ID
+      ? 'Muy pronto podrás entrar con Facebook. Por ahora usa tu correo electrónico.'
       : null;
   }
   if (!isInstalledApp) {
@@ -60,6 +64,10 @@ export function socialUnavailableReason(provider: SocialProvider): string | null
     return `Para entrar con ${PROVIDER_LABEL[provider]} instala la versión nueva de LITHIO.`;
   }
   const configured = provider === 'google' ? GOOGLE_WEB_CLIENT_ID : FACEBOOK_APP_ID;
+  // El identificador puede llegar por actualización a un APK compilado sin el SDK de Facebook.
+  if (provider === 'facebook' && configured && !NativeModules.FBLoginManager) {
+    return 'Para entrar con Facebook instala la versión nueva de LITHIO.';
+  }
   return configured ? null : `Muy pronto podrás entrar con ${PROVIDER_LABEL[provider]}. Por ahora usa tu correo electrónico.`;
 }
 

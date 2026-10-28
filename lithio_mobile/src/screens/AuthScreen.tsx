@@ -243,7 +243,7 @@ const styles = themed(() => ({
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     padding: 16,
     marginBottom: 12,
     borderRadius: theme.radius.lg,
@@ -269,11 +269,14 @@ const styles = themed(() => ({
     marginBottom: 3,
   },
   roleTitle: {
+    flexShrink: 1,
     fontFamily: theme.fonts.bold,
     fontSize: 17,
     color: theme.colors.textPrimary,
   },
   particle: {
+    // No se encoge: en pantallas de 320 px quedaba en vertical ("e" sobre "⁻").
+    flexShrink: 0,
     fontFamily: theme.fonts.monoBold,
     fontSize: 11,
     borderWidth: 1,

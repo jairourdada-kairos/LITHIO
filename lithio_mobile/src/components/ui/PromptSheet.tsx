@@ -90,7 +90,8 @@ const styles = themed(() => ({
     gap: 8,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceSolid,
+    boxShadow: theme.glass.floating,
   },
   handle: {
     alignSelf: 'center',

@@ -76,16 +76,17 @@ const styles = themed(() => ({
     gap: 12,
     padding: 14,
     borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    backgroundColor: 'rgba(27, 41, 43, 0.98)',
-    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+    borderWidth: 1.5,
+    // 100 % opaco y con la paleta activa: se lee igual en tema claro y oscuro, sobre cualquier fondo.
+    backgroundColor: theme.colors.surfaceSolid,
+    boxShadow: theme.glass.floating,
   },
   text: {
     flex: 1,
   },
   title: {
     fontFamily: theme.fonts.bold,
-    fontSize: 15,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
   message: {

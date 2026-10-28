@@ -217,7 +217,8 @@ export async function sendPasswordReset(email: string): Promise<void> {
 }
 
 /** Con la cédula o el teléfono: devuelve el correo de la cuenta parcialmente oculto y le envía el enlace. */
-export async function recoverAccount(identity: { cedula: string } | { phone: string }): Promise<string> {
+/** Devuelve los correos (ocultos en parte) a los que se envió el enlace. */
+export async function recoverAccount(identity: { cedula: string } | { phone: string }): Promise<string[]> {
   const response = await fetch(`${API_BASE}/api/auth/recover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -225,5 +226,5 @@ export async function recoverAccount(identity: { cedula: string } | { phone: str
   });
   if (!response.ok) throw new Error(await readError(response));
   const body = await response.json();
-  return body.masked_email;
+  return Array.isArray(body.masked_emails) ? body.masked_emails : [body.masked_email];
 }

@@ -65,7 +65,7 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
       setError('Escribe tu cédula, por ejemplo V-12345678.');
       return;
     } else if (lookup === 'phone' && phone.replace(/\D/g, '').length < 10) {
-      setError('Escribe tu celular, por ejemplo 0412-1234567.');
+      setError('Escribe tu celular, por ejemplo 0412-1234567 o +58 412 1234567.');
       return;
     }
     setLoading(true);
@@ -75,7 +75,11 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
         setDone(`Si ${email.trim()} tiene una cuenta en LITHIO, te llegará un correo con un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.`);
       } else {
         const masked = await recoverAccount(lookup === 'cedula' ? { cedula: cedula.trim() } : { phone: phone.trim() });
-        setDone(`Tu correo de LITHIO es ${masked}. Te enviamos ahí un enlace para crear una contraseña nueva; después entra con ese correo.`);
+        setDone(
+          masked.length > 1
+            ? `Ese teléfono está en ${masked.length} cuentas: ${masked.join(', ')}. Enviamos a cada correo un enlace para crear una contraseña nueva; entra con el tuyo.`
+            : `Tu correo de LITHIO es ${masked[0]}. Te enviamos ahí un enlace para crear una contraseña nueva; después entra con ese correo.`
+        );
       }
     } catch (e) {
       setError(friendlyMessage(e));
@@ -179,7 +183,7 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
                     ) : (
                       <FormField
                         label="Celular de tu cuenta"
-                        placeholder="0412-1234567"
+                        placeholder="0412-1234567 o +58 412 1234567"
                         keyboardType="phone-pad"
                         autoComplete="tel"
                         textContentType="telephoneNumber"

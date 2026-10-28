@@ -3,6 +3,8 @@
  *
  * Sube desde abajo sobre el inicio atenuado, con 25 s para responder. Si el
  * tiempo se acaba la hoja se cierra, pero la solicitud sigue en la bandeja.
+ * Es 100 % opaca (surfaceSolid) con sombra flotante y canto de acento: se lee
+ * igual sobre cualquier pantalla. La tarifa es lo más grande, luego la ruta.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -52,10 +54,17 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
       <Pressable style={styles.scrim} onPress={onDismiss} accessibilityLabel="Cerrar solicitud" />
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
         <View style={styles.handle} />
+        {/* Tiempo restante como barra: se entiende de un vistazo. */}
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${(Math.max(seconds, 0) / RESPONSE_SECONDS) * 100}%` }]} />
+        </View>
 
         <View style={styles.headerRow}>
           <View style={styles.flex}>
-            <Text style={styles.kicker}>Nueva solicitud</Text>
+            <View style={styles.kickerRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.kicker}>Nueva solicitud</Text>
+            </View>
             <Text style={styles.muted}>Responde en {Math.max(seconds, 0)} s</Text>
           </View>
           <View style={styles.timer} accessibilityLabel={`${seconds} segundos para responder`}>
@@ -134,26 +143,54 @@ const styles = themed(() => ({
     paddingHorizontal: 20,
     paddingTop: 10,
     gap: 18,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderColor: theme.colors.glassBorder,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surfaceSolid,
+    borderTopWidth: 2,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: theme.colors.secondaryLine,
+    boxShadow: theme.glass.floating,
   },
   handle: {
     alignSelf: 'center',
     width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: theme.colors.cardBorder,
+    backgroundColor: theme.colors.textMuted,
+    opacity: 0.5,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.secondarySoft,
+    marginTop: -4,
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.secondary,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.secondary,
+    boxShadow: theme.glow.secondary,
+  },
   kicker: {
     fontFamily: theme.fonts.bold,
-    fontSize: 17,
+    fontSize: 18,
     color: theme.colors.secondary,
   },
   muted: {
@@ -163,11 +200,12 @@ const styles = themed(() => ({
     marginTop: 2,
   },
   timer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 3,
     borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.secondarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -183,12 +221,15 @@ const styles = themed(() => ({
   },
   passengerName: {
     fontFamily: theme.fonts.bold,
-    fontSize: 17,
+    fontSize: 18,
     color: theme.colors.textPrimary,
   },
   route: {
     flexDirection: 'row',
     gap: 12,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
   },
   stops: {
     alignItems: 'center',
@@ -210,7 +251,7 @@ const styles = themed(() => ({
   },
   place: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 15,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
   fareRow: {
@@ -220,7 +261,7 @@ const styles = themed(() => ({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.secondarySoft,
   },
   paymentTag: {
     flexDirection: 'row',
@@ -234,7 +275,8 @@ const styles = themed(() => ({
   },
   fare: {
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
+    fontSize: 28,
+    letterSpacing: -0.5,
     color: theme.colors.secondary,
   },
   actions: {
@@ -245,28 +287,29 @@ const styles = themed(() => ({
     flex: 1.6,
   },
   reject: {
-    height: 54,
+    height: 56,
     borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
+    borderColor: theme.colors.textMuted,
   },
   rejectText: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 15,
-    color: theme.colors.textSecondary,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
   },
   accept: {
-    height: 54,
+    height: 56,
     borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.secondary,
+    boxShadow: theme.glow.secondary,
   },
   acceptText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 16,
+    fontSize: 17,
     color: theme.colors.onSecondary,
   },
 }));

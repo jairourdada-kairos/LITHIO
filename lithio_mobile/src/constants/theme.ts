@@ -12,16 +12,18 @@ type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
  * vuelve a montar la interfaz y todo se pinta con la paleta nueva.
  *
  * Estilo Liquid Glass teñido: las superficies son cristal con el tono de la
- * marca y opacidad de 0.78 a 0.88 (más que el glassmorphism clásico) para que
- * el texto siempre se lea bien; borde blanco muy tenue que simula el canto del
- * cristal y una sombra suave con un brillo interior arriba (theme.glass).
+ * marca y opacidad de 0.86 a 0.94 (más que el glassmorphism clásico) para que
+ * el texto siempre se lea bien; canto casi invisible y profundidad con sombras
+ * suaves y amplias (theme.glass), no con líneas: así las pantallas no se ven
+ * cuadriculadas. Lo que flota sobre otras pantallas (solicitudes de viaje,
+ * avisos, hojas) usa `surfaceSolid`, 100 % opaco, y `glass.floating`.
  */
 
 const dark = {
   bgDark: '#10191C',          // Fondo de la app
-  cardBg: 'rgba(27, 41, 43, 0.82)',
-  cardBorder: 'rgba(255, 255, 255, 0.12)', // Canto del cristal
-  cardElevated: 'rgba(36, 54, 56, 0.85)',
+  cardBg: 'rgba(27, 41, 43, 0.90)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)', // Canto del cristal
+  cardElevated: 'rgba(36, 54, 56, 0.92)',
   primary: '#45D6C5',         // Turquesa eléctrico: pasajero, acción principal
   onPrimary: '#0E2A27',       // Texto sobre turquesa
   secondary: '#FF765E',       // Coral: conductor, protones
@@ -33,17 +35,18 @@ const dark = {
   warning: '#F97316',
   textPrimary: '#F8FAFC',
   textSecondary: '#94A3B8',
-  textMuted: '#64748B',
+  textMuted: '#7D8FA6', // ≥ 4.5:1 sobre las tarjetas: se lee aunque sea texto secundario
   accentGrad1: '#45D6C5',
   accentGrad2: '#FF765E',
-  glassBg: 'rgba(27, 41, 43, 0.78)',
-  glassBgStrong: 'rgba(36, 54, 56, 0.85)',
-  glassBorder: 'rgba(255, 255, 255, 0.12)',
+  glassBg: 'rgba(27, 41, 43, 0.86)',
+  glassBgStrong: 'rgba(36, 54, 56, 0.94)',
+  glassBorder: 'rgba(255, 255, 255, 0.09)',
   glassHighlight: 'rgba(255, 255, 255, 0.08)',
   glassHover: 'rgba(46, 68, 71, 0.86)',     // Cristal bajo el puntero
   glassPressed: 'rgba(16, 28, 31, 0.88)',   // Cristal presionado (más hundido)
   glassBorderHover: 'rgba(255, 255, 255, 0.24)',
-  surface: 'rgba(22, 38, 41, 0.80)', // Tarjetas: cristal teñido
+  surface: 'rgba(24, 40, 43, 0.92)', // Tarjetas: cristal teñido
+  surfaceSolid: '#18292C', // Lo que flota encima (solicitudes, avisos): 100 % opaco
   surfaceAlt: '#10191C',
   primarySoft: 'rgba(69, 214, 197, 0.12)',
   primaryLine: 'rgba(69, 214, 197, 0.45)',
@@ -52,16 +55,16 @@ const dark = {
   goldSoft: 'rgba(255, 200, 87, 0.12)',
   diamondSoft: 'rgba(127, 212, 255, 0.12)',
   lattice: 'rgba(148, 163, 184, 0.16)',
-  scrim: 'rgba(5, 10, 12, 0.6)',
+  scrim: 'rgba(5, 10, 12, 0.68)',
 };
 
 export type Palette = typeof dark;
 
 const light: Palette = {
   bgDark: '#F3F6F5',
-  cardBg: 'rgba(255, 255, 255, 0.85)',
-  cardBorder: 'rgba(22, 37, 42, 0.10)',
-  cardElevated: 'rgba(233, 239, 237, 0.85)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBorder: 'rgba(22, 37, 42, 0.07)',
+  cardElevated: 'rgba(233, 239, 237, 0.92)',
   primary: '#0F8F82',
   onPrimary: '#FFFFFF',
   secondary: '#E0533A',
@@ -73,17 +76,18 @@ const light: Palette = {
   warning: '#EA580C',
   textPrimary: '#16252A',
   textSecondary: '#4E6168',
-  textMuted: '#7A8B90',
+  textMuted: '#62747A',
   accentGrad1: '#0F8F82',
   accentGrad2: '#E0533A',
-  glassBg: 'rgba(255, 255, 255, 0.78)',
-  glassBgStrong: 'rgba(255, 255, 255, 0.88)',
-  glassBorder: 'rgba(22, 37, 42, 0.10)',
+  glassBg: 'rgba(255, 255, 255, 0.86)',
+  glassBgStrong: 'rgba(255, 255, 255, 0.95)',
+  glassBorder: 'rgba(22, 37, 42, 0.07)',
   glassHighlight: 'rgba(255, 255, 255, 0.9)',
   glassHover: 'rgba(255, 255, 255, 0.95)',
   glassPressed: 'rgba(228, 236, 234, 0.9)',
   glassBorderHover: 'rgba(22, 37, 42, 0.20)',
-  surface: 'rgba(255, 255, 255, 0.80)',
+  surface: 'rgba(255, 255, 255, 0.92)',
+  surfaceSolid: '#FFFFFF',
   surfaceAlt: '#EEF3F2',
   primarySoft: 'rgba(15, 143, 130, 0.10)',
   primaryLine: 'rgba(15, 143, 130, 0.35)',
@@ -137,6 +141,7 @@ export const theme: {
     readonly shadow: string;
     readonly shadowRaised: string;
     readonly shadowPressed: string;
+    readonly floating: string;
     focusRing: (accent: string) => string;
   };
   fonts: Record<'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'mono' | 'monoBold', string>;
@@ -156,8 +161,8 @@ export const theme: {
     /** Profundidad: sombra suave + brillo interior en el canto superior. */
     get shadow() {
       return activeScheme === 'dark'
-        ? '0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
-        : '0 10px 28px rgba(16, 25, 28, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9)';
+        ? '0 12px 32px rgba(0, 0, 0, 0.34), 0 1px 3px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+        : '0 12px 30px rgba(16, 25, 28, 0.08), 0 1px 3px rgba(16, 25, 28, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9)';
     },
     /** Cristal levantado (hover): la sombra crece un poco. */
     get shadowRaised() {
@@ -170,6 +175,12 @@ export const theme: {
       return activeScheme === 'dark'
         ? '0 4px 12px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04)'
         : '0 4px 12px rgba(16, 25, 28, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7)';
+    },
+    /** Lo que flota sobre la pantalla (solicitud de viaje, avisos): se separa de cualquier fondo. */
+    get floating() {
+      return activeScheme === 'dark'
+        ? '0 -8px 40px rgba(0, 0, 0, 0.55), 0 18px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.10)'
+        : '0 -8px 32px rgba(16, 25, 28, 0.12), 0 18px 44px rgba(16, 25, 28, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1)';
     },
     /** Anillo de foco de teclado, con el color de acento. */
     focusRing: (accent: string) => `0 0 0 3px ${accent}59`,
@@ -186,11 +197,12 @@ export const theme: {
     mono: 'SpaceMono_400Regular',
     monoBold: 'SpaceMono_700Bold',
   },
+  // Esquinas generosas: tarjetas y botones se ven suaves, no como celdas.
   radius: {
-    sm: 8,
-    md: 14,
-    lg: 20,
-    xl: 26,
+    sm: 10,
+    md: 16,
+    lg: 24,
+    xl: 30,
     full: 9999,
   },
 };
