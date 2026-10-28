@@ -16,6 +16,7 @@
     "expo-image-manipulator": "~58.0.15",
     "expo-image-picker": "~58.0.10",
     "expo-notifications": "~58.1.6",
+    "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
     "expo-updates": "~58.0.18",
     "firebase": "^12.0.0",
