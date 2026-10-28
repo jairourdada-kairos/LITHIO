@@ -20,6 +20,7 @@ import { initApiBase } from './src/config/api';
 import { dismissPushOffer, registerForPush, shouldOfferPush, syncPushIfGranted, unregisterPush } from './src/services/notifications';
 import { NotificationPrimer } from './src/components/NotificationPrimer';
 import { checkAppVersion } from './src/services/appVersion';
+import { applyUpdateOnStartup, downloadUpdateInBackground, restartWithUpdate } from './src/services/liveUpdates';
 import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
@@ -92,8 +93,10 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
 
   useEffect(() => {
     let cancelled = false;
-    // En el APK, primero se averigua la dirección vigente del servidor.
-    initApiBase()
+    // Si hay una actualización publicada, se aplica antes de mostrar nada.
+    // Luego, en el APK, se averigua la dirección vigente del servidor.
+    applyUpdateOnStartup()
+      .then(initApiBase)
       .then(async () => {
         // Cambios nativos: el servidor puede exigir (o sugerir) un APK más nuevo.
         const version = await checkAppVersion();
@@ -116,8 +119,20 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
         setAuthStep('welcome');
       });
     // Al volver a la app, la dirección pudo cambiar (se reinició el modo público).
+    // También puede haber una actualización nueva: se descarga y se ofrece reiniciar.
+    let offeredRestart = false;
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void initApiBase();
+      if (state !== 'active') return;
+      void initApiBase();
+      if (offeredRestart) return;
+      void downloadUpdateInBackground().then((ready) => {
+        if (!ready || cancelled) return;
+        offeredRestart = true;
+        Alert.alert('LITHIO se actualizó', 'Reinicia la app para ver las mejoras. Tu sesión se mantiene.', [
+          { text: 'Después', style: 'cancel' },
+          { text: 'Reiniciar ahora', onPress: restartWithUpdate },
+        ]);
+      });
     });
     return () => {
       cancelled = true;
