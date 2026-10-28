@@ -108,6 +108,9 @@ def client(monkeypatch):
     db.add_all([
         Route(origin="UNC", destination="BIBLIOTECA", fare_usd=1.5, estimated_minutes=8),
         Route(origin="UNC", destination="IVIC", fare_usd=2.0, estimated_minutes=10),
+        Route(origin="UNC", destination="CARACAS", fare_usd=6.0, estimated_minutes=45),
+        Route(origin="Campus", destination="San Antonio", fare_usd=2.5, estimated_minutes=15),
+        Route(origin="Campus UNC", destination="San Antonio", fare_usd=2.5, estimated_minutes=15),
         Route(origin="UNC", destination="CARACAS", fare_usd=6.0, estimated_minutes=35),
     ])
     db.commit()

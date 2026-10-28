@@ -43,11 +43,14 @@ def format_cedula(normalized: str) -> str:
 
 
 def normalize_phone(value: str) -> str:
-    """Acepta 0412-1234567, 412 1234567 o +58 412 1234567 y devuelve '+58 412 1234567'."""
+    """Acepta 0412-1234567, 412 1234567, +58 412 1234567, +58 0412 1234567 o
+    0058 412 1234567 y devuelve '+58 412 1234567'."""
     digits = re.sub(r"\D", "", value)
-    if digits.startswith("58") and len(digits) == 12:
+    if digits.startswith("00"):  # Prefijo internacional marcado desde otro país
         digits = digits[2:]
-    elif digits.startswith("0") and len(digits) == 11:
+    if digits.startswith("58") and len(digits) in (12, 13):
+        digits = digits[2:]
+    if digits.startswith("0") and len(digits) == 11:
         digits = digits[1:]
     if len(digits) != 10 or digits[:3] not in MOBILE_PREFIXES:
         raise ValueError(

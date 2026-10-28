@@ -306,7 +306,7 @@ def test_recover_account_by_cedula_sends_reset_and_masks_email(client, monkeypat
 
     found = client.post("/api/auth/recover", json={"cedula": "v-12.345.678"})
     assert found.status_code == 200
-    assert found.json() == {"masked_email": "s***a@example.test"}  # sofia@example.test
+    assert found.json()["masked_email"] == "s***a@example.test"  # sofia@example.test
     assert sent == ["sofia@example.test"]  # El correo completo nunca sale en la respuesta
 
     assert client.post("/api/auth/recover", json={"cedula": "V-99999999"}).status_code == 404
@@ -362,16 +362,30 @@ def test_recover_account_by_phone(client, monkeypatch):
     db.commit()
 
     found = client.post("/api/auth/recover", json={"phone": "0414-555.0001"})
-    assert found.status_code == 200 and found.json() == {"masked_email": "s***a@example.test"}
+    assert found.status_code == 200
+    assert found.json() == {"masked_email": "s***a@example.test", "masked_emails": ["s***a@example.test"]}
     assert sent == ["sofia@example.test"]
+
 
     assert client.post("/api/auth/recover", json={"phone": "0414-9999999"}).status_code == 404
     assert client.post("/api/auth/recover", json={}).status_code == 422
     assert client.post("/api/auth/recover", json={"phone": "0414-5550001", "cedula": "V-12345678"}).status_code == 422
 
+    # Si el número está en dos cuentas, cada una recibe su enlace.
+    from app import rate_limit
+    rate_limit.reset()
+    sent.clear()
     db.get(User, 5).phone = "+58 414 5550001"
     db.commit()
-    assert client.post("/api/auth/recover", json={"phone": "04145550001"}).status_code == 409
+    both = client.post("/api/auth/recover", json={"phone": "04145550001"}).json()
+    assert sorted(both["masked_emails"]) == ["a***n@example.test", "s***a@example.test"]
+    assert sorted(sent) == ["admin@example.test", "sofia@example.test"]
+
+    # Una cuenta sin correo real no puede recibir el enlace.
+    db.get(User, 2).phone = "+58 424 5550002"
+    db.get(User, 2).email = "driver-1@lithio.local"
+    db.commit()
+    assert client.post("/api/auth/recover", json={"phone": "04245550002"}).status_code == 409
 
 
 def test_only_verified_gmail_accounts_can_enter(client, monkeypatch):
@@ -534,3 +548,41 @@ def test_welcome_bonus_counts_toward_level_from_registration(client):
     db = next(app.dependency_overrides[get_db]())
     user = db.get(User, created.json()["id"])
     assert user.points == 100 and user.fe_lifetime == 100
+
+
+def test_venezuelan_phone_formats_normalize_to_one_number():
+    import pytest
+    from app.validation import normalize_phone
+
+    for written in ("0414-5550001", "+58 414 5550001", "+58 0414-5550001", "00584145550001",
+                    "414 555 0001", "(0414) 555-00-01", "+58-414-555-0001"):
+        assert normalize_phone(written) == "+58 414 5550001", written
+    for wrong in ("0212-5550001", "0414-555000", "+1 414 5550001", "12345"):
+        with pytest.raises(ValueError):
+            normalize_phone(wrong)
+
+
+def test_facebook_accounts_enter_without_gmail_or_email_verification(client, monkeypatch):
+    """Facebook ya comprueba a la persona; Firebase marca su correo como no verificado."""
+    from app import auth
+    from app.auth import FirebaseIdentity
+    from tests.test_api import VALID_REGISTRATION
+
+    monkeypatch.setenv("ALLOWED_EMAIL_DOMAINS", "gmail.com,googlemail.com")
+    monkeypatch.setenv("REQUIRE_VERIFIED_EMAIL", "true")
+    original = auth.verify_firebase_token
+
+    def fake(token):
+        if token == "fb-new":
+            return FirebaseIdentity("uid-fb", "ana@hotmail.com", False, provider="facebook.com")
+        if token == "password-hotmail":
+            return FirebaseIdentity("uid-pw", "ana@hotmail.com", False, provider="password")
+        return original(token)
+
+    monkeypatch.setattr(auth, "verify_firebase_token", fake)
+    data = {**VALID_REGISTRATION, "email": "ana@hotmail.com", "cedula": "V-20111222", "phone": "0414-7770001"}
+    # Con correo y contraseña de Hotmail: sigue sin poder registrarse.
+    assert client.post("/api/passengers/register", json=data, headers={"Authorization": "Bearer password-hotmail"}).status_code == 422
+    created = client.post("/api/passengers/register", json=data, headers={"Authorization": "Bearer fb-new"})
+    assert created.status_code == 201, created.text
+    assert client.get("/api/users/me", headers={"Authorization": "Bearer fb-new"}).status_code == 200

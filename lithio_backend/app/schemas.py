@@ -44,7 +44,8 @@ class RegistrationFields(BaseModel):
     @field_validator("email")
     @classmethod
     def _email(cls, value: str) -> str:
-        return validation.require_allowed_email(value.lower())
+        # El dominio (solo Gmail, salvo Facebook) se revisa al registrar, con la identidad de Firebase.
+        return value.strip().lower()
 
     @field_validator("career")
     @classmethod

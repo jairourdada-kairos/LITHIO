@@ -341,6 +341,21 @@ En la versión web de LITHIO, el dominio donde se abre debe estar en Firebase �
   secreta de la app** (botón *Mostrar*).
 - *Configuración de la app → Avanzada → Seguridad*: **Token de cliente**.
 
+**Atajo para B3 y B5:** con las tres claves de B2 a mano, doble clic en
+`configurar_facebook.bat`. Activa Facebook en Firebase, escribe el
+Identificador y el Token de cliente en `lithio_mobile\.env` y muestra lo que
+falta pegar en Meta: la URI, el paquete, la clase y el hash de clave del APK
+(`CH6topAB2Db0C738ufTnYEqiCNE=`). Después sigue en B5 paso 2.
+
+- **Web y iPhone (Safari):** funciona apenas termina el script y se ejecuta
+  `publicar_actualizacion.bat`.
+- **Android:** necesita el APK nuevo de B5. Mientras tanto, el botón pide
+  instalar la versión nueva en vez de fallar.
+- Las cuentas de Facebook entran aunque su correo no sea de Gmail y sin
+  verificar el correo, porque Facebook ya comprobó a la persona.
+- En Meta cambia la app de **Desarrollo** a **Activo**; si no, solo entran los
+  probadores.
+
 **B3. Conectar Facebook con Firebase**
 
 1. Firebase → Authentication → Método de acceso → **Agregar proveedor →
@@ -417,10 +432,15 @@ cambia en cada arranque; con el servidor en la nube (sección 4) queda fija, por
 Funcionan con el teléfono que cada usuario guardó en su perfil.
 
 - Debe ser un celular venezolano: 0412, 0414, 0416, 0422, 0424 o 0426 y 7
-  dígitos. Se acepta `0414-1234567`, `414 1234567` o `+58 414 1234567`; LITHIO lo
-  guarda como `+58 414 1234567`.
+  dígitos. Se acepta `0414-1234567`, `414 1234567`, `+58 414 1234567`,
+  `+58 0414-1234567`, `0058 414 1234567` o `(0414) 123-45-67`; LITHIO lo guarda
+  como `+58 414 1234567`.
 - Para cambiarlo: **Cuenta → Mis datos → Teléfono**.
-- Si dos cuentas tienen el mismo número, la recuperación por teléfono pide la cédula.
+- La recuperación envía al correo de la cuenta el enlace de Firebase para crear
+  una contraseña nueva, y la app muestra el correo medio oculto. Si el número
+  está en varias cuentas, cada una recibe su propio enlace.
+- Las cuentas sin correo real (las viejas `…@lithio.local`) no pueden recibirlo:
+  la app pide ayuda al administrador.
 - "Llamar" abre la app Teléfono del usuario con el número escrito; la llamada
   la cobra su operadora, LITHIO no cobra nada. El número solo se comparte
   mientras el viaje está aceptado, en camino o en curso.

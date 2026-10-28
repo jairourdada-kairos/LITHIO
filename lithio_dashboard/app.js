@@ -473,16 +473,21 @@ function buildForm(type, payload) {
     return `
       <input type="hidden" name="type" value="driver">
       ${payload ? `<input type="hidden" name="entity_id" value="${Number(payload.user_id || payload.id)}">` : ''}
-      <label>Nombre<input name="name" value="${escapeHtml(data.name)}"></label>
+      <label>Nombre<input name="name" value="${escapeHtml(data.name)}" required></label>
+      ${payload ? '' : `
+      <label>Correo del conductor (con este entrará a la app)
+        <input type="email" name="email" required placeholder="nombre@gmail.com">
+      </label>
+      <p class="empty-note">Queda sin recibir viajes hasta que entre a la app con ese correo y se ponga disponible.</p>`}
       <label>Teléfono<input name="phone" value="${escapeHtml(data.phone)}"></label>
       <label>Modelo de moto<input name="moto_brand_model" value="${escapeHtml(data.moto_brand_model)}"></label>
       <label>Placa<input name="plate" value="${escapeHtml(data.plate)}"></label>
-      <label>Estado
+      ${payload ? `<label>Estado
         <select name="is_available">
           <option value="true" ${data.is_available ? 'selected' : ''}>Disponible</option>
           <option value="false" ${!data.is_available ? 'selected' : ''}>Ocupado</option>
         </select>
-      </label>
+      </label>` : ''}
       <button type="submit" class="primary-btn">Guardar</button>
     `;
   }
@@ -550,7 +555,7 @@ function handleFormSubmit(event) {
     };
     const promise = entityId
       ? requestAdmin(`/admin/drivers/${entityId}`, 'PUT', payload)
-      : requestAdmin('/admin/drivers', 'POST', { ...payload, email: formData.get('email') || `driver-${Date.now()}@lithio.local` });
+      : requestAdmin('/admin/drivers', 'POST', { ...payload, email: String(formData.get('email') || '').trim() });
     promise.then(fetchData).catch(showError);
   }
 
@@ -690,14 +695,12 @@ async function updateAdminProfile(event) {
   try {
     const profile = await requestAdmin(`/admin/profile/${state.admin.id}`, 'PUT', {
       name: form.get('name'),
-      email: form.get('email'),
       phone: form.get('phone')
     });
     state.admin.name = profile.name;
     state.admin.email = profile.email;
     state.admin.phone = profile.phone;
     renderAdminProfile(profile);
-    document.getElementById('profile-form').elements.city.value = form.get('city');
     renderStats();
     alert('Perfil actualizado correctamente');
   } catch (error) {

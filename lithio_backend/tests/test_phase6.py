@@ -28,8 +28,8 @@ def test_coupon_discounts_a_ride_and_returns_if_cancelled(client):
                "fare_amount": 4, "coupon_id": coupon["id"]}
     assert client.post("/api/rides?passenger_id=2", json=payload, headers=auth_headers(2)).status_code == 400  # Ajeno
     ride = client.post("/api/rides?passenger_id=4", json=payload, headers=auth_headers(4)).json()
-    assert ride["fare_amount"] == 3
-    assert balance(client, 4) == 2
+    assert ride["fare_amount"] == 1.5  # Ruta UNC → IVIC ($2) con 25 % de descuento
+    assert balance(client, 4) == 3.5
 
     client.put(f"/api/rides/{ride['id']}/status", json={"status": "rechazado"}, headers=auth_headers(1))
     coupons = client.get("/api/fe-store", headers=auth_headers(4)).json()["coupons"]

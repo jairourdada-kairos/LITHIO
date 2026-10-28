@@ -30,11 +30,31 @@ def require_verified_email() -> bool:
     return os.getenv("REQUIRE_VERIFIED_EMAIL", "true").strip().lower() not in {"0", "false", "no"}
 
 
+# Proveedores que ya comprueban que la persona es real y dueña de su correo.
+# Firebase marca su correo como "no verificado" (Facebook no lo informa) y
+# puede ser de Hotmail o Yahoo: no se les exige Gmail ni verificar el correo.
+TRUSTED_SOCIAL_PROVIDERS = {"facebook.com"}
+
+
 @dataclass(frozen=True)
 class FirebaseIdentity:
     uid: str
     email: str | None
     email_verified: bool
+    provider: str | None = None
+
+    @property
+    def verified_by_provider(self) -> bool:
+        return self.provider in TRUSTED_SOCIAL_PROVIDERS
+
+
+def require_allowed_identity_email(identity: "FirebaseIdentity") -> None:
+    """Registro: correo de Gmail, salvo cuentas de Facebook."""
+    if not identity.verified_by_provider and not email_domain_allowed(identity.email):
+        raise HTTPException(
+            status_code=422,
+            detail="LITHIO solo acepta cuentas reales de Gmail. Usa un correo que termine en @gmail.com.",
+        )
 
 
 @lru_cache(maxsize=1)
@@ -112,10 +132,13 @@ def verify_firebase_token(token: str) -> FirebaseIdentity:
     if not isinstance(uid, str) or not uid:
         raise HTTPException(status_code=401, detail="La sesión no es válida.")
     email = claims.get("email")
+    firebase_claims = claims.get("firebase")
+    provider = firebase_claims.get("sign_in_provider") if isinstance(firebase_claims, dict) else None
     return FirebaseIdentity(
         uid=uid,
         email=email.lower() if isinstance(email, str) else None,
         email_verified=claims.get("email_verified") is True,
+        provider=provider if isinstance(provider, str) else None,
     )
 
 
@@ -136,7 +159,7 @@ def enforce_email_policy(identity: FirebaseIdentity, user: User) -> User:
 
     El administrador queda exento para que el panel nunca se bloquee.
     """
-    if is_admin(user):
+    if is_admin(user) or identity.verified_by_provider:
         return user
     if not email_domain_allowed(identity.email):
         raise HTTPException(

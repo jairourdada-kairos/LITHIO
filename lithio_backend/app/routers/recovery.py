@@ -2,7 +2,9 @@
 
 "Olvidé mi correo": con la cédula o con el número de teléfono se encuentra la
 cuenta (índices ciegos, sin descifrar nada) y Firebase envía a ese correo el
-enlace para crear una contraseña nueva. La respuesta solo muestra el correo
+enlace para crear una contraseña nueva. El teléfono acepta cualquier formato
+venezolano (0412-1234567, +58 412 1234567, 0058…); si el número está en varias
+cuentas, cada una recibe su propio enlace. La respuesta solo muestra el correo
 parcialmente oculto, así que saber una cédula o un teléfono ajeno no revela el
 correo completo de nadie.
 
@@ -27,6 +29,9 @@ from ..models import User, phone_fingerprint
 from ..rate_limit import rate_limit_by_ip
 
 router = APIRouter(prefix="/api/auth", tags=["recuperacion"])
+# Cuentas creadas desde el panel sin correo real: no pueden recibir el enlace.
+PLACEHOLDER_EMAIL_DOMAIN = "@lithio.local"
+MAX_PHONE_MATCHES = 3
 logger = logging.getLogger(__name__)
 
 
@@ -83,18 +88,22 @@ class RecoverIn(BaseModel):
 @router.post("/recover", dependencies=[Depends(rate_limit_by_ip("recuperacion", 5, 600))])
 def recover_account(data: RecoverIn, db: Session = Depends(get_db)):
     if data.cedula:
-        user = db.query(User).filter(User.cedula_hash == crypto.blind_index(data.cedula)).first()
+        users = db.query(User).filter(User.cedula_hash == crypto.blind_index(data.cedula)).limit(1).all()
         not_found = "No encontramos una cuenta con esa cédula. Revisa el número o regístrate."
     else:
-        matches = db.query(User).filter(User.phone_hash == phone_fingerprint(data.phone)).limit(2).all()
-        if len(matches) > 1:
-            raise HTTPException(
-                status_code=409,
-                detail="Ese teléfono está en más de una cuenta. Recupera la tuya con tu cédula.",
-            )
-        user = matches[0] if matches else None
+        users = db.query(User).filter(User.phone_hash == phone_fingerprint(data.phone)).limit(MAX_PHONE_MATCHES).all()
         not_found = "No encontramos una cuenta con ese teléfono. Revisa el número o usa tu cédula."
-    if not user or not user.email:
+    users = [user for user in users if user.email]
+    if not users:
         raise HTTPException(status_code=404, detail=not_found)
-    send_password_reset(user.email)
-    return {"masked_email": mask_email(user.email)}
+    reachable = [user for user in users if not user.email.endswith(PLACEHOLDER_EMAIL_DOMAIN)]
+    if not reachable:
+        raise HTTPException(
+            status_code=409,
+            detail="Tu cuenta no tiene un correo donde enviar el enlace. Pide al administrador de LITHIO que te ayude.",
+        )
+    for user in reachable:
+        send_password_reset(user.email)
+    masked = [mask_email(user.email) for user in reachable]
+    # masked_email: lo leen las versiones de la app anteriores a la lista.
+    return {"masked_email": masked[0], "masked_emails": masked}

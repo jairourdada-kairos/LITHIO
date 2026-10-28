@@ -197,16 +197,37 @@ def test_cancelled_diamond_ride_is_refunded(client):
 
 
 
+def set_route_fare(client, destination, fare):
+    from app.models import Route
+
+    with client.session_factory() as db:
+        db.query(Route).filter(Route.origin == "UNC", Route.destination == destination).update({"fare_usd": fare})
+        db.commit()
+
+
 def test_diamond_payment_requires_minimum_fare(client):
     give_diamonds(client, 4, 5)
+    set_route_fare(client, "IVIC", 0.49)
     payload = {"driver_id": 1, "origin": "UNC", "destination": "IVIC", "payment_method": "diamantes", "fare_amount": 0.49}
     too_small = client.post("/api/rides?passenger_id=4", json=payload, headers=auth_headers(4))
     assert too_small.status_code == 400 and "0.50" in too_small.json()["detail"]
     assert balance(client, 4) == 5
 
-    payload["fare_amount"] = 0.5
+    set_route_fare(client, "IVIC", 0.5)
     assert client.post("/api/rides?passenger_id=4", json=payload, headers=auth_headers(4)).status_code == 200
     assert balance(client, 4) == 4.5
+
+
+def test_fare_comes_from_the_route_catalog_not_the_phone(client):
+    give_diamonds(client, 4, 5)
+    cheat = {"driver_id": 1, "origin": "UNC", "destination": "IVIC", "payment_method": "diamantes", "fare_amount": 0.5}
+    ride = client.post("/api/rides?passenger_id=4", json=cheat, headers=auth_headers(4)).json()
+    assert ride["fare_amount"] == 2.0  # Tarifa de la ruta UNC → IVIC
+    assert balance(client, 4) == 3
+    client.put(f"/api/rides/{ride['id']}/status", json={"status": "rechazado"}, headers=auth_headers(1))
+
+    unknown = {**cheat, "destination": "LUNA"}
+    assert client.post("/api/rides?passenger_id=4", json=unknown, headers=auth_headers(4)).status_code == 400
 
 # --- Enlaces -------------------------------------------------------------------
 
@@ -320,3 +341,23 @@ def test_levels_table_marks_progress_and_perks(client):
 def test_summary_flags_admins(client):
     assert client.get("/api/users/me/summary", headers=auth_headers(4)).json()["is_admin"] is False
     assert client.get("/api/users/me/summary", headers=ADMIN).json()["is_admin"] is True
+
+
+def test_same_pair_earns_fe_on_at_most_three_rides_a_day(client):
+    from app.links_service import MAX_REWARDED_RIDES_PER_PAIR_PER_DAY, RIDE_FE
+
+    def complete_ride():
+        ride = client.post(
+            "/api/rides?passenger_id=4",
+            json={"driver_id": 1, "origin": "UNC", "destination": "IVIC", "payment_method": "efectivo", "fare_amount": 2},
+            headers=auth_headers(4),
+        ).json()
+        for status in ("aceptado", "en_curso", "completado"):
+            client.put(f"/api/rides/{ride['id']}/status", json={"status": status}, headers=auth_headers(1))
+        return ride["id"]
+
+    start = client.get("/api/fe-store", headers=auth_headers(4)).json()["points"]
+    for _ in range(MAX_REWARDED_RIDES_PER_PAIR_PER_DAY + 1):
+        complete_ride()
+    end = client.get("/api/fe-store", headers=auth_headers(4)).json()["points"]
+    assert end - start == RIDE_FE * MAX_REWARDED_RIDES_PER_PAIR_PER_DAY

@@ -20,6 +20,7 @@ import urllib.error
 from datetime import datetime
 
 from . import crypto
+from .validation import normalize_phone
 from .database import engine, get_db, Base, SessionLocal
 from .models import User, DriverProfile, Ride, Review, Route, Coupon
 from .auth import (
@@ -30,6 +31,7 @@ from .auth import (
     get_user_for_identity,
     is_admin,
     require_admin,
+    require_allowed_identity_email,
     session_is_current,
     verify_firebase_token,
 )
@@ -45,7 +47,15 @@ from .schemas import (
 from .seed import seed_database
 from . import wallet_service
 from .drivers import is_approved, require_approved_driver
-from .links_service import PRIORITY_LEVEL, REVIEW_FE, RIDE_FE, award_fe, level_for, user_z
+from .links_service import (
+    MAX_REWARDED_RIDES_PER_PAIR_PER_DAY,
+    PRIORITY_LEVEL,
+    REVIEW_FE,
+    RIDE_FE,
+    award_fe,
+    level_for,
+    user_z,
+)
 from . import push_service
 from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, ride_details, wallet
 from .timeutil import utcnow
@@ -563,6 +573,11 @@ def create_admin_driver(data: AdminDriverCreate, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(status_code=400, detail="El correo es obligatorio")
 
+    # Antes el panel inventaba correos driver-…@lithio.local: esas cuentas nunca podían
+    # entrar a la app, pero salían disponibles y recibían viajes que nadie aceptaba.
+    email = email.strip().lower()
+    if email.endswith("@lithio.local"):
+        raise HTTPException(status_code=400, detail="Escribe el correo real del conductor: con él entrará a la app.")
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese correo")
@@ -589,7 +604,8 @@ def create_admin_driver(data: AdminDriverCreate, db: Session = Depends(get_db)):
         moto_color=payload.get("moto_color", "Negro"),
         plate=payload.get("plate", "ABC123"),
         helmet_provided=bool(payload.get("helmet_provided", True)),
-        is_available=bool(payload.get("is_available", True)),
+        # No recibe viajes hasta que entre a la app con ese correo y se ponga disponible.
+        is_available=False,
         rating_avg=float(payload.get("rating_avg", 0.0)),
         trips_count=int(payload.get("trips_count", 0)),
         current_location_tag=payload.get("current_location_tag", "Campus UNC"),
@@ -616,9 +632,14 @@ def update_admin_profile(user_id: int, data: AdminProfileUpdate, db: Session = D
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not is_admin(user):
         raise HTTPException(status_code=404, detail="Administrador no encontrado")
-    for field in ("name", "email", "phone"):
-        if field in payload:
-            setattr(user, field, payload[field])
+    # El correo es el del acceso con Firebase: cambiarlo solo aquí dejaría la cuenta desfasada.
+    if "name" in payload and payload["name"]:
+        user.name = " ".join(str(payload["name"]).split())
+    if "phone" in payload and payload["phone"]:
+        try:
+            user.phone = normalize_phone(payload["phone"])
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from None
     db.commit()
     db.refresh(user)
     return {"id": user.id, "name": user.name, "email": user.email, "phone": user.phone}
@@ -793,6 +814,7 @@ def register_passenger(
     La cuenta queda vinculada al UID de Firebase del token, nunca a uno enviado.
     """
     email = data.email
+    require_allowed_identity_email(identity)
     if not identity.email or identity.email != email:
         raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
     existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
@@ -846,6 +868,7 @@ async def register_driver(
     métodos de pago (Binance, pago móvil, cuenta bancaria).
     """
     email = data.email
+    require_allowed_identity_email(identity)
     if not identity.email or identity.email != email:
         raise HTTPException(status_code=403, detail="El correo debe coincidir con la cuenta Firebase autenticada.")
     existing = db.query(User).filter(User.firebase_uid == identity.uid).first()
@@ -1011,7 +1034,16 @@ async def request_ride(
         )
     if not is_approved(driver.driver_profile):
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
-    fare = ride_data.fare_amount
+    # La tarifa sale del catálogo de rutas, nunca de lo que envía el teléfono:
+    # si no, cualquiera podría pedir un viaje a $0.01 o pagarlo casi sin diamantes.
+    route = (
+        db.query(Route)
+        .filter(Route.origin == ride_data.origin, Route.destination == ride_data.destination)
+        .first()
+    )
+    if not route:
+        raise HTTPException(status_code=400, detail="Esa ruta no está disponible. Elige una de la lista.")
+    fare = round(float(route.fare_usd), 2)
     coupon = None
     if ride_data.coupon_id is not None:
         coupon = db.query(Coupon).filter(
@@ -1336,6 +1368,17 @@ async def update_ride_status(
 
     # Si se completa el viaje, pasajero y conductor ganan el Fe del viaje
     if update.status == "completado" and old_status != "completado":
+        start_of_day = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        rewarded_today = db.query(Ride.id).filter(
+            Ride.id != ride.id,
+            Ride.passenger_id == ride.passenger_id,
+            Ride.driver_id == ride.driver_id,
+            Ride.status == "completado",
+            Ride.points_rewarded > 0,
+            Ride.created_at >= start_of_day,
+        ).count()
+        if rewarded_today >= MAX_REWARDED_RIDES_PER_PAIR_PER_DAY:
+            ride.points_rewarded = 0
         passenger = db.query(User).filter(User.id == ride.passenger_id).first()
         if passenger:
             award_fe(passenger, ride.points_rewarded)
