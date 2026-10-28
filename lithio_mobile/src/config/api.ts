@@ -6,6 +6,8 @@
  *
  * - APK instalado: lee la dirección pública vigente de Firebase (config/server,
  *   la publica iniciar_publico.bat en cada arranque) y recuerda la última.
+ * - Web publicada (scripts/exportar_web.ps1): la sirve el mismo servidor en
+ *   /app, así que la API está en la misma dirección que la página.
  * - EXPO_PUBLIC_API_URL con https (túnel de Cloudflare o servidor en la nube):
  *   se usa tal cual.
  * - Web en desarrollo: el servidor está en la misma máquina que sirve la
@@ -29,6 +31,9 @@ const configured = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/+$/, '');
 export const isInstalledApp = Platform.OS !== 'web' && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 function resolveDevBase(): string {
+  if (Platform.OS === 'web' && !__DEV__ && typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
   if (configured.startsWith('https://')) return configured;
 
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {

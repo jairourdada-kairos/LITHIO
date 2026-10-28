@@ -112,10 +112,15 @@
                     </div>
                     <h4 class="subsection-title">Postulaciones de conductores</h4>
                     <div id="applications-list" class="mini-grid"></div>
-                    <h4 class="subsection-title">Billetera: recargas, retiros y taller</h4>
+                    <div class="subsection-row">
+                        <h4 class="subsection-title">Billetera: recargas, donaciones, retiros y taller</h4>
+                        <button class="small-btn" id="credit-btn" type="button">◆ Acreditar diamantes</button>
+                    </div>
                     <div id="wallet-list" class="mini-grid"></div>
                     <h4 class="subsection-title">Vales «Pasar con 20»</h4>
                     <div id="vouchers-list" class="mini-grid"></div>
+                    <h4 class="subsection-title">Comprobantes de viajes (Pago Móvil)</h4>
+                    <div id="ride-receipts-list" class="mini-grid"></div>
                 </section>
 
                 <section class="content-card glass-panel section-panel" id="drivers">
@@ -193,6 +198,8 @@
             </div>
         </main>
     </div>
+
+    <div id="toast-stack" class="toast-stack" role="status" aria-live="polite"></div>
 
     <div id="modal" class="modal hidden">
         <div class="modal-card glass-panel">

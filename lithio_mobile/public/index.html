@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!-- viewport-fit=cover: en iPhone la app ocupa la pantalla y respeta la muesca con env(safe-area-inset-*). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <meta name="description" content="Moto-taxi universitario de confianza: UNC, IVIC, San Antonio, Los Teques y Caracas." />
+    <meta name="theme-color" content="#10191C" />
+    <!-- Instalable desde Safari (Compartir → Agregar a inicio) y desde Chrome. Rutas relativas: sirve en / y en /app/. -->
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="LITHIO" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+        background-color: #10191c;
+        /* Sin rebote de la página ni zoom con doble toque en iPhone. */
+        overscroll-behavior: none;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      /* Safari en iPhone acerca la página al tocar un campo con letra menor de 16 px. */
+      @supports (-webkit-touch-callout: none) {
+        input,
+        textarea,
+        select {
+          font-size: 16px !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Activa JavaScript para usar LITHIO.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

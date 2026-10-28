@@ -21,7 +21,12 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "LITHIO",
+      "shortName": "LITHIO",
+      "lang": "es",
+      "themeColor": "#10191C",
+      "backgroundColor": "#10191C"
     },
     "plugins": [
       "expo-font",

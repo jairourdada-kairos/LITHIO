@@ -67,7 +67,8 @@ def record(
 def approve(db: Session, tx: WalletTransaction) -> None:
     if tx.status != "pendiente":
         raise HTTPException(status_code=409, detail="Este movimiento ya fue procesado.")
-    if tx.amount_cents > 0:
+    # Una donación por Pago Móvil va al Fondo Solidario, no al saldo de quien dona.
+    if tx.amount_cents > 0 and tx.kind != "donacion_pm":
         user = lock_user(db, tx.user_id)
         user.diamonds_cents = (user.diamonds_cents or 0) + tx.amount_cents
     tx.status = "aprobado"

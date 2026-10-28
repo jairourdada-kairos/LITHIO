@@ -213,13 +213,21 @@ def get_current_user(
     return user
 
 
+def _configured_admin_uids() -> set[str]:
+    return {value.strip() for value in os.getenv("ADMIN_FIREBASE_UIDS", "").split(",") if value.strip()}
+
+
 def is_admin(user: User) -> bool:
-    configured_admin_uids = {
-        value.strip()
-        for value in os.getenv("ADMIN_FIREBASE_UIDS", "").split(",")
-        if value.strip()
-    }
-    return user.role == "admin" or user.firebase_uid in configured_admin_uids
+    return user.role == "admin" or user.firebase_uid in _configured_admin_uids()
+
+
+def admin_users(db: Session) -> list[User]:
+    """Las cuentas de administrador (para avisarles de solicitudes nuevas)."""
+    uids = _configured_admin_uids()
+    condition = User.role == "admin"
+    if uids:
+        condition = condition | User.firebase_uid.in_(uids)
+    return db.query(User).filter(condition).all()
 
 
 def require_admin(user: User = Depends(get_current_user)) -> User:

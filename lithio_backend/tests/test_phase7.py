@@ -62,7 +62,8 @@ def make_ride(client, payment="pago_movil"):
 def test_receipt_is_private_and_linked_to_the_ride(client):
     ride = make_ride(client)
     photo = {"photo": ("pago.png", PNG, "image/png")}
-    assert client.post(f"/api/rides/{ride['id']}/receipt", files=photo, headers=auth_headers(1)).status_code == 403
+    # El administrador lo ve, pero no lo adjunta por nadie.
+    assert client.post(f"/api/rides/{ride['id']}/receipt", files=photo, headers=ADMIN).status_code == 403
     assert client.post(f"/api/rides/{ride['id']}/receipt", files={"photo": ("x.png", b"nope", "image/png")},
                        headers=auth_headers(4)).status_code == 400
     assert client.post(f"/api/rides/{ride['id']}/receipt", files=photo, headers=auth_headers(4)).json()["has_receipt"]
@@ -86,7 +87,8 @@ def test_ride_detail_shows_timeline_receipt_and_review(client):
     assert detail["driver"]["plate"]
 
     as_driver = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(1)).json()
-    assert as_driver["viewer_role"] == "conductor" and not as_driver["can_upload_receipt"]
+    # El conductor también puede adjuntar la captura que le mandó el pasajero.
+    assert as_driver["viewer_role"] == "conductor" and as_driver["can_upload_receipt"]
     assert client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(2)).status_code == 404
 
     history = client.get("/api/rides/mine?scope=history&role=pasajero", headers=auth_headers(4)).json()

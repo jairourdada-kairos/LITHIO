@@ -45,3 +45,7 @@ lithio_mobile/google-services.json
 lithio_backend/.ruff_cache/
 # Video de la guía (22 MB): se comparte aparte, no va en el historial
 docs/guia/*.mp4
+
+# Versión web compilada (scripts/exportar_web.ps1) y copias de la base de datos
+lithio_mobile/dist-web/
+lithio_backend/backups/

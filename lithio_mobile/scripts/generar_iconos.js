@@ -1,4 +1,4 @@
-// Uso: npx -y -p @resvg/resvg-js@2.6.2 node scripts/generar_iconos.js assets
+// Uso: npx -y -p @resvg/resvg-js@2.6.2 node scripts/generar_iconos.js assets [public]
 // Genera los íconos de LITHIO (opción A: átomo de litio) a partir de SVG.
 const fs = require('fs');
 const path = require('path');
@@ -44,3 +44,20 @@ render('android-icon-monochrome.png', scaled(atom({ teal: '#FFFFFF', coral: '#FF
 // Pantalla de inicio y favicon.
 render('splash-icon.png', scaled(atom({ glow: false }), 0.8));
 render('favicon.png', `<rect width="1024" height="1024" rx="200" fill="${BG}"/>${scaled(atom({ glow: false }), 0.92)}`, 196);
+
+// Web instalable (manifest.json y Safari en iPhone): van a public/ si se pasa como segundo argumento.
+const WEB_OUT = process.argv[3];
+if (WEB_OUT) {
+  const full = `<rect width="1024" height="1024" fill="${BG}"/>${scaled(atom(), 0.92)}`;
+  const renderWeb = (file, body, size) => {
+    const png = new Resvg(svg(body), { fitTo: { mode: 'width', value: size } }).render().asPng();
+    fs.writeFileSync(path.join(WEB_OUT, file), png);
+    console.log(file, size, png.length, 'bytes');
+  };
+  renderWeb('logo192.png', full, 192);
+  renderWeb('logo512.png', full, 512);
+  // Maskable: el sistema recorta; la figura en la zona segura (80 %).
+  renderWeb('logo512-maskable.png', `<rect width="1024" height="1024" fill="${BG}"/>${scaled(atom({ glow: false }), 0.66)}`, 512);
+  // iOS redondea las esquinas solo: fondo completo, sin transparencia.
+  renderWeb('apple-touch-icon.png', full, 180);
+}

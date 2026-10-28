@@ -122,14 +122,24 @@ dashboard_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 if os.path.isdir(dashboard_dir):
     app.mount("/dashboard", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
 
-    @app.get("/")
-    def root_dashboard():
-        return RedirectResponse(url="/dashboard")
+# Versión web de la app para pasajeros y conductores (iPhone, computadoras), compilada
+# con scripts/exportar_web.ps1. Va en la misma dirección que la API: un solo link.
+web_app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_mobile", "dist-web"))
+app.mount("/app", StaticFiles(directory=web_app_dir, html=True, check_dir=False), name="web_app")
+
+
+@app.get("/")
+def root_page():
+    """La dirección pública abre la app; el panel de administración está en /dashboard."""
+    if os.path.isfile(os.path.join(web_app_dir, "index.html")):
+        return RedirectResponse(url="/app/")
+    return RedirectResponse(url="/dashboard")
 
 # -------------------------------------------------------------
 # GESTOR DE CONEXIONES EN TIEMPO REAL (WEBSOCKETS)
 # Permite enviar notificaciones instantáneas a los teléfonos
 # -------------------------------------------------------------
+from .admin_alerts import alert_admins
 from .realtime import manager  # noqa: E402  (gestor compartido de WebSockets)
 
 
@@ -826,7 +836,7 @@ def register_passenger(
 
 
 @app.post("/api/drivers/register", response_model=UserResponse, status_code=201, dependencies=[Depends(rate_limit("registro", 5, 600))])
-def register_driver(
+async def register_driver(
     data: DriverRegisterRequest,
     identity: FirebaseIdentity = Depends(get_firebase_identity),
     db: Session = Depends(get_db),
@@ -899,7 +909,12 @@ def register_driver(
         bank_account_number=data.bank_account_number
     )
     db.add(driver_profile)
-    return commit_registration(db, new_user)
+    registered = commit_registration(db, new_user)
+    await alert_admins(
+        db, "conductor", "Conductor por verificar",
+        f"{new_user.name} se registró como conductor ({data.moto_brand_model}).", user_id=new_user.id,
+    )
+    return registered
 
 
 # -------------------------------------------------------------

@@ -1,24 +1,29 @@
 /**
  * WalletActionSheet.tsx — Recargar, enviar, donar, retirar y taller
  *
- * Una sola hoja para las acciones de la billetera. Recargas, retiros y
- * canjes del taller quedan "En revisión" hasta que el administrador los
- * aprueba; envíos y donaciones se aplican al instante.
+ * Una sola hoja para las acciones de la billetera. Recargas, donaciones por
+ * Pago Móvil, retiros y canjes del taller quedan "En revisión" hasta que el
+ * administrador los aprueba; envíos y donaciones con diamantes se aplican al
+ * instante. Recargas y donaciones por Pago Móvil muestran los datos del Pago
+ * Móvil del administrador y llevan la captura del pago.
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
 import { Icon } from './ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { FormField } from './FormField';
 import { PrimaryButton } from './brand/PrimaryButton';
-import { apiService, LinkPerson, WorkshopItem } from '../services/api';
+import { apiService, LinkPerson, PagoMovilDestination, WorkshopItem } from '../services/api';
+import { photoFormValue, pickDocumentPhoto } from '../services/avatar';
 import type { WalletAction } from '../screens/shared/WalletScreen';
 
 interface Props {
   action: WalletAction | null;
   balance: number;
+  /** Pago Móvil del administrador (null si aún no lo configuró). */
+  pagoMovil: PagoMovilDestination | null;
   onClose: () => void;
   /** Se llama tras una operación exitosa para recargar la billetera. */
   onDone: () => void;
@@ -27,7 +32,7 @@ interface Props {
 const COPY: Record<WalletAction, { title: string; message: string; confirm: string }> = {
   recargar: {
     title: 'Recargar diamantes',
-    message: 'Haz el Pago Móvil a LITHIO y escribe la referencia. Los diamantes se acreditan cuando el administrador lo verifique.',
+    message: 'Haz el Pago Móvil a estos datos, escribe la referencia y adjunta la captura. Los diamantes se acreditan cuando el administrador lo verifique.',
     confirm: 'Enviar recarga',
   },
   enviar: {
@@ -37,7 +42,7 @@ const COPY: Record<WalletAction, { title: string; message: string; confirm: stri
   },
   donar: {
     title: 'Donar al Fondo Solidario',
-    message: 'Tu donación paga viajes a estudiantes que lo necesitan. Cuenta dentro del límite de ◆100 al día.',
+    message: 'Tu donación paga viajes a estudiantes que lo necesitan. Dona con tus diamantes o directo por Pago Móvil.',
     confirm: 'Donar',
   },
   retirar: {
@@ -52,7 +57,9 @@ const COPY: Record<WalletAction, { title: string; message: string; confirm: stri
   },
 };
 
-export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, onDone }) => {
+type DonationMethod = 'diamantes' | 'pago_movil';
+
+export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil, onClose, onDone }) => {
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [text, setText] = useState('');
@@ -62,6 +69,8 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
   const [workshop, setWorkshop] = useState<WorkshopItem[] | null>(null);
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [donationMethod, setDonationMethod] = useState<DonationMethod>('diamantes');
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   useEffect(() => {
     setAmount('');
@@ -69,12 +78,29 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
     setNote('');
     setRecipient(null);
     setError(undefined);
+    setDonationMethod('diamantes');
+    setReceiptUri(null);
     if (action === 'enviar') apiService.getLinks().then((info) => setLinks(info.links)).catch(() => setLinks([]));
     if (action === 'taller') apiService.getWorkshop().then(setWorkshop).catch(() => setWorkshop([]));
   }, [action]);
 
   if (!action) return null;
   const copy = COPY[action];
+  // Recargas y donaciones por Pago Móvil: se paga al administrador y se adjunta la captura.
+  const paysByPagoMovil = action === 'recargar' || (action === 'donar' && donationMethod === 'pago_movil');
+
+  /** Sube la captura; si falla, el movimiento ya quedó y se adjunta luego desde la lista. */
+  const sendReceipt = async (txId: number) => {
+    if (!receiptUri) return true;
+    try {
+      await apiService.uploadWalletReceipt(txId, await photoFormValue(receiptUri, 'comprobante.jpg'));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const receiptNote = (sent: boolean) =>
+    sent ? '' : ' No se pudo subir la captura: adjúntala desde tus movimientos.';
 
   const finish = (title: string, message: string) => {
     onDone();
@@ -88,7 +114,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
       setError('Escribe un monto mayor que cero.');
       return;
     }
-    if (action !== 'recargar' && value > balance) {
+    if (!paysByPagoMovil && value > balance) {
       setError(`Tu saldo es ◆ ${balance.toFixed(2)}.`);
       return;
     }
@@ -97,12 +123,20 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
     try {
       if (action === 'recargar') {
         if (text.trim().length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
-        await apiService.requestTopup(value, text.trim());
-        finish('Recarga enviada', 'Verás los diamantes cuando el administrador confirme el pago.');
+        if (!receiptUri) throw new Error('Adjunta la captura del Pago Móvil.');
+        const tx = await apiService.requestTopup(value, text.trim());
+        const sent = await sendReceipt(tx.id);
+        finish('Recarga enviada', `Verás los diamantes cuando el administrador confirme el pago.${receiptNote(sent)}`);
       } else if (action === 'enviar') {
         if (!recipient) throw new Error('Elige a qué enlace enviarle.');
         await apiService.sendDiamonds(recipient, value, note.trim());
         finish('Diamantes enviados', `Enviaste ◆ ${value.toFixed(2)}.`);
+      } else if (action === 'donar' && donationMethod === 'pago_movil') {
+        if (text.trim().length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
+        if (!receiptUri) throw new Error('Adjunta la captura del Pago Móvil.');
+        const tx = await apiService.donate(value, 'pago_movil', text.trim());
+        const sent = await sendReceipt(tx.id);
+        finish('¡Gracias por donar!', `Tu donación de ◆ ${value.toFixed(2)} se suma al fondo cuando el administrador la confirme.${receiptNote(sent)}`);
       } else if (action === 'donar') {
         await apiService.donate(value);
         finish('¡Gracias por donar!', `Aportaste ◆ ${value.toFixed(2)} al Fondo Solidario LITHIO.`);
@@ -143,7 +177,31 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             <Text style={styles.title}>{copy.title}</Text>
             <Text style={styles.message}>{copy.message}</Text>
-            {action !== 'recargar' ? <Text style={styles.balance}>Disponible: ◆ {balance.toFixed(2)}</Text> : null}
+            {action === 'donar' ? (
+              <View style={styles.chips} accessibilityRole="radiogroup">
+                {(['diamantes', 'pago_movil'] as const).map((method) => {
+                  const selected = donationMethod === method;
+                  return (
+                    <Pressable
+                      key={method}
+                      onPress={() => {
+                        setDonationMethod(method);
+                        setError(undefined);
+                      }}
+                      style={[styles.chip, selected && styles.chipActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextActive]}>
+                        {method === 'diamantes' ? 'Con diamantes' : 'Por Pago Móvil'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            {!paysByPagoMovil ? <Text style={styles.balance}>Disponible: ◆ {balance.toFixed(2)}</Text> : null}
+            {paysByPagoMovil ? <PagoMovilCard destination={pagoMovil} /> : null}
 
             {action === 'taller' ? (
               workshop === null ? (
@@ -204,8 +262,22 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
                   onChangeText={setAmount}
                   hint="1 ◆ = 1 USD"
                 />
-                {action === 'recargar' ? (
-                  <FormField label="Referencia del Pago Móvil" placeholder="Últimos 6 dígitos" value={text} onChangeText={setText} maxLength={30} />
+                {paysByPagoMovil ? (
+                  <>
+                    <FormField label="Referencia del Pago Móvil" placeholder="Últimos 6 dígitos" value={text} onChangeText={setText} maxLength={30} />
+                    <Pressable
+                      onPress={async () => setReceiptUri((await pickDocumentPhoto()) ?? receiptUri)}
+                      style={({ pressed }) => [styles.receiptPick, pressed && styles.pressed]}
+                      accessibilityRole="button"
+                    >
+                      {receiptUri ? (
+                        <Image source={{ uri: receiptUri }} style={styles.receiptThumb} accessibilityLabel="Captura elegida" />
+                      ) : (
+                        <Icon name="image-outline" size={22} color={theme.colors.diamond} />
+                      )}
+                      <Text style={styles.receiptPickText}>{receiptUri ? 'Cambiar captura del pago' : 'Adjuntar captura del pago'}</Text>
+                    </Pressable>
+                  </>
                 ) : null}
                 {action === 'retirar' ? (
                   <FormField
@@ -224,7 +296,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
                   label={copy.confirm}
                   onPress={submit}
                   loading={busy}
-                  disabled={action === 'enviar' && !links?.length}
+                  disabled={(action === 'enviar' && !links?.length) || (paysByPagoMovil && !pagoMovil)}
                   accent={theme.colors.diamond}
                 />
               </>
@@ -237,9 +309,89 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, onClose, o
   );
 };
 
+/** Datos del Pago Móvil del administrador. Se pueden seleccionar y copiar. */
+const PagoMovilCard: React.FC<{ destination: PagoMovilDestination | null }> = ({ destination }) =>
+  destination ? (
+    <View style={styles.pmCard} accessibilityLabel="Datos del Pago Móvil">
+      <Text style={styles.pmTitle}>Pago Móvil de LITHIO</Text>
+      <PmRow label="Teléfono" value={destination.phone} />
+      {destination.bank ? <PmRow label="Banco" value={destination.bank} /> : null}
+      {destination.id_number ? <PmRow label="Cédula" value={destination.id_number} /> : null}
+      <PmRow label="Titular" value={destination.holder} />
+      <Text style={styles.pmHint}>Mantén presionado un dato para copiarlo.</Text>
+    </View>
+  ) : (
+    <Text style={styles.error}>El administrador aún no configuró su Pago Móvil. Intenta más tarde.</Text>
+  );
+
+const PmRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <View style={styles.pmRow}>
+    <Text style={styles.pmLabel}>{label}</Text>
+    <Text style={styles.pmValue} selectable>
+      {value}
+    </Text>
+  </View>
+);
+
 const styles = themed(() => ({
   flex: {
     flex: 1,
+  },
+  pmCard: {
+    gap: 8,
+    padding: 14,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.diamond,
+    backgroundColor: theme.colors.surface,
+  },
+  pmTitle: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 14,
+    color: theme.colors.diamond,
+  },
+  pmRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pmLabel: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  pmValue: {
+    flexShrink: 1,
+    textAlign: 'right',
+    fontFamily: theme.fonts.monoBold,
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+  },
+  pmHint: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  receiptPick: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 52,
+    padding: 10,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.diamond,
+  },
+  receiptThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  receiptPickText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 14,
+    color: theme.colors.diamond,
   },
   scrim: {
     flex: 1,

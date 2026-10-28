@@ -41,7 +41,12 @@ const NEXT_STEP: Partial<Record<VerificationStatus, { label: string; status: Ver
   rechazado: { label: 'Reabrir revisión', status: 'en_revision' },
 };
 
-const KIND_ICON = { recarga: 'arrow-circle-down-outline', retiro: 'arrow-circle-up-outline', taller: 'settings-2-outline' } as const;
+const KIND_ICON = {
+  recarga: 'arrow-circle-down-outline',
+  donacion_pm: 'heart-outline',
+  retiro: 'arrow-circle-up-outline',
+  taller: 'settings-2-outline',
+} as const;
 
 export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const insets = useSafeAreaInsets();
@@ -350,10 +355,16 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </View>
                 </View>
                 <View style={styles.facts}>
-                  {item.reference ? <Fact label={item.kind === 'recarga' ? 'Referencia' : 'Pagar a'} value={item.reference} /> : null}
+                  {item.reference ? <Fact label={item.kind === 'retiro' ? 'Pagar a' : 'Referencia'} value={item.reference} /> : null}
+                  {item.friend_code ? <Fact label="Código" value={item.friend_code} /> : null}
                   {item.note ? <Fact label="Detalle" value={item.note} /> : null}
                   <Fact label="Fecha" value={new Date(item.created_at).toLocaleString('es-VE')} />
                 </View>
+                {item.has_receipt ? (
+                  <PrivateImage load={() => apiService.walletReceiptSource(item.id)} label="Captura del Pago Móvil" />
+                ) : item.kind === 'recarga' || item.kind === 'donacion_pm' ? (
+                  <Text style={styles.muted}>Aún no adjuntó la captura del pago.</Text>
+                ) : null}
                 <View style={styles.actions}>
                   <PressableScale variant="glass" containerStyle={styles.flex} style={styles.secondaryBtn} onPress={() => reviewWallet(item, 'rechazar')} disabled={busy}>
                     <Text style={styles.secondaryText}>Rechazar</Text>
@@ -378,16 +389,18 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
-/** La evidencia es privada: la imagen se pide con el token del administrador. */
-const VoucherEvidence: React.FC<{ id: number }> = ({ id }) => {
+/** Fotos privadas (notas, comprobantes): se piden con el token del administrador. */
+const PrivateImage: React.FC<{ load: () => Promise<ImageURISource>; label: string }> = ({ load, label }) => {
   const [source, setSource] = useState<ImageURISource | null>(null);
   useEffect(() => {
-    apiService.voucherEvidenceSource(id).then(setSource).catch(() => setSource(null));
-  }, [id]);
-  return source ? (
-    <Image source={source} style={styles.evidence} resizeMode="contain" accessibilityLabel="Foto de la nota" />
-  ) : null;
+    load().then(setSource).catch(() => setSource(null));
+  }, []); // Se carga una vez por tarjeta.
+  return source ? <Image source={source} style={styles.evidence} resizeMode="contain" accessibilityLabel={label} /> : null;
 };
+
+const VoucherEvidence: React.FC<{ id: number }> = ({ id }) => (
+  <PrivateImage load={() => apiService.voucherEvidenceSource(id)} label="Foto de la nota" />
+);
 
 const Counter: React.FC<{ value: number; label: string; color: string }> = ({ value, label, color }) => (
   <View style={[styles.counter, value > 0 && { borderColor: color }]}>

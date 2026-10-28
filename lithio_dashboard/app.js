@@ -10,6 +10,7 @@ const state = {
   applications: [],
   wallet: [],
   vouchers: [],
+  rideReceipts: [],
   bcv: null,
   admin: null
 };
@@ -31,6 +32,9 @@ const NEXT_STEP = {
 };
 
 let adminToken = null;
+// El token de Firebase dura una hora: se renueva solo para que el panel siga avisando.
+let refreshToken = null;
+let tokenExpiresAt = 0;
 let firebaseConfig;
 const authGate = document.getElementById('auth-gate');
 const dashboardApp = document.getElementById('dashboard-app');
@@ -50,6 +54,16 @@ const statPendingCount = document.getElementById('stat-pending-count');
 const applicationsList = document.getElementById('applications-list');
 const walletList = document.getElementById('wallet-list');
 const vouchersList = document.getElementById('vouchers-list');
+const rideReceiptsList = document.getElementById('ride-receipts-list');
+const toastStack = document.getElementById('toast-stack');
+
+// Etiqueta de la referencia según el tipo de movimiento.
+const REFERENCE_LABEL = { recarga: 'Referencia', donacion_pm: 'Referencia', retiro: 'Pagar a' };
+// Cada cuánto se buscan solicitudes nuevas para avisar (el panel no usa WebSocket:
+// competiría con la sesión única de la app del administrador).
+const ALERT_POLL_MS = 30000;
+let alertTimer = null;
+let seenPending = null;
 const statRoutesCount = document.getElementById('stat-routes-count');
 
 function escapeHtml(value) {
@@ -96,12 +110,32 @@ async function firebaseSignIn(email, password) {
     }
     throw new Error('No se pudo iniciar sesión con Firebase.');
   }
+  refreshToken = body.refreshToken;
+  tokenExpiresAt = Date.now() + Number(body.expiresIn || 3600) * 1000;
   return body.idToken;
+}
+
+async function freshToken() {
+  if (refreshToken && Date.now() > tokenExpiresAt - 5 * 60 * 1000) {
+    const config = await getFirebaseConfig();
+    const response = await fetch(`https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(config.apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok && body.id_token) {
+      adminToken = body.id_token;
+      refreshToken = body.refresh_token;
+      tokenExpiresAt = Date.now() + Number(body.expires_in || 3600) * 1000;
+    }
+  }
+  return adminToken;
 }
 
 async function requestAdmin(path, method = 'GET', body) {
   if (!adminToken) throw new Error('Inicia sesión como administrador para continuar.');
-  const headers = new Headers({ Authorization: `Bearer ${adminToken}` });
+  const headers = new Headers({ Authorization: `Bearer ${await freshToken()}` });
   if (body !== undefined) headers.set('Content-Type', 'application/json');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
@@ -141,6 +175,7 @@ async function handleLogin(event) {
     authStatus.textContent = '';
     event.currentTarget.reset();
     await fetchData();
+    startAlertPolling();
   } catch (error) {
     adminToken = null;
     authStatus.textContent = error instanceof Error ? error.message : 'No se pudo verificar el acceso.';
@@ -159,13 +194,14 @@ async function fetchData() {
   try {
     setApiStatus(false);
 
-    const [driversRes, routesRes, workshopRes, applicationsRes, walletRes, vouchersRes] = await Promise.all([
+    const [driversRes, routesRes, workshopRes, applicationsRes, walletRes, vouchersRes, receiptsRes] = await Promise.all([
       requestAdmin('/admin/drivers'),
       requestAdmin('/routes'),
       requestAdmin('/admin/workshop'),
       requestAdmin('/admin/driver-applications'),
       requestAdmin('/admin/wallet/pending'),
-      requestAdmin('/admin/vouchers')
+      requestAdmin('/admin/vouchers'),
+      requestAdmin('/rides/admin/receipts')
     ]);
     // La tasa no debe impedir que cargue el resto del panel.
     state.bcv = await requestAdmin('/rates/bcv').catch(() => null);
@@ -176,6 +212,8 @@ async function fetchData() {
     state.applications = applicationsRes.filter(a => a.status !== 'rechazado');
     state.wallet = walletRes;
     state.vouchers = vouchersRes;
+    state.rideReceipts = receiptsRes;
+    announceNewRequests();
 
     renderStats();
     renderApprovals();
@@ -193,13 +231,94 @@ async function fetchData() {
 function renderStats() {
   statAdminName.textContent = state.admin.name.split(' ')[0];
   statDriversCount.textContent = String(state.drivers.length);
-  statPendingCount.textContent = String(state.applications.length + state.wallet.length + state.vouchers.length);
+  const pending = state.applications.length + state.wallet.length + state.vouchers.length;
+  statPendingCount.textContent = String(pending);
+  document.title = `${pending ? `(${pending}) ` : ''}Panel de administración - LITHIO`;
   statRoutesCount.textContent = String(state.routes.length);
   const bcv = state.bcv;
   document.getElementById('stat-bcv').textContent = bcv ? `Bs ${bcv.rate.toFixed(2)}` : '—';
   document.getElementById('stat-bcv-meta').textContent = bcv
     ? `· ${bcv.is_current ? 'hoy' : bcv.date}${bcv.source === 'manual' ? ' · manual' : ''}`
     : '· sin datos';
+}
+
+function pendingKeys() {
+  return new Set([
+    ...state.applications.map(a => `app-${a.user_id}-${a.status}`),
+    ...state.wallet.map(w => `tx-${w.id}-${w.has_receipt}`),
+    ...state.vouchers.map(v => `vale-${v.id}`)
+  ]);
+}
+
+function describeNew(key) {
+  const [kind, id] = key.split('-');
+  if (kind === 'app') {
+    const app = state.applications.find(a => a.user_id === Number(id));
+    return app && ['Conductor por verificar', `${app.name} · ${app.moto.brand_model}`];
+  }
+  if (kind === 'tx') {
+    const tx = state.wallet.find(w => w.id === Number(id));
+    return tx && [`${tx.label} por revisar`, `${tx.user_name} · ◆ ${Math.abs(tx.amount).toFixed(2)}${tx.has_receipt ? ' · con comprobante' : ''}`];
+  }
+  const voucher = state.vouchers.find(v => v.id === Number(id));
+  return voucher && ['Vale de nota por revisar', `${voucher.user_name} · ${voucher.subject}`];
+}
+
+function showToast(title, body) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(body)}`;
+  toast.addEventListener('click', () => {
+    document.getElementById('approvals').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast.remove();
+  });
+  toastStack.prepend(toast);
+  setTimeout(() => toast.remove(), 8000);
+  // Con la pestaña en segundo plano, también como notificación del navegador.
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+// La primera carga solo memoriza lo pendiente; las siguientes avisan lo nuevo.
+function announceNewRequests() {
+  const keys = pendingKeys();
+  if (seenPending) {
+    [...keys].filter(key => !seenPending.has(key)).forEach(key => {
+      const message = describeNew(key);
+      if (message) showToast(...message);
+    });
+  }
+  seenPending = keys;
+}
+
+function startAlertPolling() {
+  stopAlertPolling();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  alertTimer = setInterval(fetchData, ALERT_POLL_MS);
+}
+
+function stopAlertPolling() {
+  if (alertTimer) clearInterval(alertTimer);
+  alertTimer = null;
+  seenPending = null;
+}
+
+// Fotos privadas (comprobantes y notas): se descargan con el token y se muestran como blob.
+function loadPrivateImages(container, selector, pathFor) {
+  container.querySelectorAll(selector).forEach(async img => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${pathFor(img)}`, { headers: { Authorization: `Bearer ${await freshToken()}` } });
+      if (response.ok) {
+        img.src = URL.createObjectURL(await response.blob());
+        img.addEventListener('click', () => window.open(img.src, '_blank'));
+      } else {
+        img.alt = 'No se pudo cargar la foto';
+      }
+    } catch {
+      img.alt = 'No se pudo cargar la foto';
+    }
+  });
 }
 
 function emptyNote(text) {
@@ -227,12 +346,15 @@ function renderApprovals() {
   walletList.innerHTML = state.wallet.length ? state.wallet.map(item => `
     <div class="route-card">
       <strong>${escapeHtml(item.label)} · ◆ ${Math.abs(item.amount).toFixed(2)}</strong>
-      <p>${escapeHtml(item.user_name)} · ${escapeHtml(item.user_email)}</p>
-      ${item.reference ? `<p>${item.kind === 'recarga' ? 'Referencia' : 'Pagar a'}: ${escapeHtml(item.reference)}</p>` : ''}
+      <p>${escapeHtml(item.user_name)} · ${escapeHtml(item.user_email)}${item.friend_code ? ` · ${escapeHtml(item.friend_code)}` : ''}</p>
+      ${item.reference ? `<p>${REFERENCE_LABEL[item.kind] || 'Referencia'}: ${escapeHtml(item.reference)}</p>` : ''}
       ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}
+      ${item.has_receipt
+        ? `<img class="evidence-img" data-tx="${Number(item.id)}" alt="Comprobante del Pago Móvil">`
+        : (item.kind === 'recarga' || item.kind === 'donacion_pm' ? '<p class="empty-note">Sin captura del pago todavía.</p>' : '')}
       <p>${escapeHtml(new Date(item.created_at).toLocaleString('es-VE'))}</p>
       <div class="action-group">
-        <button class="small-btn" data-action="wallet-approve" data-id="${Number(item.id)}">Aprobar</button>
+        <button class="small-btn" data-action="wallet-approve" data-id="${Number(item.id)}">${item.kind === 'recarga' ? 'Acreditar diamantes' : 'Aprobar'}</button>
         <button class="small-btn danger" data-action="wallet-reject" data-id="${Number(item.id)}">Rechazar</button>
       </div>
     </div>`).join('') : emptyNote('No hay movimientos esperando revisión.');
@@ -249,17 +371,19 @@ function renderApprovals() {
       </div>
     </div>`).join('') : emptyNote('No hay vales por revisar.');
 
-  // La evidencia es privada: se descarga con el token y se muestra como blob.
-  vouchersList.querySelectorAll('img[data-voucher]').forEach(async img => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/vouchers/${img.dataset.voucher}/evidence`, {
-        headers: { Authorization: `Bearer ${adminToken}` }
-      });
-      if (response.ok) img.src = URL.createObjectURL(await response.blob());
-    } catch {
-      img.alt = 'No se pudo cargar la foto';
-    }
-  });
+  rideReceiptsList.innerHTML = state.rideReceipts.length ? state.rideReceipts.map(ride => `
+    <div class="route-card">
+      <strong>Viaje #${Number(ride.id)} · $${Number(ride.fare_amount).toFixed(2)}</strong>
+      <p>${escapeHtml(ride.origin)} → ${escapeHtml(ride.destination)}</p>
+      <p>${escapeHtml(ride.passenger_name)} con ${escapeHtml(ride.driver_name)} · ${escapeHtml(ride.status)}</p>
+      ${ride.payment_reference ? `<p>Referencia: ${escapeHtml(ride.payment_reference)}</p>` : ''}
+      <img class="evidence-img" data-ride="${Number(ride.id)}" alt="Comprobante del viaje">
+      ${ride.receipt_uploaded_at ? `<p>${escapeHtml(new Date(`${ride.receipt_uploaded_at}Z`).toLocaleString('es-VE'))}</p>` : ''}
+    </div>`).join('') : emptyNote('Aún no hay comprobantes de viajes.');
+
+  loadPrivateImages(vouchersList, 'img[data-voucher]', img => `/admin/vouchers/${img.dataset.voucher}/evidence`);
+  loadPrivateImages(walletList, 'img[data-tx]', img => `/wallet/transactions/${img.dataset.tx}/receipt`);
+  loadPrivateImages(rideReceiptsList, 'img[data-ride]', img => `/rides/${img.dataset.ride}/receipt`);
 }
 
 function renderDrivers() {
@@ -377,6 +501,17 @@ function buildForm(type, payload) {
     `;
   }
 
+  if (type === 'credit') {
+    return `
+      <input type="hidden" name="type" value="credit">
+      <p class="empty-note">Para un Pago Móvil que recibiste sin solicitud en la app. El código Li-XXXX está en el perfil de la persona.</p>
+      <label>Código de la persona<input name="friend_code" required minlength="4" maxlength="12" placeholder="Li-AB12"></label>
+      <label>Diamantes (◆ = USD)<input type="number" step="0.01" min="0.01" max="500" name="amount" required></label>
+      <label>Nota (la verá en su billetera)<input name="note" maxlength="120" placeholder="Pago Móvil del lunes, ref. 123456"></label>
+      <button type="submit" class="primary-btn">Acreditar</button>
+    `;
+  }
+
   if (type === 'reward') {
     const data = payload || { title: '', description: '', cost: 5, is_active: true };
     return `
@@ -432,6 +567,20 @@ function handleFormSubmit(event) {
       ? requestAdmin(`/admin/routes/${entityId}`, 'PUT', route)
       : requestAdmin('/admin/routes', 'POST', route);
     promise.then(fetchData).catch(showError);
+  }
+
+  if (type === 'credit') {
+    const body = {
+      friend_code: String(formData.get('friend_code') || '').trim(),
+      amount: Number(String(formData.get('amount')).replace(',', '.')),
+      note: formData.get('note') || undefined
+    };
+    requestAdmin('/admin/wallet/credit', 'POST', body)
+      .then(tx => {
+        alert(`Acreditados ◆ ${tx.amount.toFixed(2)}.`);
+        return fetchData();
+      })
+      .catch(showError);
   }
 
   if (type === 'reward') {
@@ -570,6 +719,7 @@ function bindEvents() {
   document.getElementById('add-route-btn').addEventListener('click', () => openModal('Nueva ruta', 'route'));
   document.getElementById('add-reward-btn').addEventListener('click', () => openModal('Nuevo servicio del taller', 'reward'));
   document.getElementById('refresh-btn').addEventListener('click', fetchData);
+  document.getElementById('credit-btn').addEventListener('click', () => openModal('Acreditar diamantes', 'credit'));
   document.getElementById('set-bcv-btn').addEventListener('click', () => {
     const value = prompt('Tasa BCV de hoy (Bs por dólar):', state.bcv ? String(state.bcv.rate) : '');
     const rate = Number(String(value || '').replace(',', '.'));
@@ -582,7 +732,9 @@ function bindEvents() {
   document.getElementById('profile-form').addEventListener('submit', updateAdminProfile);
   document.getElementById('login-form').addEventListener('submit', handleLogin);
   document.getElementById('logout-button').addEventListener('click', () => {
+    stopAlertPolling();
     adminToken = null;
+    refreshToken = null;
     state.admin = null;
     dashboardApp.classList.add('hidden');
     authGate.classList.remove('hidden');

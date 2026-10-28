@@ -45,7 +45,14 @@ export type SocialResult = { user: AuthUser } | { prefill: SocialPrefill } | { c
 
 /** null si el proveedor está listo; si no, el motivo para mostrarlo al usuario. */
 export function socialUnavailableReason(provider: SocialProvider): string | null {
-  if (Platform.OS === 'web') return null;
+  if (Platform.OS === 'web') {
+    // En el iPhone, la web agregada a la pantalla de inicio no puede abrir la
+    // ventana de Google/Facebook (Safari la abre aparte y no vuelve a la app).
+    const standaloneIos = typeof navigator !== 'undefined' && (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    return standaloneIos
+      ? `En la app agregada a tu pantalla de inicio no se puede entrar con ${PROVIDER_LABEL[provider]}. Entra con tu correo, o abre LITHIO en Safari.`
+      : null;
+  }
   if (!isInstalledApp) {
     return `En Expo Go no se puede entrar con ${PROVIDER_LABEL[provider]}. Usa tu correo o instala el APK de LITHIO.`;
   }
@@ -91,6 +98,12 @@ function friendlyError(provider: SocialProvider, error: unknown): Error {
   }
   if (code === 'auth/network-request-failed') {
     return new Error('No hay conexión a internet. Inténtalo de nuevo.');
+  }
+  if (code === 'auth/popup-blocked') {
+    return new Error(`El navegador bloqueó la ventana de ${label}. Permite las ventanas emergentes de esta página e inténtalo de nuevo.`);
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return new Error(`Esta dirección aún no está autorizada para entrar con ${label}. Usa tu correo por ahora.`);
   }
   return new Error(`No se pudo entrar con ${label}. Inténtalo de nuevo o usa tu correo.`);
 }

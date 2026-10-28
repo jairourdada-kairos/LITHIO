@@ -1,7 +1,9 @@
 """Detalle de un viaje del historial y comprobante de pago.
 
 El comprobante (captura del Pago Móvil) es privado: se guarda fuera de /media
-y solo lo ven el pasajero, el conductor de ese viaje y el administrador.
+y solo lo ven el pasajero, el conductor de ese viaje y el administrador. Lo
+puede adjuntar cualquiera de los dos participantes (p. ej. el conductor, si el
+pasajero le mandó la captura por WhatsApp) y el administrador lo revisa en el panel.
 """
 import json
 import secrets
@@ -11,7 +13,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user, is_admin
+from ..auth import get_current_user, is_admin, require_admin
 from ..config import EVIDENCE_DIR
 from ..database import get_db
 from ..models import Coupon, Ride, User
@@ -64,7 +66,7 @@ def ride_detail(ride_id: int, user: User = Depends(get_current_user), db: Sessio
         "payment_reference": ride.payment_reference,
         "has_receipt": bool(ride.receipt_file),
         "receipt_uploaded_at": ride.receipt_uploaded_at.isoformat() if ride.receipt_uploaded_at else None,
-        "can_upload_receipt": user.id == ride.passenger_id and ride.payment_method == "pago_movil"
+        "can_upload_receipt": user.id in {ride.passenger_id, ride.driver_id} and ride.payment_method == "pago_movil"
         and ride.status not in {"rechazado", "cancelado"},
         "fe_rewarded": ride.points_rewarded if ride.status == "completado" else 0,
         "timeline": timeline,
@@ -88,8 +90,8 @@ async def upload_receipt(
     db: Session = Depends(get_db),
 ):
     ride = ride_for(ride_id, user, db)
-    if user.id != ride.passenger_id:
-        raise HTTPException(status_code=403, detail="Solo el pasajero puede adjuntar el comprobante.")
+    if user.id not in {ride.passenger_id, ride.driver_id}:
+        raise HTTPException(status_code=403, detail="Solo el pasajero o el conductor del viaje pueden adjuntar el comprobante.")
     if ride.payment_method != "pago_movil":
         raise HTTPException(status_code=400, detail="Este viaje no se pagó por Pago Móvil.")
     if ride.status in {"rechazado", "cancelado"}:
@@ -112,12 +114,11 @@ async def upload_receipt(
         old_path = (RECEIPT_DIR / old).resolve()
         if old_path.parent == RECEIPT_DIR.resolve() and old_path.exists():
             old_path.unlink()
-    await manager.send_personal_message(
-        {"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id}, user_id=ride.driver_id
-    )
+    other_id = ride.driver_id if user.id == ride.passenger_id else ride.passenger_id
+    await manager.send_personal_message({"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id}, user_id=other_id)
     push_service.notify(
-        db, ride.driver_id, "Comprobante de pago recibido",
-        f"{ride.passenger.name} adjuntó la captura del Pago Móvil del viaje #{ride.id}.",
+        db, other_id, "Comprobante de pago recibido",
+        f"{user.name} adjuntó la captura del Pago Móvil del viaje #{ride.id}.",
         {"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id},
     )
     return {"has_receipt": True, "receipt_uploaded_at": ride.receipt_uploaded_at.isoformat()}
@@ -130,3 +131,29 @@ def get_receipt(ride_id: int, user: User = Depends(get_current_user), db: Sessio
     if not path or path.parent != RECEIPT_DIR.resolve() or not path.exists():
         raise HTTPException(status_code=404, detail="Este viaje no tiene comprobante.")
     return FileResponse(path)
+
+
+@router.get("/admin/receipts", dependencies=[Depends(require_admin)])
+def admin_ride_receipts(limit: int = 30, db: Session = Depends(get_db)):
+    """Viajes recientes con comprobante de Pago Móvil, para revisarlos en el panel."""
+    rides = (
+        db.query(Ride)
+        .filter(Ride.receipt_file.isnot(None))
+        .order_by(Ride.receipt_uploaded_at.desc())
+        .limit(min(max(limit, 1), 100))
+        .all()
+    )
+    return [
+        {
+            "id": ride.id,
+            "origin": ride.origin,
+            "destination": ride.destination,
+            "status": ride.status,
+            "fare_amount": ride.fare_amount,
+            "payment_reference": ride.payment_reference,
+            "passenger_name": ride.passenger.name,
+            "driver_name": ride.driver.name,
+            "receipt_uploaded_at": ride.receipt_uploaded_at.isoformat() if ride.receipt_uploaded_at else None,
+        }
+        for ride in rides
+    ]

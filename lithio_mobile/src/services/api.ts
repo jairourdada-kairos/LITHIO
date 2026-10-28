@@ -127,15 +127,17 @@ export interface AdminVoucher extends GradeVoucher {
 
 export interface AdminWalletItem {
   id: number;
-  kind: 'recarga' | 'retiro' | 'taller';
+  kind: 'recarga' | 'donacion_pm' | 'retiro' | 'taller';
   label: string;
   amount: number;
   status: string;
   note: string | null;
+  has_receipt: boolean;
   created_at: string;
   user_id: number;
   user_name: string;
   user_email: string;
+  friend_code: string | null;
   reference: string | null;
 }
 
@@ -147,7 +149,16 @@ export interface WalletTransaction {
   status: 'pendiente' | 'aprobado' | 'rechazado';
   counterpart_name: string | null;
   note: string | null;
+  has_receipt: boolean;
   created_at: string;
+}
+
+/** Pago Móvil del administrador, donde se pagan recargas y donaciones. */
+export interface PagoMovilDestination {
+  holder: string;
+  phone: string;
+  bank: string | null;
+  id_number: string | null;
 }
 
 export interface WalletInfo {
@@ -156,6 +167,7 @@ export interface WalletInfo {
   friend_code: string | null;
   transactions: WalletTransaction[];
   fund: { donated: number; donors: number };
+  pago_movil: PagoMovilDestination | null;
 }
 
 export type BondType = 'nuevo' | 'iónico' | 'covalente';
@@ -226,6 +238,23 @@ async function assertOk(response: Response): Promise<void> {
     ? body.detail.map((item: { msg?: string }) => (item.msg || '').replace(/^Value error, /, '')).join('\n')
     : body.detail;
   throw new Error(detail || `La solicitud falló (${response.status}).`);
+}
+
+/**
+ * Imágenes privadas (comprobantes, notas). En iOS/Android, Image acepta
+ * cabeceras; en el navegador se descarga con el token y se muestra como blob.
+ */
+async function privateImageSource(path: string): Promise<{ uri: string; headers?: Record<string, string> }> {
+  const uri = `${API_BASE}${path}`;
+  if (Platform.OS === 'web') {
+    const response = await authenticatedFetch(uri);
+    await assertOk(response);
+    return { uri: URL.createObjectURL(await response.blob()) };
+  }
+  const headers: Record<string, string> = { Authorization: `Bearer ${await getFirebaseIdToken()}` };
+  const session = getDeviceSession();
+  if (session) headers['X-Session-Id'] = session;
+  return { uri, headers };
 }
 
 export const apiService = {
@@ -400,21 +429,20 @@ export const apiService = {
     await assertOk(response);
   },
 
-  /**
-   * El comprobante es privado. En iOS/Android, Image acepta cabeceras; en el
-   * navegador se descarga con el token y se muestra como blob.
-   */
   async rideReceiptSource(rideId: number): Promise<{ uri: string; headers?: Record<string, string> }> {
-    const uri = `${API_BASE}/api/rides/${rideId}/receipt`;
-    if (Platform.OS === 'web') {
-      const response = await authenticatedFetch(uri);
-      await assertOk(response);
-      return { uri: URL.createObjectURL(await response.blob()) };
-    }
-    const headers: Record<string, string> = { Authorization: `Bearer ${await getFirebaseIdToken()}` };
-    const session = getDeviceSession();
-    if (session) headers['X-Session-Id'] = session;
-    return { uri, headers };
+    return privateImageSource(`/api/rides/${rideId}/receipt`);
+  },
+
+  async walletReceiptSource(txId: number): Promise<{ uri: string; headers?: Record<string, string> }> {
+    return privateImageSource(`/api/wallet/transactions/${txId}/receipt`);
+  },
+
+  /** Captura del Pago Móvil de una recarga o donación en revisión. */
+  async uploadWalletReceipt(txId: number, photo: Blob): Promise<void> {
+    const form = new FormData();
+    form.append('photo', photo);
+    const response = await authenticatedFetch(`${API_BASE}/api/wallet/transactions/${txId}/receipt`, { method: 'POST', body: form });
+    await assertOk(response);
   },
 
   async getFeStore(): Promise<FeStore> {
@@ -459,11 +487,8 @@ export const apiService = {
   },
 
   /** La evidencia es privada: se pide con el token del administrador. */
-  async voucherEvidenceSource(id: number): Promise<{ uri: string; headers: Record<string, string> }> {
-    return {
-      uri: `${API_BASE}/api/admin/vouchers/${id}/evidence`,
-      headers: { Authorization: `Bearer ${await getFirebaseIdToken()}` },
-    };
+  async voucherEvidenceSource(id: number): Promise<{ uri: string; headers?: Record<string, string> }> {
+    return privateImageSource(`/api/admin/vouchers/${id}/evidence`);
   },
 
   async reviewWalletTransaction(id: number, action: 'aprobar' | 'rechazar', note?: string): Promise<void> {
@@ -510,16 +535,21 @@ export const apiService = {
     return postJson('/api/quiz/today', { option });
   },
 
-  async requestTopup(amount: number, reference: string): Promise<void> {
-    await postJson('/api/wallet/topups', { amount, reference });
+  async requestTopup(amount: number, reference: string): Promise<WalletTransaction> {
+    return postJson('/api/wallet/topups', { amount, reference });
   },
 
   async sendDiamonds(toCode: string, amount: number, note?: string): Promise<void> {
     await postJson('/api/wallet/transfers', { to_code: toCode, amount, note: note || undefined });
   },
 
-  async donate(amount: number): Promise<void> {
-    await postJson('/api/wallet/donations', { amount });
+  /** Con diamantes se descuenta al instante; por Pago Móvil queda en revisión. */
+  async donate(amount: number, method: 'diamantes' | 'pago_movil' = 'diamantes', reference?: string): Promise<WalletTransaction> {
+    return postJson('/api/wallet/donations', { amount, method, reference });
+  },
+
+  async creditDiamonds(friendCode: string, amount: number, note?: string): Promise<void> {
+    await postJson('/api/admin/wallet/credit', { friend_code: friendCode, amount, note: note || undefined });
   },
 
   async requestWithdrawal(amount: number, destination: string): Promise<void> {

@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { Icon, IconName } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { PressableScale } from '../../components/brand/PressableScale';
@@ -14,6 +14,7 @@ import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService, WalletInfo, WalletTransaction } from '../../services/api';
 import { WalletActionSheet } from '../../components/WalletActionSheet';
 import { formatBs, useBcvRate } from '../../services/rates';
+import { photoFormValue, pickDocumentPhoto } from '../../services/avatar';
 import type { SessionRole } from '../../services/session';
 
 export type WalletAction = 'recargar' | 'enviar' | 'donar' | 'retirar' | 'taller';
@@ -29,12 +30,15 @@ const KIND_ICONS: Record<string, IconName> = {
   cobro_viaje: 'motorbike',
   envio: 'paper-plane-outline',
   donacion: 'heart-outline',
+  donacion_pm: 'heart-outline',
   pago_viaje: 'motorbike',
   retiro: 'arrow-circle-up-outline',
   taller: 'settings-2-outline',
 };
 
 const STATUS_TEXT: Record<string, string> = { pendiente: 'En revisión', aprobado: '', rechazado: 'Rechazado' };
+// Se pagan por Pago Móvil y llevan la captura del pago.
+const RECEIPT_KINDS = new Set(['recarga', 'donacion_pm']);
 
 export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
   const [action, setAction] = useState<WalletAction | null>(null);
@@ -136,20 +140,44 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
         ) : (
           <View style={styles.list}>
             {wallet?.transactions.map((tx, index) => (
-              <Movement key={tx.id} tx={tx} divider={index > 0} />
+              <Movement key={tx.id} tx={tx} divider={index > 0} onReceiptSaved={load} />
             ))}
           </View>
         )}
       </View>
     </ScrollView>
-    <WalletActionSheet action={action} balance={wallet?.balance ?? 0} onClose={() => setAction(null)} onDone={load} />
+    <WalletActionSheet
+      action={action}
+      balance={wallet?.balance ?? 0}
+      pagoMovil={wallet?.pago_movil ?? null}
+      onClose={() => setAction(null)}
+      onDone={load}
+    />
     </>
   );
 };
 
-const Movement: React.FC<{ tx: WalletTransaction; divider: boolean }> = ({ tx, divider }) => {
-  const incoming = tx.amount > 0;
+const Movement: React.FC<{ tx: WalletTransaction; divider: boolean; onReceiptSaved: () => void }> = ({ tx, divider, onReceiptSaved }) => {
+  // La donación por Pago Móvil se guarda en positivo, pero no entra al saldo.
+  const incoming = tx.amount > 0 && tx.kind !== 'donacion_pm';
   const pending = tx.status === 'pendiente';
+  const [uploading, setUploading] = useState(false);
+  const canAttach = pending && RECEIPT_KINDS.has(tx.kind);
+
+  const attach = async () => {
+    const uri = await pickDocumentPhoto();
+    if (!uri) return;
+    setUploading(true);
+    try {
+      await apiService.uploadWalletReceipt(tx.id, await photoFormValue(uri, 'comprobante.jpg'));
+      onReceiptSaved();
+      Alert.alert('Comprobante enviado', 'El administrador lo revisará para confirmar tu pago.');
+    } catch (e) {
+      Alert.alert('No se pudo enviar el comprobante', e instanceof Error ? e.message : 'Intenta de nuevo.');
+    } finally {
+      setUploading(false);
+    }
+  };
   const color = tx.status === 'rechazado' ? theme.colors.textMuted : pending ? theme.colors.gold : incoming ? theme.colors.success : theme.colors.textPrimary;
   const detail = [tx.counterpart_name, tx.note, STATUS_TEXT[tx.status]].filter(Boolean).join(' · ');
   return (
@@ -160,6 +188,15 @@ const Movement: React.FC<{ tx: WalletTransaction; divider: boolean }> = ({ tx, d
       <View style={styles.flex}>
         <Text style={styles.movementLabel}>{tx.label}</Text>
         {detail ? <Text style={styles.movementDetail} numberOfLines={1}>{detail}</Text> : null}
+        {canAttach ? (
+          <Pressable onPress={attach} disabled={uploading} accessibilityRole="button" hitSlop={8} style={styles.attach}>
+            {uploading ? (
+              <ActivityIndicator size="small" color={theme.colors.diamond} />
+            ) : (
+              <Text style={styles.attachText}>{tx.has_receipt ? '✓ Captura enviada · cambiar' : 'Adjuntar captura del pago'}</Text>
+            )}
+          </Pressable>
+        ) : null}
       </View>
       <Text style={[styles.amount, { color }, tx.status === 'rechazado' && styles.struck]}>
         {incoming ? '+' : '−'}
@@ -170,6 +207,15 @@ const Movement: React.FC<{ tx: WalletTransaction; divider: boolean }> = ({ tx, d
 };
 
 const styles = themed(() => ({
+  attach: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  attachText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 12,
+    color: theme.colors.diamond,
+  },
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 12,

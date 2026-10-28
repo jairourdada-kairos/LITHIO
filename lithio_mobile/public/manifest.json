@@ -1,0 +1,17 @@
+{
+  "name": "LITHIO",
+  "short_name": "LITHIO",
+  "description": "Moto-taxi universitario de confianza.",
+  "lang": "es",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#10191C",
+  "background_color": "#10191C",
+  "icons": [
+    { "src": "logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "logo512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

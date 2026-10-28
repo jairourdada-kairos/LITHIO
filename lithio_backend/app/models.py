@@ -144,7 +144,8 @@ class WalletTransaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    # recarga, retiro, envio, recepcion, donacion, pago_viaje, cobro_viaje, taller, reembolso
+    # recarga, retiro, envio, recepcion, donacion (con diamantes), donacion_pm (por Pago Móvil),
+    # pago_viaje, cobro_viaje, taller, reembolso
     kind = Column(String, nullable=False)
     amount_cents = Column(Integer, nullable=False)  # Positivo entra, negativo sale
     # pendiente (en revisión o retenido), aprobado, rechazado
@@ -154,6 +155,8 @@ class WalletTransaction(Base):
     reward_id = Column(Integer, ForeignKey("workshop_rewards.id"), nullable=True)
     reference = Column(EncryptedString, nullable=True)  # Referencia de Pago Móvil o datos de retiro
     note = Column(String, nullable=True)
+    # Captura del Pago Móvil (recargas y donaciones): archivo privado en EVIDENCE_DIR/wallet.
+    receipt_file = Column(String, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 

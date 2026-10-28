@@ -17,6 +17,7 @@ import { useRideCenter } from '../hooks/useRideCenter';
 import { GlassBlurScope, GlassBlurTarget } from '../components/ui/GlassSurface';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
+import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { AboutLithioModal } from '../components/AboutLithioModal';
 import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { RequestSheet } from '../components/driver/RequestSheet';
@@ -145,6 +146,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 
   const rides = useRideCenter(user.id, 'conductor');
   const isAvailable = Boolean(summary.is_available);
+  const adminAlerts = useAdminAlerts(Boolean(summary.is_admin));
 
   // Cada solicitud nueva sube la hoja una sola vez; después queda en la bandeja.
   useEffect(() => {
@@ -330,6 +332,15 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
         ) : null}
 
         <NoticeBanner notice={rides.notice} onClose={rides.clearNotice} onPress={() => setTab('home')} />
+        {/* Solicitudes para el administrador; espera a que se cierre el aviso del viaje. */}
+        <NoticeBanner
+          notice={rides.notice ? null : adminAlerts.notice}
+          onClose={adminAlerts.clear}
+          onPress={() => {
+            adminAlerts.clear();
+            setOverlay('admin');
+          }}
+        />
         <RequestSheet
           ride={sheetRide}
           busy={busy}

@@ -28,4 +28,8 @@ Write-Host '==> Publicando la actualizacion (1-3 minutos)' -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { Write-Host 'ERROR: no se pudo publicar la actualizacion.' -ForegroundColor Red; exit 1 }
 
 Write-Host ''
-Write-Host 'LISTO: los APK instalados recibiran el cambio al abrir LITHIO.' -ForegroundColor Green
+# La version web (iPhone y computadoras) tambien se actualiza.
+& (Join-Path $PSScriptRoot 'exportar_web.ps1')
+
+Write-Host ''
+Write-Host 'LISTO: los APK instalados recibiran el cambio al abrir LITHIO, y la web ya muestra la version nueva.' -ForegroundColor Green

@@ -97,6 +97,9 @@ ADDED_COLUMNS = {
         "receipt_uploaded_at": "TIMESTAMP",
         "driver_fe_awarded": "BOOLEAN NOT NULL DEFAULT 0",
     },
+    "wallet_transactions": {
+        "receipt_file": "VARCHAR",
+    },
     "driver_profiles": {
         "mobile_payment_bank": "TEXT",
         "mobile_payment_id": "TEXT",

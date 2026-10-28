@@ -28,6 +28,8 @@ export type WSMessageType =
   | 'WALLET_UPDATED'
   | 'LINK_REQUEST'
   | 'LINK_ACCEPTED'
+  | 'ADMIN_ALERT'
+  | 'RIDE_RECEIPT_UPLOADED'
   | 'PONG';
 
 export interface WSMessage {

@@ -1,7 +1,9 @@
 # Abre LITHIO para personas fuera de tu Wi-Fi (gratis, con esta PC encendida).
 #
-# 1. Enciende el servidor si no lo esta.
+# 1. Enciende el servidor si no lo esta (y prepara la version web si falta).
 # 2. Abre un tunel de Cloudflare: una direccion https publica que llega a esta PC.
+#    Esa misma direccion sirve la API y la app web (/app): es el link para todos,
+#    tambien para iPhone (Safari -> Compartir -> Agregar a inicio).
 # 3. Abre otro tunel para la app (Expo) y arranca Expo: el QR sirve desde cualquier red.
 #
 # La direccion cambia cada vez que se abre; no se toca lithio_mobile\.env, asi
@@ -16,6 +18,10 @@ foreach ($candidate in "${env:ProgramFiles(x86)}\cloudflared\cloudflared.exe", "
   if (-not $cloudflared -and (Test-Path $candidate)) { $cloudflared = $candidate }
 }
 if (-not $cloudflared) { Write-Host 'ERROR: falta cloudflared. Instala con: winget install Cloudflare.cloudflared' -ForegroundColor Red; exit 1 }
+
+if (-not (Test-Path (Join-Path $Root 'lithio_mobile\dist-web\index.html'))) {
+  & (Join-Path $PSScriptRoot 'exportar_web.ps1')
+}
 
 Write-Host '==> 1/3 Servidor' -ForegroundColor Cyan
 try { Invoke-RestMethod 'http://127.0.0.1:8000/health' -TimeoutSec 3 | Out-Null; Write-Host 'Ya estaba encendido.' }
@@ -57,6 +63,7 @@ for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
 }
 if (-not $ok) { Write-Host "Aviso: $url aun no responde; puede tardar unos segundos mas." -ForegroundColor Yellow }
 Write-Host "Servidor publico: $url" -ForegroundColor Green
+Write-Host "LINK PARA TODOS (Android, iPhone, computadoras): $url/app/" -ForegroundColor Green
 
 # El APK lee esta direccion desde Firebase al abrirse (cambia en cada arranque).
 Push-Location (Join-Path $Root 'lithio_backend')
@@ -73,7 +80,7 @@ $expUrl = $appUrl -replace '^https://', 'exps://'
 
 # Google y Facebook solo inician sesion en la web desde dominios autorizados en Firebase.
 Push-Location (Join-Path $Root 'lithio_backend')
-& .\venv\Scripts\python.exe -m app.authorize_domain $appUrl
+& .\venv\Scripts\python.exe -m app.authorize_domain $url $appUrl
 if ($LASTEXITCODE -ne 0) { Write-Host 'Aviso: en la web, Google no funcionara hasta autorizar este dominio en Firebase.' -ForegroundColor Yellow }
 Pop-Location
 

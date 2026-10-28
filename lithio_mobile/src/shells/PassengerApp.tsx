@@ -17,6 +17,7 @@ import { useRideCenter } from '../hooks/useRideCenter';
 import { GlassBlurScope, GlassBlurTarget } from '../components/ui/GlassSurface';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
+import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { ActiveRideCard } from '../components/ActiveRideCard';
 import { RequestRideModal } from '../components/RequestRideModal';
@@ -77,6 +78,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const rides = useRideCenter(user.id, 'pasajero');
+  const adminAlerts = useAdminAlerts(Boolean(summary?.is_admin));
 
   const loadSummary = useCallback(() => {
     apiService.getSummary('pasajero').then(setSummary).catch(() => {});
@@ -382,6 +384,15 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           notice={rides.notice}
           onClose={rides.clearNotice}
           onPress={() => rides.activeRide && setOverlay({ type: 'ride' })}
+        />
+        {/* Solicitudes para el administrador; espera a que se cierre el aviso del viaje. */}
+        <NoticeBanner
+          notice={rides.notice ? null : adminAlerts.notice}
+          onClose={adminAlerts.clear}
+          onPress={() => {
+            adminAlerts.clear();
+            setOverlay({ type: 'admin' });
+          }}
         />
 
         <RequestRideModal

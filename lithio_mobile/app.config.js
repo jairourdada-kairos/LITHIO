@@ -36,8 +36,12 @@ module.exports = ({ config }) => {
     ]);
   }
 
+  // La web publicada se sirve en /app del servidor (scripts/exportar_web.ps1).
+  const webBaseUrl = process.env.EXPO_WEB_BASE_URL;
+
   return {
     ...config,
+    ...(webBaseUrl ? { experiments: { ...(config.experiments || {}), baseUrl: webBaseUrl } } : {}),
     plugins,
     android: {
       ...config.android,

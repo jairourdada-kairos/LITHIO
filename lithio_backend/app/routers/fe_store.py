@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..admin_alerts import alert_admins
 from ..auth import get_current_user, require_admin
 from ..config import EVIDENCE_DIR
 from ..database import get_db
@@ -135,6 +136,7 @@ async def request_voucher(
     )
     db.add(voucher)
     commit_or_discard(db, EVIDENCE_DIR / filename)
+    await alert_admins(db, "vale", "Vale de nota por revisar", f"{user.name} pidió un vale para {voucher.subject}.", voucher_id=voucher.id)
     return {"voucher": voucher_payload(voucher), "points": user.points}
 
 

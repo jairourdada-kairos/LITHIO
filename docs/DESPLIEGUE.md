@@ -195,6 +195,42 @@ una librería nativa, el ícono o el nombre. En ese caso sube `version` en
 
 ---
 
+# Versión web: iPhone y computadoras
+
+El mismo servidor sirve la app web en `/app`. Al abrir `iniciar_publico.bat`
+aparece la línea **LINK PARA TODOS**: esa dirección sirve en Android, iPhone y
+computadoras, sin instalar nada ni usar Expo.
+
+- **Instalar en iPhone:** abrir el link en **Safari** → botón Compartir →
+  **Agregar a inicio**. Queda con el ícono de LITHIO y a pantalla completa.
+- **Entrar con Google en iPhone:** solo desde Safari. En el ícono agregado a la
+  pantalla de inicio, iOS no deja volver de la ventana de Google; ahí se entra
+  con correo y contraseña.
+- **El link cambia** cada vez que se abre `iniciar_publico.bat` (túnel gratuito),
+  y el ícono agregado deja de abrir. Para un link fijo hay que pasar el servidor
+  a la nube (arriba).
+- **Actualizar la web:** `publicar_actualizacion.bat` la vuelve a compilar al
+  final. Para compilarla sola: `scripts\exportar_web.ps1` (1-2 minutos).
+
+---
+
+# Billetera: Pago Móvil y avisos al administrador
+
+- Recargas y donaciones por Pago Móvil muestran el **Pago Móvil del
+  administrador**: el teléfono, banco y cédula de su perfil de conductor. Para
+  cambiarlos, edita esos datos en tu perfil de conductor.
+- La persona escribe la referencia y adjunta la **captura**. En el panel
+  (`/dashboard` → Aprobaciones) y en la app (Administrador) se ve la captura y
+  se pulsa **Acreditar diamantes** o **Rechazar**.
+- **◆ Acreditar diamantes** (panel) suma diamantes a mano con el código Li-XXXX
+  de la persona, por ejemplo si te pagó por WhatsApp sin usar la app.
+- Cada solicitud nueva (recarga, donación, comprobante, retiro, taller, vale o
+  conductor nuevo) llega al administrador como **aviso flotante** en la app y
+  como **notificación** del teléfono con la app cerrada. El panel web revisa cada
+  30 segundos y muestra el aviso arriba a la derecha.
+
+---
+
 # Entrar con Google y Facebook
 
 **Estado (28 oct 2026):** Google ya está configurado para el APK v4
