@@ -172,7 +172,22 @@ La firma de Android se crea sola la primera vez. No hay que subir ninguna
 clave a Expo: el servidor envía las notificaciones directo por Firebase con su
 propia cuenta de servicio.
 
-Al terminar (≈15 min) te da el enlace del `.apk` para compartir.
+Al terminar (≈15 min) pone el APK nuevo en la página de descarga.
+
+## 4. Compartir el APK: página de descarga
+
+El link para compartir es **`<dirección de iniciar_publico>/descargar`**, por
+ejemplo `https://xxxx.trycloudflare.com/descargar`. La página tiene el botón de
+descarga y la guía paso a paso, con los avisos de Android («Instalación
+bloqueada», Play Protect). Textos listos para WhatsApp en
+[`COMPARTIR_LITHIO.md`](COMPARTIR_LITHIO.md) y flyer en
+[`flyer_instalar_lithio.png`](flyer_instalar_lithio.png).
+
+- El botón baja el APK de los servidores de Expo, que es más rápido, mientras
+  ese link siga vigente (14 días). Después usa la copia de esta PC
+  (`lithio_descarga/LITHIO.apk`, que no va a git).
+- `generar_apk.bat` actualiza la página solo. Para hacerlo a mano (por ejemplo,
+  en otra PC): **`actualizar_descarga.bat`**.
 
 Si dice que el proyecto pertenece a otra cuenta de Expo, ejecuta en
 `lithio_mobile`: `npx eas-cli@latest init --force` y vuelve a intentarlo.

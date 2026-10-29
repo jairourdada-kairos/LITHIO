@@ -49,3 +49,7 @@ docs/guia/*.mp4
 # Versión web compilada (scripts/exportar_web.ps1) y copias de la base de datos
 lithio_mobile/dist-web/
 lithio_backend/backups/
+
+# APK de la pagina de descarga (se baja de Expo con scripts/actualizar_descarga.ps1)
+lithio_descarga/*.apk
+lithio_descarga/apk.json

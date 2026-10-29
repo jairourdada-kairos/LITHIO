@@ -40,6 +40,9 @@ Write-Host '==> 3/3 Compilar el APK (unos 15 minutos)' -ForegroundColor Cyan
 Eas build --platform android --profile preview --non-interactive
 
 Write-Host ''
-Write-Host 'LISTO: arriba esta el enlace para descargar el .apk.' -ForegroundColor Green
-Write-Host 'Compartelo por WhatsApp; al instalar, Android pedira permitir "origenes desconocidos".'
+& (Join-Path $PSScriptRoot 'actualizar_descarga.ps1')
+
+Write-Host ''
+Write-Host 'LISTO: el APK nuevo ya esta en <direccion de iniciar_publico>/descargar' -ForegroundColor Green
+Write-Host 'Comparte ese link: la pagina explica como instalarlo y que hacer con los avisos de Android.'
 Write-Host 'Recuerda: el APK funciona mientras iniciar_publico.bat este abierto en esta PC.'

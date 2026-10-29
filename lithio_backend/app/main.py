@@ -1,7 +1,7 @@
 from . import config  # Carga el .env antes que cualquier otro módulo de la app
 from .rate_limit import rate_limit
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -136,6 +136,23 @@ if os.path.isdir(dashboard_dir):
 # con scripts/exportar_web.ps1. Va en la misma dirección que la API: un solo link.
 web_app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_mobile", "dist-web"))
 app.mount("/app", StaticFiles(directory=web_app_dir, html=True, check_dir=False), name="web_app")
+
+# Página de descarga del APK con la guía de instalación. El .apk no va en git:
+# lo baja de Expo scripts/actualizar_descarga.ps1 (también al final de generar_apk).
+download_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_descarga"))
+APK_NAME = "LITHIO.apk"
+
+
+@app.api_route(f"/descargar/{APK_NAME}", methods=["GET", "HEAD"], include_in_schema=False)
+def download_apk():
+    path = os.path.join(download_dir, APK_NAME)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="El instalador aún no está disponible.")
+    # Con este tipo, Android lo reconoce como app y ofrece instalarla al terminar.
+    return FileResponse(path, media_type="application/vnd.android.package-archive", filename=APK_NAME)
+
+
+app.mount("/descargar", StaticFiles(directory=download_dir, html=True, check_dir=False), name="descarga")
 
 
 @app.get("/")

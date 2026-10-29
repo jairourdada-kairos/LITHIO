@@ -586,3 +586,17 @@ def test_facebook_accounts_enter_without_gmail_or_email_verification(client, mon
     created = client.post("/api/passengers/register", json=data, headers={"Authorization": "Bearer fb-new"})
     assert created.status_code == 201, created.text
     assert client.get("/api/users/me", headers={"Authorization": "Bearer fb-new"}).status_code == 200
+
+
+def test_download_page_serves_the_apk_as_an_android_app(client, tmp_path, monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main, "download_dir", str(tmp_path))
+    assert client.get("/descargar/LITHIO.apk").status_code == 404
+
+    (tmp_path / "LITHIO.apk").write_bytes(b"PK\x03\x04apk")
+    response = client.get("/descargar/LITHIO.apk")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/vnd.android.package-archive"
+    assert 'filename="LITHIO.apk"' in response.headers["content-disposition"]
+    assert client.head("/descargar/LITHIO.apk").headers["content-length"] == "7"

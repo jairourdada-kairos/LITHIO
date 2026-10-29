@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Instala LITHIO</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Flyer 1080x1920 para WhatsApp/estados. Se convierte en PNG con scripts/generar_flyer.ps1. */
+  :root {
+    --bg: #10191C; --surface: #18292C; --surface-2: #223639; --line: rgba(255,255,255,0.08);
+    --text: #F8FAFC; --text-2: #B4C1CF; --primary: #45D6C5; --on-primary: #0E2A27;
+    --coral: #FF765E; --gold: #FFC857;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(900px 700px at -10% -8%, rgba(69,214,197,0.20), transparent 60%),
+      radial-gradient(800px 700px at 110% 105%, rgba(255,118,94,0.16), transparent 60%),
+      var(--bg);
+    color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif;
+    padding: 80px 72px; display: flex; flex-direction: column;
+  }
+  header { display: flex; align-items: center; gap: 30px; }
+  header img { width: 150px; height: 150px; border-radius: 40px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); }
+  .brand { font-size: 30px; letter-spacing: .28em; font-weight: 700; color: var(--primary); }
+  h1 { font-size: 76px; line-height: 1.02; letter-spacing: -.03em; margin-top: 8px; }
+  .lead { font-size: 34px; color: var(--text-2); margin: 36px 0 40px; line-height: 1.35; }
+  .lead b { color: var(--text); }
+
+  .steps { display: flex; flex-direction: column; gap: 22px; flex: 1; }
+  .step {
+    display: flex; gap: 28px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 36px;
+    padding: 30px 34px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.7);
+  }
+  .num {
+    flex-shrink: 0; width: 74px; height: 74px; border-radius: 24px; display: grid; place-items: center;
+    font-size: 38px; font-weight: 700; background: rgba(69,214,197,.14); color: var(--primary);
+  }
+  .step.warn { border-color: rgba(255,118,94,.45); }
+  .step.warn .num { background: rgba(255,118,94,.14); color: var(--coral); }
+  .step h2 { font-size: 38px; line-height: 1.15; margin: 6px 0 8px; }
+  .step p { font-size: 29px; line-height: 1.38; color: var(--text-2); }
+  .k {
+    display: inline-block; padding: 0 14px; border-radius: 14px; background: var(--surface-2);
+    color: var(--text); font-weight: 600; white-space: nowrap;
+  }
+  .k.go { background: var(--primary); color: var(--on-primary); }
+  .tag { font-size: 22px; font-weight: 700; letter-spacing: .08em; color: var(--coral); }
+
+  footer {
+    margin-top: 28px; display: flex; gap: 22px; align-items: center;
+    background: rgba(255,200,87,.12); border-radius: 30px; padding: 26px 32px; font-size: 28px; line-height: 1.35;
+  }
+  footer b { color: var(--gold); }
+</style>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="">
+    <div>
+      <p class="brand">LITHIO</p>
+      <h1>Instálalo en<br>2 minutos</h1>
+    </div>
+  </header>
+  <p class="lead">Moto-taxi universitario para <b>Android</b>. Abre el link que te enviaron y sigue estos pasos:</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div><h2>Descarga</h2><p>Toca <span class="k go">Descargar LITHIO</span>. Si Chrome avisa, toca <span class="k">Descargar de todas formas</span>.</p></div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div><h2>Abre el archivo</h2><p>Toca <span class="k">Abrir</span> o búscalo en <b>Archivos → Descargas</b>.</p></div>
+    </div>
+    <div class="step warn">
+      <div class="num">3</div>
+      <div><p class="tag">«INSTALACIÓN BLOQUEADA»</p><h2>Dale permiso a Chrome</h2><p>Toca <span class="k">Configuración</span> → activa <span class="k">Permitir desde esta fuente</span> → vuelve <span class="k">← Atrás</span> → <span class="k">Instalar</span>.</p></div>
+    </div>
+    <div class="step warn">
+      <div class="num">4</div>
+      <div><p class="tag">«PLAY PROTECT» / «APP NO SEGURA»</p><h2>Es normal: no está en Play Store</h2><p>Toca <span class="k">Más detalles ⌄</span> → <span class="k">Instalar de todas formas</span>. <b>No</b> toques «Aceptar».</p></div>
+    </div>
+    <div class="step">
+      <div class="num">5</div>
+      <div><h2>¡Listo!</h2><p>Abre LITHIO, entra con Google o tu correo y permite <b>ubicación</b> y <b>notificaciones</b>.</p></div>
+    </div>
+  </div>
+
+  <footer><span style="font-size:44px">🔒</span><span>Descárgalo <b>solo del link oficial</b>. ¿iPhone? Usa la versión web y en Safari toca Compartir → Agregar a inicio.</span></footer>
+</body>
+</html>
