@@ -75,8 +75,29 @@ export interface RideDetail {
   timeline: RideTimelineEntry[];
   passenger: RidePerson;
   driver: RidePerson & { moto: string | null; moto_color: string | null; plate: string | null };
-  review: { rating: number; comment: string | null; badges: string | null } | null;
+  review: { rating: number; comment: string | null; badges: string[]; created_at: string | null } | null;
+  /** El pasajero aún puede calificar este viaje (completado y sin reseña). */
+  can_review: boolean;
   viewer_role: 'pasajero' | 'conductor' | 'admin';
+}
+
+/** Reseña que recibió un conductor (en "Mis reseñas" y en el panel). */
+export interface DriverReview {
+  id: number;
+  ride_id: number;
+  rating: number;
+  comment: string | null;
+  badges: string[];
+  created_at: string | null;
+  origin: string | null;
+  destination: string | null;
+  passenger_name: string | null;
+}
+
+export interface DriverReviews {
+  average: number | null;
+  count: number;
+  reviews: DriverReview[];
 }
 
 export interface MyProfile {
@@ -427,6 +448,23 @@ export const apiService = {
     form.append('photo', photo);
     const response = await authenticatedFetch(`${API_BASE}/api/rides/${rideId}/receipt`, { method: 'POST', body: form });
     await assertOk(response);
+  },
+
+  /** Referencia del Pago Móvil, anotada después de transferir. */
+  async setPaymentReference(rideId: number, reference: string): Promise<string> {
+    const response = await authenticatedFetch(`${API_BASE}/api/rides/${rideId}/payment-reference`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference }),
+    });
+    await assertOk(response);
+    return (await response.json()).payment_reference;
+  },
+
+  async getMyDriverReviews(): Promise<DriverReviews> {
+    const response = await authenticatedFetch(`${API_BASE}/api/drivers/me/reviews`);
+    await assertOk(response);
+    return response.json();
   },
 
   async rideReceiptSource(rideId: number): Promise<{ uri: string; headers?: Record<string, string> }> {

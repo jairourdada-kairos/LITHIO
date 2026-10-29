@@ -44,6 +44,7 @@
                 <button class="nav-item active" data-section="dashboard">📊 Resumen</button>
                 <button class="nav-item" data-section="approvals">✅ Aprobaciones</button>
                 <button class="nav-item" data-section="drivers">🛵 Conductores</button>
+                <button class="nav-item" data-section="reviews">⭐ Reseñas</button>
                 <button class="nav-item" data-section="routes">🛣️ Rutas</button>
                 <button class="nav-item" data-section="rewards">🔧 Taller</button>
                 <button class="nav-item" data-section="profile">👤 Perfil</button>
@@ -143,6 +144,20 @@
                             <tbody id="drivers-table-body"></tbody>
                         </table>
                     </div>
+                </section>
+
+                <section class="content-card glass-panel section-panel" id="reviews">
+                    <div class="card-header">
+                        <h3>Reseñas de los pasajeros</h3>
+                        <label class="inline-filter">
+                            Conductor
+                            <select id="reviews-driver-filter">
+                                <option value="">Todos</option>
+                            </select>
+                        </label>
+                    </div>
+                    <p id="reviews-summary" class="reviews-summary"></p>
+                    <div id="reviews-list" class="mini-grid"></div>
                 </section>
 
                 <section class="content-card glass-panel section-panel" id="routes">

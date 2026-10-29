@@ -19,6 +19,8 @@ import { apiService, RideDetail } from '../../services/api';
 import { photoFormValue, pickDocumentPhoto } from '../../services/avatar';
 import { formatBs, useBcvRate } from '../../services/rates';
 import { statusInfo } from './RidesListScreen';
+import { ReviewModal } from '../../components/ReviewModal';
+import type { ReviewSubmission } from '../../types';
 
 interface Props {
   rideId: number;
@@ -53,6 +55,7 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   const [ride, setRide] = useState<RideDetail | null>(null);
   const [receipt, setReceipt] = useState<ImageURISource | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +84,17 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
       Alert.alert('No se pudo guardar el comprobante', error instanceof Error ? error.message : 'Intenta de nuevo.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const submitReview = async (review: ReviewSubmission) => {
+    try {
+      await apiService.submitReview(ride!.passenger.id, review);
+      setReviewing(false);
+      await load();
+      setTimeout(() => Alert.alert('¡Gracias por tu reseña!', 'El conductor ya puede leerla.'), 350);
+    } catch (error) {
+      Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }
   };
 
@@ -194,15 +208,46 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
         </Section>
 
         {ride.review ? (
-          <Section title="Calificación">
+          <Section title={ride.viewer_role === 'conductor' ? 'Reseña del pasajero' : 'Tu reseña'}>
             <Text style={[styles.stars, { color: theme.colors.gold }]}>
               {'★'.repeat(ride.review.rating)}
               {'☆'.repeat(5 - ride.review.rating)}
             </Text>
-            {ride.review.comment ? <Text style={styles.body}>“{ride.review.comment}”</Text> : null}
+            {ride.review.badges.length ? (
+              <View style={styles.badges}>
+                {ride.review.badges.map((badge) => (
+                  <Text key={badge} style={styles.badge}>{badge}</Text>
+                ))}
+              </View>
+            ) : null}
+            {ride.review.comment ? (
+              <Text style={styles.body} selectable>“{ride.review.comment}”</Text>
+            ) : (
+              <Text style={styles.muted}>Sin comentario.</Text>
+            )}
+          </Section>
+        ) : ride.can_review ? (
+          <Section title="Calificación">
+            <Text style={styles.muted}>Aún no calificas este viaje. Tu opinión le ayuda al conductor a mejorar.</Text>
+            <Pressable
+              onPress={() => setReviewing(true)}
+              style={({ pressed }) => [styles.attach, { borderColor: theme.colors.gold }, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Icon name="star-outline" size={20} color={theme.colors.gold} />
+              <Text style={[styles.attachText, { color: theme.colors.gold }]}>Calificar viaje</Text>
+            </Pressable>
           </Section>
         ) : null}
       </ScrollView>
+
+      <ReviewModal
+        visible={reviewing}
+        rideId={ride.id}
+        driverName={ride.driver.name}
+        onClose={() => setReviewing(false)}
+        onSubmit={submitReview}
+      />
     </View>
   );
 };
@@ -366,5 +411,20 @@ const styles = themed(() => ({
   stars: {
     fontSize: 22,
     letterSpacing: 2,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  badge: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 12,
+    color: theme.colors.gold,
+    backgroundColor: theme.colors.goldSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+    overflow: 'hidden',
   },
 }));

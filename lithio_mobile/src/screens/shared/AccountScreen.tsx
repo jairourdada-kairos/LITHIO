@@ -39,6 +39,8 @@ interface Props {
   onOpenAdmin?: () => void;
   onOpenLinks: () => void;
   onOpenRewards?: () => void;
+  /** Solo conductores: las reseñas que les dejaron los pasajeros. */
+  onOpenReviews?: () => void;
   onOpenTutorial: () => void;
   onOpenAbout: () => void;
   onSignOut: () => void;
@@ -60,6 +62,7 @@ export const AccountScreen: React.FC<Props> = ({
   onOpenAdmin,
   onOpenLinks,
   onOpenRewards,
+  onOpenReviews,
   onOpenTutorial,
   onOpenAbout,
   onSignOut,
@@ -95,6 +98,7 @@ export const AccountScreen: React.FC<Props> = ({
   const items: MenuItem[] = [
     ...(onOpenAdmin ? [{ icon: 'shield-crown-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
     { icon: 'credit-card-outline', label: 'Mis datos', onPress: onOpenProfile },
+    ...(onOpenReviews ? [{ icon: 'star-outline' as IconName, label: 'Mis reseñas', onPress: onOpenReviews }] : []),
     { icon: 'people-outline', label: 'Enlaces', onPress: onOpenLinks },
     ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
     ...(pushSupported ? [{ icon: 'bell-outline' as IconName, label: 'Notificaciones', onPress: () => void manageNotifications() }] : []),

@@ -273,8 +273,10 @@ class RideResponse(BaseModel):
 class ReviewCreate(BaseModel):
     ride_id: int
     rating: int = Field(ge=1, le=5, strict=True)  # Solo enteros de 1 a 5 estrellas
-    badges: Optional[str] = "Manejo seguro,Casco limpio"
-    comment: Optional[str] = None
+    badges: Optional[str] = Field(default="", max_length=500)
+    # Comentario libre, sobre cualquier aspecto del viaje. El tope solo evita textos
+    # absurdos (unas 4 páginas); no exige un mínimo ni palabras concretas.
+    comment: Optional[str] = Field(default=None, max_length=10000)
 
 class ReviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

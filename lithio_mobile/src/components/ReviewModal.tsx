@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { Alert, Text, View, Modal, TouchableOpacity, TextInput } from 'react-native';
+/**
+ * ReviewModal.tsx — Calificar el viaje al terminar (o desde el historial)
+ *
+ * Estrellas, insignias opcionales y un comentario libre: puede hablar de
+ * cualquier cosa del viaje y tener el largo que la persona quiera. El
+ * conductor lo lee en "Mis reseñas" y el administrador en el panel.
+ */
+
+import React, { useEffect, useState } from 'react';
+import { Text, View, Modal, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { ReviewSubmission } from '../types';
 
@@ -8,127 +16,122 @@ interface ReviewModalProps {
   rideId: number;
   driverName: string;
   onClose: () => void;
-  onSubmit: (review: ReviewSubmission) => void;
+  onSubmit: (review: ReviewSubmission) => Promise<void> | void;
 }
 
 const AVAILABLE_BADGES = [
-  "Manejo Seguro 🛡️",
-  "Casco Limpio 🪖",
-  "Muy Puntual ⏱️",
-  "Buena Vibra 🎵",
-  "Moto Impecable ✨",
-  "Ruta Ágil ⚡"
+  'Manejo Seguro 🛡️',
+  'Casco Limpio 🪖',
+  'Muy Puntual ⏱️',
+  'Buena Vibra 🎵',
+  'Moto Impecable ✨',
+  'Ruta Ágil ⚡',
 ];
 
-export const ReviewModal: React.FC<ReviewModalProps> = ({
-  visible,
-  rideId,
-  driverName,
-  onClose,
-  onSubmit,
-}) => {
+const RATING_LABEL = ['', 'Muy malo', 'Malo', 'Normal', 'Bueno', 'Excelente'];
+
+/** El servidor guarda hasta 10 000 caracteres: unas cuatro páginas. */
+const MAX_COMMENT = 10000;
+
+export const ReviewModal: React.FC<ReviewModalProps> = ({ visible, rideId, driverName, onClose, onSubmit }) => {
   const [rating, setRating] = useState(5);
-  const [selectedBadges, setSelectedBadges] = useState<string[]>([
-    "Manejo Seguro 🛡️",
-    "Casco Limpio 🪖"
-  ]);
+  const [selectedBadges, setSelectedBadges] = useState<string[]>([]);
   const [comment, setComment] = useState('');
+  const [sending, setSending] = useState(false);
 
-  const toggleBadge = (badge: string) => {
-    if (selectedBadges.includes(badge)) {
-      setSelectedBadges(selectedBadges.filter(b => b !== badge));
-    } else {
-      setSelectedBadges([...selectedBadges, badge]);
-    }
-  };
+  // Cada viaje empieza con la reseña en blanco.
+  useEffect(() => {
+    if (!visible) return;
+    setRating(5);
+    setSelectedBadges([]);
+    setComment('');
+    setSending(false);
+  }, [visible, rideId]);
 
-  const handleSend = () => {
-    const trimmedComment = comment.trim();
-    const words = trimmedComment.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-    const describesTrip = /\b(viaje|viajar|conductor|conductora|moto|ruta|trayecto|casco|manejo|puntual|recorrido|servicio|pasajero|destino|origen|experiencia|seguridad|amable)\b/i.test(trimmedComment);
-    if (trimmedComment.length < 25 || new Set(words).size < 4 || !describesTrip) {
-      Alert.alert('Cuéntanos cómo fue', 'Escribe al menos 25 caracteres, cuatro palabras distintas y un detalle relacionado con el viaje para recibir Fe.');
-      return;
+  const toggleBadge = (badge: string) =>
+    setSelectedBadges((prev) => (prev.includes(badge) ? prev.filter((b) => b !== badge) : [...prev, badge]));
+
+  const handleSend = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await onSubmit({ ride_id: rideId, rating, badges: selectedBadges, comment: comment.trim() });
+    } finally {
+      setSending(false);
     }
-    onSubmit({
-      ride_id: rideId,
-      rating,
-      badges: selectedBadges,
-      comment: trimmedComment
-    });
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.card}>
-          <Text style={styles.title}>⭐ Califica a tu Conductor</Text>
-          <Text style={styles.subtitle}>¿Qué tal fue tu viaje con {driverName}?</Text>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+            <Text style={styles.title}>⭐ Califica tu viaje</Text>
+            <Text style={styles.subtitle}>¿Qué tal fue tu viaje con {driverName}?</Text>
 
-          {/* Selector de Estrellas */}
-          <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity key={star} onPress={() => setRating(star)} activeOpacity={0.7}>
-                <Text style={[styles.starIcon, star <= rating && styles.starSelected]}>
-                  ★
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text style={styles.ratingScore}>{rating} de 5 Estrellas</Text>
-
-          {/* Etiquetas Gamificadas */}
-          <Text style={styles.badgesTitle}>Insignias para el Conductor:</Text>
-          <View style={styles.badgesContainer}>
-            {AVAILABLE_BADGES.map((b) => {
-              const isSelected = selectedBadges.includes(b);
-              return (
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity
-                  key={b}
-                  style={[styles.badgeBtn, isSelected && styles.badgeBtnSelected]}
-                  onPress={() => toggleBadge(b)}
-                  activeOpacity={0.75}
+                  key={star}
+                  onPress={() => setRating(star)}
+                  activeOpacity={0.7}
+                  hitSlop={6}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: star === rating }}
+                  accessibilityLabel={`${star} de 5 estrellas`}
                 >
-                  <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
-                    {b}
-                  </Text>
+                  <Text style={[styles.starIcon, star <= rating && styles.starSelected]}>★</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
+              ))}
+            </View>
+            <Text style={styles.ratingScore}>{rating} de 5 · {RATING_LABEL[rating]}</Text>
 
-          <Text style={styles.commentTitle}>¿Cómo fue la experiencia? (obligatorio)</Text>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Ej. Muy atento y manejo responsable en la Panamericana."
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            numberOfLines={3}
-            value={comment}
-            onChangeText={setComment}
-            maxLength={500}
-          />
-          <Text style={styles.commentTitle}>{comment.trim().length}/500 · mínimo 25 caracteres</Text>
+            <Text style={styles.sectionTitle}>Insignias (opcional)</Text>
+            <View style={styles.badgesContainer}>
+              {AVAILABLE_BADGES.map((b) => {
+                const isSelected = selectedBadges.includes(b);
+                return (
+                  <TouchableOpacity
+                    key={b}
+                    style={[styles.badgeBtn, isSelected && styles.badgeBtnSelected]}
+                    onPress={() => toggleBadge(b)}
+                    activeOpacity={0.75}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
+                  >
+                    <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{b}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-          {/* Recompensa Instantánea */}
-          <View style={styles.rewardNotice}>
-            <Text style={styles.rewardIcon}>🪙</Text>
-            <Text style={styles.rewardNoticeText}>
-              ¡Recibirás <Text style={styles.boldText}>+5 Fe</Text> si tu reseña aporta detalles útiles!
+            <Text style={styles.sectionTitle}>Comentario (opcional)</Text>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Escribe lo que quieras: el trato, la moto, la ruta, la música, algo que mejorar…"
+              placeholderTextColor={theme.colors.textMuted}
+              multiline
+              value={comment}
+              onChangeText={setComment}
+              maxLength={MAX_COMMENT}
+              textAlignVertical="top"
+              accessibilityLabel="Comentario sobre el viaje"
+            />
+            <Text style={styles.hint}>
+              {comment.trim().length ? `${comment.trim().length} caracteres · ` : ''}Lo leen el conductor y el administrador.
             </Text>
-          </View>
 
-          {/* Botones */}
-          <View style={styles.buttonsRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Omitir</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSend}>
-              <Text style={styles.submitBtnText}>Enviar reseña y ganar Fe</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.buttonsRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={onClose} accessibilityRole="button">
+                <Text style={styles.cancelBtnText}>Ahora no</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSend} disabled={sending} accessibilityRole="button">
+                {sending ? <ActivityIndicator color="#0B0F19" /> : <Text style={styles.submitBtnText}>Enviar reseña</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -136,26 +139,31 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 const styles = themed(() => ({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'center',
     padding: 16,
   },
   card: {
-    backgroundColor: theme.colors.cardBg,
+    maxHeight: '92%',
+    backgroundColor: theme.colors.surfaceSolid,
     borderRadius: theme.radius.lg,
-    padding: 20,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: theme.colors.cardBorder,
+    boxShadow: theme.glass.floating,
+    overflow: 'hidden',
+  },
+  scroll: {
+    padding: 20,
   },
   title: {
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 19,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: theme.fonts.regular,
-    fontSize: 13,
+    fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
@@ -164,12 +172,12 @@ const styles = themed(() => ({
   starsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
   },
   starIcon: {
     fontFamily: theme.fonts.regular,
-    fontSize: 38,
-    color: '#334155',
+    fontSize: 40,
+    color: theme.colors.cardElevated,
   },
   starSelected: {
     color: theme.colors.gold,
@@ -178,86 +186,63 @@ const styles = themed(() => ({
     fontFamily: theme.fonts.bold,
     textAlign: 'center',
     color: theme.colors.gold,
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 16,
+    fontSize: 14,
+    marginTop: 4,
+    marginBottom: 18,
   },
-  badgesTitle: {
+  sectionTitle: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.textPrimary,
-    fontSize: 12,
+    fontSize: 13,
     marginBottom: 8,
   },
   badgesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   badgeBtn: {
+    minHeight: 36,
+    justifyContent: 'center',
     backgroundColor: theme.colors.cardElevated,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: theme.radius.sm,
+    paddingHorizontal: 12,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
   },
   badgeBtnSelected: {
     borderColor: theme.colors.gold,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: theme.colors.goldSoft,
   },
   badgeText: {
     fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
   },
   badgeTextSelected: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.gold,
   },
-  commentTitle: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textPrimary,
-    fontSize: 12,
-    marginBottom: 6,
-  },
   commentInput: {
     fontFamily: theme.fonts.regular,
-    backgroundColor: theme.colors.cardElevated,
-    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.bgDark,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.cardBorder,
     color: theme.colors.textPrimary,
-    padding: 10,
-    fontSize: 12,
-    textAlignVertical: 'top',
-    height: 60,
-    marginBottom: 14,
+    padding: 12,
+    fontSize: 16, // 16 o más: iOS no hace zoom al escribir
+    lineHeight: 22,
+    minHeight: 120,
+    maxHeight: 260,
   },
-  rewardNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    padding: 10,
-    borderRadius: theme.radius.sm,
-    gap: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  rewardIcon: {
+  hint: {
     fontFamily: theme.fonts.regular,
-    fontSize: 18,
-  },
-  rewardNoticeText: {
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textMuted,
     fontSize: 12,
-    flex: 1,
-  },
-  boldText: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.gold,
+    marginTop: 6,
+    marginBottom: 18,
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -265,28 +250,28 @@ const styles = themed(() => ({
   },
   cancelBtn: {
     flex: 1,
+    minHeight: 50,
+    justifyContent: 'center',
     backgroundColor: theme.colors.cardElevated,
-    paddingVertical: 12,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
   },
   cancelBtnText: {
     fontFamily: theme.fonts.semibold,
     color: theme.colors.textSecondary,
-    fontSize: 13,
+    fontSize: 14,
   },
   submitBtn: {
     flex: 2,
+    minHeight: 50,
+    justifyContent: 'center',
     backgroundColor: theme.colors.gold,
-    paddingVertical: 12,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     alignItems: 'center',
   },
   submitBtnText: {
     fontFamily: theme.fonts.bold,
     color: '#0B0F19',
-    fontSize: 13,
-  }
+    fontSize: 15,
+  },
 }));

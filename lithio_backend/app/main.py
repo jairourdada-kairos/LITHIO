@@ -14,7 +14,6 @@ import hmac
 import json
 import asyncio
 import os
-import re
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -1441,13 +1440,17 @@ async def update_ride_status(
 # CALIFICACIÓN Y GAMIFICACIÓN (RESEÑAS & FE)
 # -------------------------------------------------------------
 @app.post("/api/reviews", response_model=ReviewResponse)
-def create_review(
+async def create_review(
     rev_data: ReviewCreate,
     passenger_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """El pasajero califica al conductor y gana Fe por una reseña útil."""
+    """El pasajero califica al conductor con estrellas y, si quiere, un comentario libre.
+
+    El comentario puede tratar de cualquier cosa y tener el largo que quiera; el
+    conductor lo ve en "Mis reseñas" y el administrador en el panel.
+    """
     ride = db.query(Ride).filter(Ride.id == rev_data.ride_id).first()
     if not ride:
         raise HTTPException(status_code=404, detail="Viaje no encontrado")
@@ -1457,50 +1460,102 @@ def create_review(
     if ride.status != "completado":
         raise HTTPException(status_code=400, detail="Solo puedes calificar un viaje completado")
 
-    comment = (rev_data.comment or "").strip()
-    words = [word.casefold() for word in re.findall(r"[^\W_]+", comment, flags=re.UNICODE)]
-    describes_trip = re.search(
-        r"\b(viaje|viajar|conductor|conductora|moto|ruta|trayecto|casco|manejo|puntual|recorrido|servicio|pasajero|destino|origen|experiencia|seguridad|amable)\b",
-        comment,
-        flags=re.IGNORECASE,
-    )
-    if len(comment) < 25 or len(set(words)) < 4 or not describes_trip:
-        raise HTTPException(
-            status_code=400,
-            detail="La reseña debe tener al menos 25 caracteres, cuatro palabras distintas y describir el viaje para recibir Fe.",
-        )
-
-    # Verificar si ya existe reseña
     existing = db.query(Review).filter(Review.ride_id == rev_data.ride_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="Este viaje ya fue calificado")
 
+    comment = (rev_data.comment or "").strip() or None
+    # El Fe de la reseña sigue al del viaje: si el viaje no sumó (tope diario de
+    # viajes premiados entre las mismas dos personas), la reseña tampoco.
+    fe = REVIEW_FE if (ride.points_rewarded or 0) > 0 else 0
     new_review = Review(
         ride_id=rev_data.ride_id,
         passenger_id=passenger_id,
         driver_id=ride.driver_id,
         rating=rev_data.rating,
-        badges=rev_data.badges,
+        badges=(rev_data.badges or "").strip(),
         comment=comment,
-        points_earned=REVIEW_FE
+        points_earned=fe,
     )
     db.add(new_review)
+    if fe:
+        award_fe(current_user, fe)
 
-    # Cada reseña útil suma Fe al pasajero.
-    passenger = db.query(User).filter(User.id == passenger_id).first()
-    if passenger:
-        award_fe(passenger, REVIEW_FE)
-
-    # Recalcular promedio de estrellas del conductor
     driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
     if driver_profile:
-        all_reviews = db.query(Review).filter(Review.driver_id == ride.driver_id).all()
-        ratings = [r.rating for r in all_reviews] + [rev_data.rating]
+        db.flush()  # La sesión no hace autoflush: así el promedio incluye esta reseña.
+        ratings =[r.rating for r in db.query(Review).filter(Review.driver_id == ride.driver_id).all()]
         driver_profile.rating_avg = round(sum(ratings) / len(ratings), 2)
 
     db.commit()
     db.refresh(new_review)
+
+    stars = "★" * new_review.rating
+    preview = f": «{comment[:80]}{'…' if len(comment) > 80 else ''}»" if comment else ""
+    await manager.send_personal_message(
+        {"type": "REVIEW_RECEIVED", "ride_id": ride.id, "rating": new_review.rating, "comment": comment},
+        user_id=ride.driver_id,
+    )
+    push_service.notify(
+        db, ride.driver_id, f"Nueva reseña {stars}",
+        f"{current_user.name} calificó tu viaje {ride.origin} → {ride.destination}{preview}",
+        {"type": "REVIEW_RECEIVED", "ride_id": ride.id},
+    )
     return new_review
+
+
+def serialize_review(review: Review, viewer_is_admin: bool = False) -> dict:
+    ride = review.ride
+    passenger = db_user_name(ride.passenger) if ride else None
+    data = {
+        "id": review.id,
+        "ride_id": review.ride_id,
+        "rating": review.rating,
+        "comment": review.comment,
+        "badges": [b.strip() for b in (review.badges or "").split(",") if b.strip()],
+        "created_at": review.created_at.isoformat() if review.created_at else None,
+        "origin": ride.origin if ride else None,
+        "destination": ride.destination if ride else None,
+        "passenger_name": passenger,
+    }
+    if viewer_is_admin:
+        data["driver_id"] = review.driver_id
+        data["driver_name"] = db_user_name(ride.driver) if ride else None
+    return data
+
+
+def db_user_name(user: User | None) -> str | None:
+    if not user:
+        return None
+    return " ".join(part for part in (user.name, user.last_name) if part) or user.name
+
+
+@app.get("/api/drivers/me/reviews")
+def my_driver_reviews(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Reseñas que recibió el conductor, de la más reciente a la más antigua."""
+    reviews = (
+        db.query(Review)
+        .filter(Review.driver_id == current_user.id)
+        .order_by(Review.created_at.desc(), Review.id.desc())
+        .limit(200)
+        .all()
+    )
+    ratings = [r.rating for r in reviews]
+    return {
+        "average": round(sum(ratings) / len(ratings), 2) if ratings else None,
+        "count": len(reviews),
+        "reviews": [serialize_review(r) for r in reviews],
+    }
+
+
+@app.get("/api/admin/reviews", dependencies=[Depends(require_admin)])
+def admin_reviews(driver_id: int | None = None, limit: int = 100, db: Session = Depends(get_db)):
+    """Historial de reseñas para el panel; se puede filtrar por conductor."""
+    query = db.query(Review)
+    if driver_id is not None:
+        query = query.filter(Review.driver_id == driver_id)
+    reviews = query.order_by(Review.created_at.desc(), Review.id.desc()).limit(min(max(limit, 1), 500)).all()
+    return [serialize_review(r, viewer_is_admin=True) for r in reviews]
 
 
 @app.get("/api/gamification/rewards")

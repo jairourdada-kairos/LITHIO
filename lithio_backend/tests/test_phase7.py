@@ -600,3 +600,97 @@ def test_download_page_serves_the_apk_as_an_android_app(client, tmp_path, monkey
     assert response.headers["content-type"] == "application/vnd.android.package-archive"
     assert 'filename="LITHIO.apk"' in response.headers["content-disposition"]
     assert client.head("/descargar/LITHIO.apk").headers["content-length"] == "7"
+
+
+def finished_ride_id(client):
+    from tests.test_api import request_ride, set_ride_status
+
+    ride_id = request_ride(client).json()["id"]
+    for status in ("aceptado", "en_curso", "completado"):
+        assert set_ride_status(client, ride_id, status).status_code == 200
+    return ride_id
+
+
+@pytest.mark.parametrize("comment", [None, "", "Ok", "La música estaba buenísima 🎶", "x" * 5000])
+def test_reviews_accept_any_free_comment(client, comment):
+    ride_id = finished_ride_id(client)
+    review = client.post(
+        "/api/reviews?passenger_id=4",
+        json={"ride_id": ride_id, "rating": 4, "comment": comment},
+        headers=auth_headers(4),
+    )
+    assert review.status_code == 200
+    assert review.json()["points_earned"] == 5
+    assert review.json()["comment"] == ((comment or "").strip() or None)
+
+
+def test_driver_and_admin_see_reviews_and_driver_is_notified(client, push_outbox):
+    from tests.test_phase4a import ADMIN
+
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(1))
+    ride_id = finished_ride_id(client)
+    with client.websocket_connect("/ws") as driver_ws:
+        driver_ws.send_json({"type": "AUTH", "token": "test-user-1"})
+        driver_ws.receive_json()
+        driver_ws.receive_json()
+        client.post(
+            "/api/reviews?passenger_id=4",
+            json={"ride_id": ride_id, "rating": 3, "badges": "Muy Puntual ⏱️", "comment": "Llegó rápido pero la moto hacía ruido."},
+            headers=auth_headers(4),
+        )
+        message = driver_ws.receive_json()
+    assert message["type"] == "REVIEW_RECEIVED" and message["rating"] == 3
+    assert any(p["to"] == TOKEN_DRIVER and "Nueva reseña" in p["title"] for p in push_outbox)
+
+    mine = client.get("/api/drivers/me/reviews", headers=auth_headers(1)).json()
+    assert mine["count"] == 1 and mine["average"] == 3
+    assert mine["reviews"][0]["comment"] == "Llegó rápido pero la moto hacía ruido."
+    assert mine["reviews"][0]["badges"] == ["Muy Puntual ⏱️"]
+    assert "driver_name" not in mine["reviews"][0]
+
+    detail = client.get(f"/api/rides/{ride_id}/detail", headers=auth_headers(1)).json()
+    assert detail["review"]["rating"] == 3 and detail["can_review"] is False
+
+    assert client.get("/api/admin/reviews", headers=auth_headers(4)).status_code == 403
+    admin = client.get("/api/admin/reviews", headers=ADMIN).json()
+    assert admin[0]["ride_id"] == ride_id and admin[0]["driver_id"] == 1
+    assert admin[0]["passenger_name"] and admin[0]["driver_name"]
+
+
+def test_driver_average_counts_each_review_once(client):
+    from app.models import DriverProfile
+
+    for rating in (5, 2):
+        ride_id = finished_ride_id(client)
+        client.post("/api/reviews?passenger_id=4", json={"ride_id": ride_id, "rating": rating}, headers=auth_headers(4))
+    with client.session_factory() as db:
+        assert db.query(DriverProfile).filter_by(user_id=1).one().rating_avg == 3.5
+
+
+def test_completed_ride_without_review_can_be_rated_from_history(client):
+    ride_id = finished_ride_id(client)
+    assert client.get(f"/api/rides/{ride_id}/detail", headers=auth_headers(4)).json()["can_review"] is True
+
+
+def test_payment_reference_is_added_after_transferring(client, push_outbox):
+    from tests.test_api import set_ride_status
+
+    client.put("/api/users/me/push-token", json={"token": TOKEN_DRIVER}, headers=auth_headers(1))
+    ride = client.post(
+        "/api/rides?passenger_id=4",
+        json={"driver_id": 1, "origin": "UNC", "destination": "BIBLIOTECA", "payment_method": "pago_movil"},
+        headers=auth_headers(4),
+    ).json()
+    assert ride["payment_reference"] is None
+
+    url = f"/api/rides/{ride['id']}/payment-reference"
+    assert client.put(url, json={"reference": "12"}, headers=auth_headers(4)).status_code == 422
+    assert client.put(url, json={"reference": "849201"}, headers=auth_headers(2)).status_code == 404
+
+    saved = client.put(url, json={"reference": " ref 849201 "}, headers=auth_headers(4))
+    assert saved.status_code == 200 and saved.json()["payment_reference"] == "REF849201"
+    assert any(p["to"] == TOKEN_DRIVER and p["title"] == "Pago Móvil enviado" for p in push_outbox)
+    assert client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(1)).json()["payment_reference"] == "REF849201"
+
+    set_ride_status(client, ride["id"], "rechazado")
+    assert client.put(url, json={"reference": "849201"}, headers=auth_headers(4)).status_code == 400

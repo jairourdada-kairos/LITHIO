@@ -6,11 +6,13 @@ puede adjuntar cualquiera de los dos participantes (p. ej. el conductor, si el
 pasajero le mandó la captura por WhatsApp) y el administrador lo revisa en el panel.
 """
 import json
+import re
 import secrets
 from ..rate_limit import rate_limit
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user, is_admin, require_admin
@@ -77,7 +79,14 @@ def ride_detail(ride_id: int, user: User = Depends(get_current_user), db: Sessio
             "moto_color": profile.moto_color if profile else None,
             "plate": profile.plate if profile else None,
         },
-        "review": {"rating": review.rating, "comment": review.comment, "badges": review.badges} if review else None,
+        "review": {
+            "rating": review.rating,
+            "comment": review.comment,
+            "badges": [b.strip() for b in (review.badges or "").split(",") if b.strip()],
+            "created_at": review.created_at.isoformat() if review.created_at else None,
+        } if review else None,
+        # El pasajero puede calificar desde el historial si no lo hizo al terminar.
+        "can_review": user.id == ride.passenger_id and ride.status == "completado" and not review,
         "viewer_role": "pasajero" if user.id == ride.passenger_id else "conductor" if user.id == ride.driver_id else "admin",
     }
 
@@ -122,6 +131,48 @@ async def upload_receipt(
         {"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id},
     )
     return {"has_receipt": True, "receipt_uploaded_at": ride.receipt_uploaded_at.isoformat()}
+
+
+class PaymentReferenceIn(BaseModel):
+    reference: str = Field(min_length=1, max_length=40)
+
+
+@router.put("/{ride_id}/payment-reference", dependencies=[Depends(rate_limit("referencias", 20, 600))])
+async def set_payment_reference(
+    ride_id: int,
+    body: PaymentReferenceIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Referencia del Pago Móvil, anotada después de transferir.
+
+    Al pedir el viaje todavía no hay nada que anotar: el pasajero ve los datos del
+    conductor en "Mi viaje", transfiere y entonces escribe la referencia (también
+    sirve si la corrige después). La puede anotar el conductor si la recibió por otro lado.
+    """
+    ride = ride_for(ride_id, user, db)
+    if user.id not in {ride.passenger_id, ride.driver_id}:
+        raise HTTPException(status_code=403, detail="Solo el pasajero o el conductor del viaje pueden anotar la referencia.")
+    if ride.payment_method != "pago_movil":
+        raise HTTPException(status_code=400, detail="Este viaje no se paga por Pago Móvil.")
+    if ride.status in {"rechazado", "cancelado"}:
+        raise HTTPException(status_code=400, detail="El viaje no se realizó; no hace falta referencia.")
+    reference = re.sub(r"\s+", "", body.reference).upper()
+    if not re.fullmatch(r"[A-Z0-9-]{4,30}", reference):
+        raise HTTPException(status_code=422, detail="Escribe la referencia que te dio el banco: de 4 a 30 números o letras.")
+
+    ride.payment_reference = reference
+    db.commit()
+    other_id = ride.driver_id if user.id == ride.passenger_id else ride.passenger_id
+    await manager.send_personal_message(
+        {"type": "RIDE_PAYMENT_UPDATED", "ride_id": ride.id, "payment_reference": reference}, user_id=other_id
+    )
+    push_service.notify(
+        db, other_id, "Pago Móvil enviado",
+        f"{user.name} anotó la referencia {reference} del viaje {ride.origin} → {ride.destination}.",
+        {"type": "RIDE_PAYMENT_UPDATED", "ride_id": ride.id},
+    )
+    return {"payment_reference": reference}
 
 
 @router.get("/{ride_id}/receipt")

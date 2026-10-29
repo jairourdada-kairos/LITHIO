@@ -33,6 +33,7 @@ import { AdminScreen } from '../screens/admin/AdminScreen';
 import { AvatarSheet } from '../components/AvatarSheet';
 import { FALLBACK_LEVEL } from '../utils/elements';
 import { LinksScreen } from '../screens/shared/LinksScreen';
+import { DriverReviewsScreen } from '../screens/driver/DriverReviewsScreen';
 import type { Ride, RideStatus } from '../types';
 
 type Tab = 'home' | 'trips' | 'wallet' | 'profile';
@@ -135,7 +136,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
 }) => {
   const [tab, setTab] = useState<Tab>('home');
   const [profileOpen, setProfileOpen] = useState(false);
-  const [overlay, setOverlay] = useState<'level' | 'levels' | 'admin' | 'links' | null>(null);
+  const [overlay, setOverlay] = useState<'level' | 'levels' | 'admin' | 'links' | 'reviews' | null>(null);
   const [avatarSheetVisible, setAvatarSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -254,6 +255,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
     if (overlay === 'levels') return <LevelsTableScreen accent={theme.colors.secondary} onBack={() => setOverlay('level')} />;
     if (overlay === 'admin') return <AdminScreen onBack={() => setOverlay(null)} />;
     if (overlay === 'links') return <LinksScreen accent={theme.colors.secondary} onBack={() => setOverlay(null)} />;
+    if (overlay === 'reviews') return <DriverReviewsScreen accent={theme.colors.secondary} onBack={() => setOverlay(null)} />;
     if (profileOpen) {
       return (
         <ProfileScreen
@@ -281,6 +283,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
             onOpenLevel={() => setOverlay('level')}
             onOpenAdmin={summary.is_admin ? () => setOverlay('admin') : undefined}
             onOpenLinks={() => setOverlay('links')}
+            onOpenReviews={() => setOverlay('reviews')}
             onOpenTutorial={onOpenTutorial}
             onOpenAbout={onOpenAbout}
             onSignOut={onSignOut}

@@ -1,10 +1,15 @@
-import React from 'react';
-import { Text, View, TouchableOpacity, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Icon } from './ui/Icon';
 import { PressableScale } from './brand/PressableScale';
 import { Ride, RideStatus, UserRole } from '../types';
 import { formatBs, useBcvRate } from '../services/rates';
+import { apiService } from '../services/api';
+import { photoFormValue, pickDocumentPhoto } from '../services/avatar';
+
+/** Estados en los que tiene sentido pagar o anotar el Pago Móvil. */
+const PAYABLE: RideStatus[] = ['solicitado', 'aceptado', 'en_camino', 'en_curso', 'completado'];
 
 interface ActiveRideCardProps {
   ride: Ride;
@@ -12,7 +17,100 @@ interface ActiveRideCardProps {
   onUpdateStatus: (status: RideStatus) => void;
   onOpenReview: () => void;
   onCancel: () => void;
+  /** El pasajero anotó (o corrigió) la referencia del Pago Móvil. */
+  onReferenceSaved?: (reference: string) => void;
 }
+
+/**
+ * Paso del Pago Móvil dentro del viaje: con los datos del conductor ya a la
+ * vista, el pasajero transfiere y anota la referencia; la captura es opcional.
+ */
+const PagoMovilConfirm: React.FC<{ ride: Ride; onReferenceSaved?: (reference: string) => void }> = ({ ride, onReferenceSaved }) => {
+  const [value, setValue] = useState('');
+  const [editing, setEditing] = useState(!ride.payment_reference);
+  const [saving, setSaving] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(Boolean(ride.has_receipt));
+  const [uploading, setUploading] = useState(false);
+
+  const save = async () => {
+    if (value.replace(/\s/g, '').length < 4) {
+      Alert.alert('Falta la referencia', 'Escribe el número de referencia que te dio tu banco (al menos 4 dígitos).');
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await apiService.setPaymentReference(ride.id, value);
+      onReferenceSaved?.(saved);
+      setEditing(false);
+      setValue('');
+    } catch (error) {
+      Alert.alert('No se pudo guardar la referencia', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const attach = async () => {
+    const uri = await pickDocumentPhoto();
+    if (!uri) return;
+    setUploading(true);
+    try {
+      await apiService.uploadRideReceipt(ride.id, await photoFormValue(uri, 'comprobante.jpg'));
+      setReceiptSent(true);
+    } catch (error) {
+      Alert.alert('No se pudo adjuntar la captura', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <View style={styles.payBox}>
+      <Text style={styles.payTitle}>💸 ¿Ya transferiste?</Text>
+      {editing ? (
+        <>
+          <Text style={styles.infoHint}>
+            Haz el Pago Móvil con los datos de arriba y anota aquí la referencia que te da el banco. Puedes hacerlo ahora o al llegar.
+          </Text>
+          <View style={styles.payRow}>
+            <TextInput
+              style={styles.payInput}
+              placeholder="Referencia, ej. 849201"
+              placeholderTextColor={theme.colors.textMuted}
+              value={value}
+              onChangeText={setValue}
+              keyboardType="number-pad"
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={save}
+              accessibilityLabel="Número de referencia del Pago Móvil"
+            />
+            <TouchableOpacity style={styles.paySave} onPress={save} disabled={saving} accessibilityRole="button">
+              {saving ? <ActivityIndicator color={theme.colors.onPrimary} /> : <Text style={styles.btnTextDark}>Guardar</Text>}
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <View style={styles.infoRow}>
+          <Text style={styles.paySaved}>✅ Referencia {ride.payment_reference}</Text>
+          <TouchableOpacity onPress={() => setEditing(true)} accessibilityRole="button" hitSlop={10}>
+            <Text style={styles.payLinkText}>Corregir</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <TouchableOpacity style={styles.payLink} onPress={attach} disabled={uploading} accessibilityRole="button">
+        {uploading ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <>
+            <Icon name="image-outline" size={18} color={theme.colors.primary} />
+            <Text style={styles.payLinkText}>{receiptSent ? 'Captura adjunta · cambiar' : 'Adjuntar captura del pago (opcional)'}</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
   ride,
@@ -20,6 +118,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
   onUpdateStatus,
   onOpenReview,
   onCancel,
+  onReferenceSaved,
 }) => {
   const bcv = useBcvRate();
   const isDriver = role === 'conductor';
@@ -151,15 +250,27 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📲 Datos de Pago Móvil del conductor</Text>
             {ride.driver_mobile_payment_bank && (
-              <Text style={styles.infoVal}>Banco: {ride.driver_mobile_payment_bank}</Text>
+              <Text style={styles.infoVal} selectable>Banco: {ride.driver_mobile_payment_bank}</Text>
             )}
-            <Text style={styles.infoVal}>Teléfono: {ride.driver_mobile_payment_number}</Text>
+            <Text style={styles.infoVal} selectable>Teléfono: {ride.driver_mobile_payment_number}</Text>
             {ride.driver_mobile_payment_id && (
-              <Text style={styles.infoVal}>Identificación: {ride.driver_mobile_payment_id}</Text>
+              <Text style={styles.infoVal} selectable>Identificación: {ride.driver_mobile_payment_id}</Text>
             )}
             <Text style={styles.infoHint}>Solo visible para los participantes de este viaje.</Text>
           </View>
         )}
+
+        {/* La referencia se anota después de transferir, ya con los datos del conductor a la vista. */}
+        {!isDriver && ride.payment_method === 'pago_movil' && PAYABLE.includes(ride.status) ? (
+          <PagoMovilConfirm ride={ride} onReferenceSaved={onReferenceSaved} />
+        ) : null}
+        {isDriver && ride.payment_method === 'pago_movil' && PAYABLE.includes(ride.status) ? (
+          <Text style={[styles.infoHint, styles.driverPayHint]}>
+            {ride.payment_reference
+              ? `✅ El pasajero anotó la referencia ${ride.payment_reference}. Verifícala en tu banco.`
+              : '⏳ El pasajero aún no anota la referencia del Pago Móvil. Te avisamos cuando lo haga.'}
+          </Text>
+        ) : null}
 
         {canCall ? (
           <View style={styles.contactBox}>
@@ -189,13 +300,13 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             {ride.status === 'solicitado' && (
               <View style={styles.driverButtonsRow}>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.btnSuccess]}
+                  style={[styles.actionBtn, styles.rowBtn, styles.btnSuccess]}
                   onPress={() => onUpdateStatus('aceptado')}
                 >
                   <Text style={styles.btnTextWhite}>✅ Aceptar Carrera</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.btnDanger]}
+                  style={[styles.actionBtn, styles.rowBtn, styles.btnDanger]}
                   onPress={() => onUpdateStatus('rechazado')}
                 >
                   <Text style={styles.btnTextWhite}>✕ Rechazar</Text>
@@ -252,7 +363,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnGold]}
                 onPress={onOpenReview}
               >
-                <Text style={styles.btnTextDark}>⭐ Calificar y ganar +5 Fe</Text>
+                <Text style={styles.btnTextDark}>⭐ Calificar el viaje</Text>
               </TouchableOpacity>
             ) : canCancel ? (
               <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
@@ -397,12 +508,83 @@ const styles = themed(() => ({
     flexDirection: 'row',
     gap: 10,
   },
+  // Sin flex: 1. En una columna de alto automático, Android (Yoga) dejaba el botón
+  // con alto 0 + relleno: el texto no se veía y quedaba un recuadro vacío.
   actionBtn: {
     borderRadius: theme.radius.sm,
+    minHeight: 48,
     paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  rowBtn: {
     flex: 1,
+  },
+  driverPayHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 0,
+    marginBottom: 14,
+  },
+  payBox: {
+    backgroundColor: theme.colors.cardElevated,
+    padding: 12,
+    borderRadius: theme.radius.sm,
+    gap: 8,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
+  payTitle: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+  },
+  payRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  payInput: {
+    flex: 1,
+    minHeight: 46,
+    fontFamily: theme.fonts.mono,
+    fontSize: 16, // 16 o más: iOS no hace zoom al escribir
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.bgDark,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+    paddingHorizontal: 12,
+  },
+  paySave: {
+    minHeight: 46,
+    paddingHorizontal: 16,
+    borderRadius: theme.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+  },
+  paySaved: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.success,
+    fontSize: 13,
+  },
+  payLink: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.cardBorder,
+  },
+  payLinkText: {
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.primary,
+    fontSize: 13,
   },
   btnSuccess: {
     backgroundColor: theme.colors.success,

@@ -23,7 +23,6 @@ import { ActiveRideCard } from '../components/ActiveRideCard';
 import { RequestRideModal } from '../components/RequestRideModal';
 import { ReviewModal } from '../components/ReviewModal';
 import { FeStoreModal } from '../components/FeStoreModal';
-import { photoFormValue } from '../services/avatar';
 import { AboutLithioModal } from '../components/AboutLithioModal';
 import { TutorialModal, shouldShowTutorial } from '../components/TutorialModal';
 import { PassengerHome } from '../screens/passenger/PassengerHome';
@@ -72,7 +71,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState<{ driver: Driver; selection: TripSelection } | null>(null);
-  const [reviewVisible, setReviewVisible] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{ rideId: number; driverName: string } | null>(null);
   const [rewardsVisible, setRewardsVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
@@ -127,6 +126,10 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (reviewTarget) {
+        setReviewTarget(null);
+        return true;
+      }
       if (pending) {
         setPending(null);
         return true;
@@ -142,7 +145,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
       return false;
     });
     return () => sub.remove();
-  }, [overlay, tab, pending]);
+  }, [overlay, tab, pending, reviewTarget]);
 
   const openTrip = (options?: { route?: PresetRoute; scheduled?: boolean }) => {
     if (rides.activeRide) {
@@ -153,7 +156,8 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     setOverlay({ type: 'trip', ...options });
   };
 
-  const confirmRide = async (paymentMethod: PaymentMethod, reference?: string, couponId?: number, receiptUri?: string) => {
+  // La referencia del Pago Móvil se anota después, en "Mi viaje", ya con los datos del conductor.
+  const confirmRide = async (paymentMethod: PaymentMethod, couponId?: number) => {
     if (!pending) return;
     const { driver, selection } = pending;
     try {
@@ -164,21 +168,12 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
         is_scheduled: selection.isScheduled,
         scheduled_time: selection.isScheduled ? selection.scheduledTime : undefined,
         payment_method: paymentMethod,
-        payment_reference: reference,
         fare_amount: selection.route.fare_usd,
         coupon_id: couponId,
       });
       rides.setActiveRide(ride);
       setPending(null);
       setOverlay({ type: 'ride' });
-      if (receiptUri) {
-        // El viaje ya quedó pedido; si falla la captura, se puede adjuntar desde el historial.
-        photoFormValue(receiptUri, 'comprobante.jpg')
-          .then((photo) => apiService.uploadRideReceipt(ride.id, photo))
-          .catch(() =>
-            Alert.alert('No se pudo adjuntar el comprobante', 'Tu viaje sí quedó pedido. Adjunta la captura desde Viajes → detalle del viaje.')
-          );
-      }
     } catch (error) {
       Alert.alert('No se pudo solicitar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }
@@ -211,11 +206,23 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const submitReview = async (review: ReviewSubmission) => {
     try {
       const result = await apiService.submitReview(user.id, review);
-      setReviewVisible(false);
-      rides.setActiveRide(null);
-      setOverlay(null);
+      setReviewTarget(null);
+      if (rides.activeRide?.id === review.ride_id) {
+        rides.setActiveRide(null);
+        setOverlay(null);
+      }
       loadSummary();
-      Alert.alert('¡Gracias por tu reseña!', `Sumaste +${result.points_earned} Fe.`);
+      setReloadKey((key) => key + 1);
+      // Se espera a que cierre la hoja de la reseña: abrir otro Modal mientras uno se
+      // cierra puede dejar la pantalla congelada o en blanco (sobre todo en iOS).
+      setTimeout(
+        () =>
+          Alert.alert(
+            '¡Gracias por tu reseña!',
+            result.points_earned ? `Sumaste +${result.points_earned} Fe. El conductor ya puede leerla.` : 'El conductor ya puede leerla.'
+          ),
+        350
+      );
     } catch (error) {
       Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }
@@ -296,8 +303,9 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
               ride={ride}
               role="pasajero"
               onUpdateStatus={() => {}}
-              onOpenReview={() => setReviewVisible(true)}
+              onOpenReview={() => setReviewTarget({ rideId: ride.id, driverName: ride.driver_name || 'tu conductor' })}
               onCancel={cancelRide}
+              onReferenceSaved={(reference) => rides.setActiveRide({ ...ride, payment_reference: reference })}
             />
           </View>
         ) : (
@@ -407,15 +415,14 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           onConfirm={confirmRide}
         />
 
-        {rides.activeRide ? (
-          <ReviewModal
-            visible={reviewVisible}
-            rideId={rides.activeRide.id}
-            driverName={rides.activeRide.driver_name || 'Conductor'}
-            onClose={() => setReviewVisible(false)}
-            onSubmit={submitReview}
-          />
-        ) : null}
+        {/* Siempre montado: si el viaje deja de estar activo mientras se escribe, la reseña sigue abierta. */}
+        <ReviewModal
+          visible={Boolean(reviewTarget)}
+          rideId={reviewTarget?.rideId ?? 0}
+          driverName={reviewTarget?.driverName ?? 'tu conductor'}
+          onClose={() => setReviewTarget(null)}
+          onSubmit={submitReview}
+        />
 
         <FeStoreModal
           visible={rewardsVisible}

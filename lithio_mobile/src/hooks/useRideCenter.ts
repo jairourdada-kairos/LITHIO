@@ -27,7 +27,7 @@ const PASSENGER_NOTICES: Partial<Record<RideStatus, RideNotice>> = {
   aceptado: { title: 'Viaje aceptado', message: 'Tu conductor aceptó el viaje y va por ti.', tone: 'success' },
   en_camino: { title: 'Conductor en camino', message: 'Tu conductor está llegando al punto de encuentro.', tone: 'info' },
   en_curso: { title: 'Viaje en curso', message: 'Buen viaje. Llegarás a tu destino en breve.', tone: 'info' },
-  completado: { title: 'Llegaste a tu destino', message: 'Califica el viaje y gana Fe por tu reseña.', tone: 'success' },
+  completado: { title: 'Llegaste a tu destino', message: 'Califica el viaje: cuéntale al conductor cómo te fue.', tone: 'success' },
   rechazado: { title: 'Solicitud rechazada', message: 'El conductor no pudo tomar tu viaje. Elige otro conductor.', tone: 'warning' },
   cancelado: { title: 'Viaje cancelado', message: 'El viaje fue cancelado.', tone: 'warning' },
 };
@@ -95,6 +95,22 @@ export function useRideCenter(userId: number, role: SessionRole) {
         if (role === 'pasajero' && PASSENGER_NOTICES[ride.status]) {
           setNotice(PASSENGER_NOTICES[ride.status]!);
         }
+        return;
+      }
+
+      if (msg.type === 'RIDE_PAYMENT_UPDATED') {
+        const current = activeRef.current;
+        if (current && current.id === msg.ride_id) setActiveRide({ ...current, payment_reference: msg.payment_reference });
+        if (role === 'conductor') {
+          setNotice({ title: 'Pago Móvil enviado', message: `El pasajero anotó la referencia ${msg.payment_reference}. Verifícala en tu banco.`, tone: 'success' });
+        }
+        return;
+      }
+
+      if (msg.type === 'REVIEW_RECEIVED' && role === 'conductor') {
+        const stars = '★'.repeat(Number(msg.rating) || 0);
+        const comment = typeof msg.comment === 'string' && msg.comment ? ` «${msg.comment.slice(0, 90)}${msg.comment.length > 90 ? '…' : ''}»` : '';
+        setNotice({ title: `Nueva reseña ${stars}`, message: `Te calificaron el último viaje.${comment} Míralas todas en Perfil → Mis reseñas.`, tone: 'info' });
         return;
       }
 

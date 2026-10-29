@@ -11,6 +11,8 @@ const state = {
   wallet: [],
   vouchers: [],
   rideReceipts: [],
+  reviews: [],
+  reviewsDriver: '',
   bcv: null,
   admin: null
 };
@@ -55,6 +57,9 @@ const applicationsList = document.getElementById('applications-list');
 const walletList = document.getElementById('wallet-list');
 const vouchersList = document.getElementById('vouchers-list');
 const rideReceiptsList = document.getElementById('ride-receipts-list');
+const reviewsList = document.getElementById('reviews-list');
+const reviewsSummary = document.getElementById('reviews-summary');
+const reviewsDriverFilter = document.getElementById('reviews-driver-filter');
 const toastStack = document.getElementById('toast-stack');
 
 // Etiqueta de la referencia según el tipo de movimiento.
@@ -203,8 +208,9 @@ async function fetchData() {
       requestAdmin('/admin/vouchers'),
       requestAdmin('/rides/admin/receipts')
     ]);
-    // La tasa no debe impedir que cargue el resto del panel.
+    // La tasa y las reseñas no deben impedir que cargue el resto del panel.
     state.bcv = await requestAdmin('/rates/bcv').catch(() => null);
+    state.reviews = await requestAdmin(reviewsPath()).catch(() => []);
 
     state.drivers = driversRes;
     state.routes = routesRes;
@@ -220,6 +226,7 @@ async function fetchData() {
     renderDrivers();
     renderRoutes();
     renderRewards();
+    renderReviews();
     setApiStatus(true);
   } catch (error) {
     console.error(error);
@@ -421,6 +428,42 @@ function renderDrivers() {
       </td>
     </tr>
   `).join('');
+}
+
+function reviewsPath() {
+  return `/admin/reviews?limit=300${state.reviewsDriver ? `&driver_id=${Number(state.reviewsDriver)}` : ''}`;
+}
+
+function starsText(rating) {
+  const value = Math.max(0, Math.min(5, Number(rating) || 0));
+  return '★'.repeat(value) + '☆'.repeat(5 - value);
+}
+
+function renderReviews() {
+  // El filtro lista a los conductores registrados; se conserva la elección al recargar.
+  reviewsDriverFilter.innerHTML = '<option value="">Todos</option>' + state.drivers.map(driver => `
+    <option value="${Number(driver.user_id)}" ${String(driver.user_id) === state.reviewsDriver ? 'selected' : ''}>
+      ${escapeHtml([driver.name, driver.last_name].filter(Boolean).join(' '))}
+    </option>`).join('');
+
+  const reviews = state.reviews;
+  if (!reviews.length) {
+    reviewsSummary.textContent = '';
+    reviewsList.innerHTML = emptyNote(state.reviewsDriver ? 'Este conductor aún no tiene reseñas.' : 'Aún no hay reseñas.');
+    return;
+  }
+  const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  reviewsSummary.textContent = `${reviews.length} ${reviews.length === 1 ? 'reseña' : 'reseñas'} · promedio ★ ${average.toFixed(2)}`;
+
+  reviewsList.innerHTML = reviews.map(review => `
+    <div class="route-card review-card">
+      <strong class="review-stars" aria-label="${Number(review.rating)} de 5 estrellas">${starsText(review.rating)}</strong>
+      <p><b>${escapeHtml(review.driver_name || 'Conductor')}</b> · calificado por ${escapeHtml(review.passenger_name || 'Pasajero')}</p>
+      <p>Viaje #${Number(review.ride_id)} · ${escapeHtml(review.origin || '')} → ${escapeHtml(review.destination || '')}</p>
+      ${review.badges.length ? `<p class="review-badges">${review.badges.map(badge => `<span>${escapeHtml(badge)}</span>`).join('')}</p>` : ''}
+      ${review.comment ? `<p class="review-comment">“${escapeHtml(review.comment)}”</p>` : '<p class="muted">Sin comentario.</p>'}
+      ${review.created_at ? `<p class="muted">${escapeHtml(new Date(`${review.created_at}Z`).toLocaleString('es-VE'))}</p>` : ''}
+    </div>`).join('');
 }
 
 function renderRoutes() {
@@ -722,6 +765,15 @@ function bindEvents() {
   document.getElementById('add-route-btn').addEventListener('click', () => openModal('Nueva ruta', 'route'));
   document.getElementById('add-reward-btn').addEventListener('click', () => openModal('Nuevo servicio del taller', 'reward'));
   document.getElementById('refresh-btn').addEventListener('click', fetchData);
+  reviewsDriverFilter.addEventListener('change', () => {
+    state.reviewsDriver = reviewsDriverFilter.value;
+    requestAdmin(reviewsPath())
+      .then(reviews => {
+        state.reviews = reviews;
+        renderReviews();
+      })
+      .catch(showError);
+  });
   document.getElementById('credit-btn').addEventListener('click', () => openModal('Acreditar diamantes', 'credit'));
   document.getElementById('set-bcv-btn').addEventListener('click', () => {
     const value = prompt('Tasa BCV de hoy (Bs por dólar):', state.bcv ? String(state.bcv.rate) : '');

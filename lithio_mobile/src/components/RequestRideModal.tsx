@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Modal, TouchableOpacity, TextInput, ScrollView, Image } from 'react-native';
+import { Text, View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
 import { apiService, FeCoupon } from '../services/api';
 import { formatBs, useBcvRate } from '../services/rates';
-import { pickDocumentPhoto } from '../services/avatar';
 
 /** Mínimo para pagar un viaje con diamantes (igual que en el servidor). */
 export const MIN_DIAMOND_PAYMENT = 0.5;
@@ -18,7 +17,7 @@ interface RequestRideModalProps {
   isScheduled: boolean;
   scheduledTime: string;
   onClose: () => void;
-  onConfirm: (paymentMethod: PaymentMethod, reference?: string, couponId?: number, receiptUri?: string) => void;
+  onConfirm: (paymentMethod: PaymentMethod, couponId?: number) => void;
 }
 
 export const RequestRideModal: React.FC<RequestRideModalProps> = ({
@@ -34,16 +33,13 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 }) => {
   const bcv = useBcvRate();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
-  const [reference, setReference] = useState('');
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
   const [couponId, setCouponId] = useState<number | undefined>(undefined);
-  const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [diamonds, setDiamonds] = useState<number | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     setCouponId(undefined);
-    setReceiptUri(null);
     setDiamonds(null);
     apiService
       .getFeStore()
@@ -176,39 +172,22 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               </Text>
             ) : null}
 
-            {/* Campo para Referencia de Pago Móvil */}
+            {/* Pago Móvil: aún no hay nada que anotar; la referencia va después de transferir. */}
             {paymentMethod === 'pago_movil' && (
               <View style={styles.referenceContainer}>
                 <View style={styles.mobilePaymentCard}>
-                  <Text style={styles.mobilePaymentTitle}>📲 Datos para Pago Móvil</Text>
-                  <Text style={styles.mobilePaymentRow}>
-                    Los datos se mostrarán de forma privada dentro del viaje solicitado.
-                  </Text>
+                  <Text style={styles.mobilePaymentTitle}>📲 Cómo pagas con Pago Móvil</Text>
+                  {[
+                    'Pide el viaje: en «Mi viaje» verás el banco, teléfono y cédula del conductor.',
+                    'Transfiere desde tu banco cuando quieras: antes, durante o al llegar.',
+                    'Anota ahí la referencia que te da el banco (y la captura, si quieres).',
+                  ].map((text, index) => (
+                    <View key={text} style={styles.pmStep}>
+                      <Text style={styles.pmStepNum}>{index + 1}</Text>
+                      <Text style={styles.mobilePaymentRow}>{text}</Text>
+                    </View>
+                  ))}
                 </View>
-                <Text style={styles.referenceLabel}>Número o Últimos 4 Dígitos de Referencia:</Text>
-                <TextInput
-                  style={styles.referenceInput}
-                  placeholder="Ej. REF-849201"
-                  placeholderTextColor={theme.colors.textMuted}
-                  value={reference}
-                  onChangeText={setReference}
-                />
-                <Text style={styles.referenceHint}>
-                  💡 Podrás transferirle al conductor al finalizar la carrera.
-                </Text>
-                <TouchableOpacity
-                  style={styles.receiptPick}
-                  onPress={async () => setReceiptUri((await pickDocumentPhoto()) ?? receiptUri)}
-                  accessibilityRole="button"
-                >
-                  {receiptUri ? (
-                    <Image source={{ uri: receiptUri }} style={styles.receiptThumb} />
-                  ) : null}
-                  <Text style={styles.receiptPickText}>
-                    {receiptUri ? 'Cambiar captura del pago' : 'Adjuntar captura del pago (opcional)'}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.referenceHint}>También puedes adjuntarla después desde Viajes → detalle del viaje.</Text>
               </View>
             )}
 
@@ -260,7 +239,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
 
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => onConfirm(paymentMethod, reference, couponId, paymentMethod === 'pago_movil' ? receiptUri ?? undefined : undefined)}
+              onPress={() => onConfirm(paymentMethod, couponId)}
               activeOpacity={0.85}
             >
               <Text style={styles.confirmBtnText}>
@@ -284,27 +263,22 @@ const styles = themed(() => ({
     color: theme.colors.textMuted,
     marginTop: 2,
   },
-  receiptPick: {
+  pmStep: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
-    marginTop: 10,
-    padding: 10,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.cardBorder,
   },
-  receiptThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-  },
-  receiptPickText: {
-    flex: 1,
-    fontFamily: theme.fonts.semibold,
-    fontSize: 13,
-    color: theme.colors.primary,
+  pmStepNum: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    overflow: 'hidden',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontFamily: theme.fonts.bold,
+    fontSize: 11,
+    color: theme.colors.onPrimary,
+    backgroundColor: theme.colors.primary,
   },
   couponBox: {
     marginBottom: 16,
@@ -519,9 +493,11 @@ const styles = themed(() => ({
     marginBottom: 3,
   },
   mobilePaymentRow: {
+    flex: 1,
     fontFamily: theme.fonts.regular,
     color: theme.colors.textPrimary,
     fontSize: 12,
+    lineHeight: 18,
   },
   mobilePaymentLabel: {
     fontFamily: theme.fonts.bold,

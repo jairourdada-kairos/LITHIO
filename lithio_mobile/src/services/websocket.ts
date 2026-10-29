@@ -30,6 +30,8 @@ export type WSMessageType =
   | 'LINK_ACCEPTED'
   | 'ADMIN_ALERT'
   | 'RIDE_RECEIPT_UPLOADED'
+  | 'RIDE_PAYMENT_UPDATED'
+  | 'REVIEW_RECEIVED'
   | 'PONG';
 
 export interface WSMessage {
