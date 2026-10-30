@@ -77,7 +77,7 @@ class RegistrationFields(BaseModel):
 
 # --- REGISTRO DE PASAJERO ---
 class PassengerRegisterRequest(RegistrationFields):
-    age: Optional[int] = Field(default=None, ge=16, le=100)
+    age: Optional[int] = Field(default=None, ge=18, le=100)  # LITHIO es solo para mayores de edad
 
 # --- REGISTRO DE CONDUCTOR ---
 class DriverRegisterRequest(RegistrationFields):

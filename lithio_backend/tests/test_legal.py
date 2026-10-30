@@ -21,7 +21,17 @@ def test_terms_and_privacy_pages_are_public(client):
     }
     terms = client.get("/terminos")
     assert terms.status_code == 200 and "Términos y Condiciones de LITHIO" in terms.text
-    assert client.get("/privacidad").status_code == 200
+    assert "6 minutos" in terms.text and "mayor de 18 años" in terms.text
+    assert f"Versión {config.LEGAL_VERSION}" in terms.text
+    assert "{contacto}" not in terms.text
+    privacy = client.get("/privacidad")
+    assert privacy.status_code == 200 and f"Versión {config.LEGAL_VERSION}" in privacy.text
+    assert "habeas data" in privacy.text
+
+
+def test_passengers_must_be_adults(client):
+    minor = client.post("/api/passengers/register", json={**VALID_REGISTRATION, "age": 17}, headers=NEW_USER)
+    assert minor.status_code == 422
 
 
 def test_registration_requires_accepting_the_current_terms(client):

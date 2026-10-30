@@ -108,7 +108,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
         <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
         <PrimaryButton label="Crear mi cuenta →" onPress={handleSubmit} loading={loading} style={styles.submit} />
-        <LegalNotice lead="Al crear tu cuenta aceptas" />
+        <LegalNotice lead="Al crear tu cuenta declaras ser mayor de 18 años y aceptas" />
     </AuthLayout>
   );
 };

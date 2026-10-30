@@ -388,7 +388,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
           />
         </View>
       </View>
-      <LegalNotice lead="Al crear tu cuenta aceptas" accent={theme.colors.secondary} />
+      <LegalNotice lead="Al crear tu cuenta declaras ser mayor de 18 años y aceptas" accent={theme.colors.secondary} />
     </>
   );
 
