@@ -16,6 +16,7 @@ import { SocialSignIn } from '../components/SocialSignIn';
 import { SocialPrefill } from '../services/socialAuth';
 import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
+import { LegalNotice } from '../components/LegalNotice';
 import { validateEmail } from '../utils/validation';
 
 interface Props {
@@ -129,6 +130,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocia
         accent={theme.colors.secondary}
         style={styles.submit}
       />
+      <LegalNotice lead="Al continuar, aceptas" accent={theme.colors.secondary} />
 
       <Pressable style={styles.linkRow} onPress={onGoToSignUp} accessibilityRole="button" hitSlop={8}>
         <Text style={styles.linkText}>

@@ -32,6 +32,9 @@ class User(Base):
     profile_updated_at = Column(DateTime, nullable=True)
     # Token de notificaciones push del dispositivo con la sesión activa.
     push_token = Column(String, nullable=True)
+    # Última versión de los Términos y la Política de privacidad que aceptó, y cuándo.
+    terms_version = Column(String(20), nullable=True)
+    terms_accepted_at = Column(DateTime, nullable=True)
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
     # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.

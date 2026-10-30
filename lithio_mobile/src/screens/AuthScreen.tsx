@@ -17,6 +17,7 @@ import { theme, themed } from '../constants/theme';
 import { LithiumAtom } from '../components/brand/LithiumAtom';
 import { LatticeBackground } from '../components/brand/LatticeBackground';
 import { PressableScale } from '../components/brand/PressableScale';
+import { LegalNotice } from '../components/LegalNotice';
 
 interface Props {
   onSelectPassenger: () => void;
@@ -117,9 +118,7 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
             <Text style={styles.aboutText}>¿Qué es LITHIO?</Text>
           </Pressable>
 
-          <Text style={styles.footerNote}>
-            Al registrarte aceptas los Términos de Servicio de la comunidad LITHIO
-          </Text>
+          <LegalNotice />
           <VersionTag />
         </Animated.View>
       </View>
@@ -320,14 +319,5 @@ const styles = themed(() => ({
     color: theme.colors.textSecondary,
     fontSize: 14,
     textDecorationLine: 'underline',
-  },
-  footerNote: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 11,
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
-    paddingHorizontal: 16,
   },
 }));

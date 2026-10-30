@@ -22,6 +22,7 @@ import { signUpDriver, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
+import { LegalNotice } from '../components/LegalNotice';
 import {
   IdentityErrors,
   IdentityFields,
@@ -387,6 +388,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
           />
         </View>
       </View>
+      <LegalNotice lead="Al crear tu cuenta aceptas" accent={theme.colors.secondary} />
     </>
   );
 

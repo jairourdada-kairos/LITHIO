@@ -99,6 +99,10 @@ export interface AuthUser {
   avatar_url?: string;
   points: number;
   xp_level: string;
+  /** Última versión de los Términos que aceptó (null: nunca). */
+  terms_version?: string | null;
+  /** Debe aceptar los Términos vigentes antes de usar la app. */
+  terms_pending?: boolean;
 }
 
 /** Campos obligatorios para pasajeros y conductores (ver backend schemas.RegistrationFields). */
@@ -154,12 +158,15 @@ async function register(
   data: PassengerSignUpData | DriverSignUpData,
   password: string
 ): Promise<AuthUser> {
+  // La pantalla de registro muestra el aviso legal junto al botón: crear la
+  // cuenta es aceptar la versión vigente, que el servidor guarda con la fecha.
+  const termsVersion = await getLegalVersion();
   // Sin contraseña: la cuenta ya existe en Firebase (entró con Google o Facebook).
   if (password) await createFirebaseAccount(data.email, password);
   const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, accepted_terms_version: termsVersion }),
   });
   if (response.status === EMAIL_VERIFICATION_REQUIRED) {
     return requestEmailVerification();
@@ -168,6 +175,24 @@ async function register(
     throw new Error(await readError(response));
   }
   return response.json();
+}
+
+/** Versión vigente de los Términos y la Política de privacidad. */
+export async function getLegalVersion(): Promise<string> {
+  const response = await fetchWithTimeout(`${API_BASE}/api/legal`);
+  if (!response.ok) throw new Error(await readError(response));
+  return (await response.json()).version;
+}
+
+/** Acepta la versión vigente (cuentas creadas antes o Términos actualizados). */
+export async function acceptCurrentTerms(): Promise<void> {
+  const version = await getLegalVersion();
+  const response = await fetchWithTimeout(`${API_BASE}/api/legal/accept`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
 }
 
 export function signUpPassenger(

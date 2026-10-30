@@ -814,7 +814,8 @@ def require_verified_email_to_link(existing: User, identity: FirebaseIdentity):
         )
 
 
-def commit_registration(db: Session, user: User) -> User:
+def commit_registration(db: Session, user: User, terms_version: str) -> User:
+    legal.record_acceptance(user, terms_version)
     try:
         db.commit()
     except IntegrityError:
@@ -855,7 +856,7 @@ def register_passenger(
         ):
             existing_email.firebase_uid = identity.uid
             fill_missing_identity(existing_email, data, db)
-            return commit_registration(db, existing_email)
+            return commit_registration(db, existing_email, data.accepted_terms_version)
         raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
     cedula_hash = ensure_cedula_available(db, data.cedula)
@@ -877,7 +878,7 @@ def register_passenger(
         xp_level="Pasajero Novato"
     )
     db.add(new_user)
-    return commit_registration(db, new_user)
+    return commit_registration(db, new_user, data.accepted_terms_version)
 
 
 @app.post("/api/drivers/register", response_model=UserResponse, status_code=201, dependencies=[Depends(rate_limit("registro", 5, 600))])
@@ -910,7 +911,7 @@ async def register_driver(
         ):
             existing_email.firebase_uid = identity.uid
             fill_missing_identity(existing_email, data, db)
-            return commit_registration(db, existing_email)
+            return commit_registration(db, existing_email, data.accepted_terms_version)
         raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo.")
 
     cedula_hash = ensure_cedula_available(db, data.cedula)
@@ -955,7 +956,7 @@ async def register_driver(
         bank_account_number=data.bank_account_number
     )
     db.add(driver_profile)
-    registered = commit_registration(db, new_user)
+    registered = commit_registration(db, new_user, data.accepted_terms_version)
     await alert_admins(
         db, "conductor", "Conductor por verificar",
         f"{new_user.name} se registró como conductor ({data.moto_brand_model}).", user_id=new_user.id,
@@ -998,7 +999,7 @@ def list_drivers(db: Session = Depends(get_db)):
         ))
     return results
 
-@app.put("/api/drivers/{driver_id}/availability")
+@app.put("/api/drivers/{driver_id}/availability", dependencies=[Depends(legal.require_current_terms)])
 async def toggle_driver_availability(
     driver_id: int, 
     req: ToggleAvailabilityRequest, 
@@ -1030,7 +1031,7 @@ async def toggle_driver_availability(
 # -------------------------------------------------------------
 # SOLICITUD Y GESTIÓN DE VIAJES
 # -------------------------------------------------------------
-@app.post("/api/rides", response_model=RideResponse, dependencies=[Depends(rate_limit("viajes", 10, 600))])
+@app.post("/api/rides", response_model=RideResponse, dependencies=[Depends(legal.require_current_terms), Depends(rate_limit("viajes", 10, 600))])
 async def request_ride(
     ride_data: RideCreate, 
     passenger_id: int | None = None,

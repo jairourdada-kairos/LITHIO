@@ -11,7 +11,7 @@ from starlette.websockets import WebSocketDisconnect
 
 import app.auth as auth
 import app.models as models
-from app import crypto, main
+from app import config, crypto, main
 from app.auth import FirebaseIdentity
 from app.seed import migrate_plaintext_columns
 from app.database import Base, get_db
@@ -73,6 +73,9 @@ def client(monkeypatch):
         User(id=4, name="Sofia", email="sofia@example.test", phone="passenger-phone", role="pasajero"),
         User(id=5, name="Admin", email="admin@example.test", phone="admin-phone", role="admin", firebase_uid="uid-admin"),
     ]
+    for user in users:
+        # Los usuarios de prueba ya aceptaron los Términos vigentes.
+        user.terms_version = config.LEGAL_VERSION
     db.add_all(users)
     db.flush()
     db.add_all([
@@ -241,6 +244,7 @@ VALID_REGISTRATION = {
     "career": "Ingeniería en Computación",
     "semester": "5",
     "phone": "0412-1234567",
+    "accepted_terms_version": config.LEGAL_VERSION,
 }
 
 

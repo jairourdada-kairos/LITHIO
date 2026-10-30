@@ -39,6 +39,10 @@ VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")
 # persistente (o un almacenamiento de objetos) en esta ruta.
 MEDIA_DIR = Path(os.getenv("MEDIA_DIR", str(BACKEND_DIR / "media")))
 
+# Versión vigente de los Términos y Condiciones + Política de privacidad. Al
+# cambiar el texto se sube la versión: cada usuario debe aceptarla de nuevo.
+LEGAL_VERSION = "2026-10-29"
+
 # Registro de seguridad (intentos de entrar al panel de administración y
 # acciones del administrador). Fuera de git por *.log.
 LOG_DIR = Path(os.getenv("LOG_DIR", str(BACKEND_DIR / "logs")))

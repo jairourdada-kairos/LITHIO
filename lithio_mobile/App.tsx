@@ -24,6 +24,7 @@ import { NotificationPrimer } from './src/components/NotificationPrimer';
 import { checkAppVersion } from './src/services/appVersion';
 import { applyUpdateOnStartup, downloadUpdateInBackground, restartWithUpdate } from './src/services/liveUpdates';
 import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
+import { TermsGateScreen } from './src/screens/TermsGateScreen';
 import { AboutLithioModal } from './src/components/AboutLithioModal';
 import { LithiumAtom } from './src/components/brand/LithiumAtom';
 import { EVA_FONT } from './src/components/ui/Icon';
@@ -233,6 +234,16 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
             void signOut();
             setAuthStep('welcome');
           }}
+        />
+      );
+    }
+    if (session?.user.terms_pending) {
+      return (
+        <TermsGateScreen
+          accent={session.role === 'conductor' ? theme.colors.secondary : theme.colors.primary}
+          firstTime={!session.user.terms_version}
+          onAccepted={() => setSession({ ...session, user: { ...session.user, terms_pending: false } })}
+          onSignOut={() => void endSession()}
         />
       );
     }

@@ -15,6 +15,7 @@ import { AuthLayout } from '../components/brand/AuthLayout';
 import { FormField } from '../components/FormField';
 import { RecoverySheet } from '../components/RecoverySheet';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
+import { LegalNotice } from '../components/LegalNotice';
 import { SocialSignIn } from '../components/SocialSignIn';
 import { SocialPrefill } from '../services/socialAuth';
 import { validateEmail } from '../utils/validation';
@@ -107,6 +108,7 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSo
       </Pressable>
 
       <PrimaryButton label="Continuar →" onPress={handleEmailLogin} loading={loading} style={styles.submit} />
+      <LegalNotice lead="Al continuar, aceptas" />
 
       <Pressable style={styles.linkRow} onPress={onGoToSignUp} accessibilityRole="button" hitSlop={8}>
         <Text style={styles.linkText}>

@@ -23,6 +23,7 @@ from ..drivers import require_approved_driver
 from ..links_service import are_linked
 from ..models import DriverProfile, User, WalletTransaction, WorkshopReward
 from ..realtime import manager
+from .legal import require_current_terms
 from .. import push_service
 from .profile import _detect_format, commit_or_discard
 
@@ -152,7 +153,7 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
     }
 
 
-@router.post("/wallet/topups", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
+@router.post("/wallet/topups", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def request_topup(data: TopupIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TOPUP_CENTS:
@@ -169,7 +170,7 @@ async def request_topup(data: TopupIn, user: User = Depends(get_current_user), d
     return serialize(db, tx)
 
 
-@router.post("/wallet/transfers", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
+@router.post("/wallet/transfers", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def transfer(data: TransferIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TRANSFER_CENTS:
@@ -199,7 +200,7 @@ async def transfer(data: TransferIn, user: User = Depends(get_current_user), db:
     return serialize(db, sent)
 
 
-@router.post("/wallet/donations", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
+@router.post("/wallet/donations", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def donate(data: DonationIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if data.method == "pago_movil":
@@ -227,7 +228,7 @@ async def donate(data: DonationIn, user: User = Depends(get_current_user), db: S
     return serialize(db, tx)
 
 
-@router.post("/wallet/withdrawals", status_code=201, response_model=TransactionOut, dependencies=[Depends(rate_limit("billetera", 20, 600))])
+@router.post("/wallet/withdrawals", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def request_withdrawal(data: WithdrawalIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_approved_driver(db, user)
     driver = wallet.lock_user(db, user.id)
@@ -249,7 +250,7 @@ def workshop_catalog(user: User = Depends(get_current_user), db: Session = Depen
     ]
 
 
-@router.post("/wallet/workshop/{reward_id}/redeem", status_code=201, response_model=TransactionOut)
+@router.post("/wallet/workshop/{reward_id}/redeem", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms)])
 async def redeem_workshop(reward_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_approved_driver(db, user)
     reward = db.get(WorkshopReward, reward_id)

@@ -90,6 +90,8 @@ ADDED_COLUMNS = {
         "active_session_id": "VARCHAR(64)",
         "profile_updated_at": "TIMESTAMP",
         "push_token": "VARCHAR",
+        "terms_version": "VARCHAR(20)",
+        "terms_accepted_at": "TIMESTAMP",
     },
     "rides": {
         "status_log": "TEXT",

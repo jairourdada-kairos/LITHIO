@@ -5,13 +5,13 @@
  * (el servidor lo hace cumplir). La foto se cambia cuando quieras desde la
  * cuenta. La cédula llega enmascarada y no se edita aquí.
  *
- * Al final: la política de privacidad y "Eliminar mi cuenta" (lo exigen Google
+ * Al final: los Términos y Condiciones, la Política de privacidad y "Eliminar mi cuenta" (lo exigen Google
  * Play y Facebook). El servidor bloquea la eliminación con un viaje abierto o
  * saldo en la billetera y explica qué falta.
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -20,7 +20,7 @@ import { roleColors } from '../../components/ui/RoleBadge';
 import { FormField } from '../../components/FormField';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
 import { apiService, MyProfile } from '../../services/api';
-import { API_BASE } from '../../config/api';
+import { openPrivacy, openTerms } from '../../components/LegalNotice';
 import { normalizePhone, validateEmail, validatePersonName, validatePhone } from '../../utils/validation';
 import type { AuthUser } from '../../services/auth';
 import type { SessionRole } from '../../services/session';
@@ -250,11 +250,10 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                   : 'Puedes editar tu nombre, correo y teléfono una vez cada 7 días. Tu cédula, teléfono y datos de pago se guardan cifrados.'}
               </Text>
               <View style={styles.dangerZone}>
-                <Pressable
-                  onPress={() => void Linking.openURL(`${API_BASE}/privacidad`).catch(() => undefined)}
-                  style={styles.linkRow}
-                  accessibilityRole="link"
-                >
+                <Pressable onPress={openTerms} style={styles.linkRow} accessibilityRole="link">
+                  <Text style={[styles.edit, { color: accent }]}>Términos y Condiciones</Text>
+                </Pressable>
+                <Pressable onPress={openPrivacy} style={styles.linkRow} accessibilityRole="link">
                   <Text style={[styles.edit, { color: accent }]}>Política de privacidad</Text>
                 </Pressable>
                 <Pressable

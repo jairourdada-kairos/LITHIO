@@ -14,6 +14,7 @@ import { signUpPassenger, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
+import { LegalNotice } from '../components/LegalNotice';
 import {
   IdentityErrors,
   IdentityFields,
@@ -107,6 +108,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
         <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
         <PrimaryButton label="Crear mi cuenta →" onPress={handleSubmit} loading={loading} style={styles.submit} />
+        <LegalNotice lead="Al crear tu cuenta aceptas" />
     </AuthLayout>
   );
 };

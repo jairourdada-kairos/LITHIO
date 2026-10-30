@@ -1,8 +1,8 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
 from typing import Optional
 from datetime import datetime
 
-from . import validation
+from . import config, validation
 from .crypto import mask
 
 # --- USUARIOS & AUTENTICACIÓN ---
@@ -25,6 +25,18 @@ class RegistrationFields(BaseModel):
     semester: str = Field(description="1 a 12, Egresado o Personal / Docente")
     phone: str = Field(description="Celular venezolano")
     avatar_url: Optional[str] = Field(default=None, max_length=500)
+    # Versión de los Términos y la Política de privacidad que la persona aceptó al
+    # crear la cuenta (la app la muestra junto al botón "Crear mi cuenta").
+    accepted_terms_version: str = Field(max_length=20)
+
+    @field_validator("accepted_terms_version")
+    @classmethod
+    def _terms(cls, value: str) -> str:
+        if value != config.LEGAL_VERSION:
+            raise ValueError(
+                "Debes aceptar los Términos y Condiciones y la Política de privacidad vigentes. Actualiza la app e intenta de nuevo."
+            )
+        return value
 
     @field_validator("name")
     @classmethod
@@ -109,6 +121,13 @@ class UserResponse(UserBase):
     points: int
     xp_level: str
     created_at: datetime
+    terms_version: Optional[str] = None
+
+    @computed_field
+    @property
+    def terms_pending(self) -> bool:
+        """La app pide aceptar los Términos vigentes antes de dejar usarla."""
+        return self.terms_version != config.LEGAL_VERSION
 
 class DriverFinancialResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
