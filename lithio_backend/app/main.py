@@ -56,6 +56,7 @@ from .links_service import (
     user_z,
 )
 from . import push_service
+from . import security_log
 from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, ride_details, wallet
 from .timeutil import utcnow
 
@@ -69,6 +70,8 @@ BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
 async def lifespan(_app: FastAPI):
     # Falla al arrancar si faltan las claves de cifrado, antes de tocar datos.
     crypto.validate_configuration()
+    # Y si alguna ruta de administrador quedó sin require_admin.
+    security_log.assert_admin_routes_protected(_app)
     # Crear tablas, migrar columnas, cifrar datos heredados y sembrar datos iniciales
     Base.metadata.create_all(bind=engine)
     seed_database()
@@ -109,6 +112,10 @@ app.include_router(legal.router)
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=config.MEDIA_DIR), name="media")
+
+security_log.configure_security_log()
+app.middleware("http")(security_log.audit_admin_requests)
+app.middleware("http")(security_log.add_security_headers)
 
 app.add_middleware(
     CORSMiddleware,

@@ -236,24 +236,45 @@ def get_current_user(
     return user
 
 
+def _env_set(name: str, lower: bool = False) -> set[str]:
+    values = {value.strip() for value in os.getenv(name, "").split(",") if value.strip()}
+    return {value.lower() for value in values} if lower else values
+
+
 def _configured_admin_uids() -> set[str]:
-    return {value.strip() for value in os.getenv("ADMIN_FIREBASE_UIDS", "").split(",") if value.strip()}
+    return _env_set("ADMIN_FIREBASE_UIDS")
+
+
+def _configured_admin_emails() -> set[str]:
+    return _env_set("ADMIN_EMAILS", lower=True)
 
 
 def is_admin(user: User) -> bool:
-    return user.role == "admin" or user.firebase_uid in _configured_admin_uids()
+    """Administrador = su UID de Firebase está en ADMIN_FIREBASE_UIDS (variable del
+    servidor) y, si ADMIN_EMAILS está definida, su correo también.
+
+    El rol guardado en la base nunca basta: así ninguna fila editada, migración
+    o error futuro puede convertir a alguien en administrador. El UID sale del
+    token de Firebase verificado con su firma, no de algo que envíe el cliente.
+    """
+    if not user.firebase_uid or user.firebase_uid not in _configured_admin_uids():
+        return False
+    emails = _configured_admin_emails()
+    return not emails or (user.email or "").lower() in emails
 
 
 def admin_users(db: Session) -> list[User]:
     """Las cuentas de administrador (para avisarles de solicitudes nuevas)."""
     uids = _configured_admin_uids()
-    condition = User.role == "admin"
-    if uids:
-        condition = condition | User.firebase_uid.in_(uids)
-    return db.query(User).filter(condition).all()
+    if not uids:
+        return []
+    return [user for user in db.query(User).filter(User.firebase_uid.in_(uids)).all() if is_admin(user)]
 
 
-def require_admin(user: User = Depends(get_current_user)) -> User:
+def require_admin(request: Request, user: User = Depends(get_current_user)) -> User:
     if not is_admin(user):
+        # security_log.audit_admin_requests escribe el intento con este usuario.
+        request.state.security_user_id = user.id
         raise HTTPException(status_code=403, detail="Se requiere permiso de administrador.")
+    request.state.security_user_id = user.id
     return user

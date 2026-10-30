@@ -39,6 +39,10 @@ VENEZUELA_TZ = timezone(timedelta(hours=-4), "VET")
 # persistente (o un almacenamiento de objetos) en esta ruta.
 MEDIA_DIR = Path(os.getenv("MEDIA_DIR", str(BACKEND_DIR / "media")))
 
+# Registro de seguridad (intentos de entrar al panel de administración y
+# acciones del administrador). Fuera de git por *.log.
+LOG_DIR = Path(os.getenv("LOG_DIR", str(BACKEND_DIR / "logs")))
+
 # Evidencias del vale «Pasar con 20». Fuera de MEDIA_DIR a propósito: /media es
 # público y estas fotos solo las ve el administrador a través de la API.
 EVIDENCE_DIR = Path(os.getenv("EVIDENCE_DIR", str(BACKEND_DIR / "evidence")))

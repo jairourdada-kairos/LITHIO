@@ -15,6 +15,10 @@ os.environ["ALLOWED_EMAIL_DOMAINS"] = ""
 os.environ["REQUIRE_VERIFIED_EMAIL"] = "false"
 # Sin token: las pruebas nunca envían un WhatsApp real a los teléfonos de la base.
 os.environ["WHATSAPP_ACCESS_TOKEN"] = ""
+# El administrador de prueba se reconoce solo por su UID, como en el servidor real.
+os.environ["ADMIN_FIREBASE_UIDS"] = "uid-admin"
+os.environ["ADMIN_EMAILS"] = ""
+os.environ["LOG_DIR"] = tempfile.mkdtemp(prefix="lithio-logs-")
 
 
 import pytest  # noqa: E402

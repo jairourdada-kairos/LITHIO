@@ -90,8 +90,10 @@ $vars = @(
   'DATABASE_URL=${{Postgres.DATABASE_URL}}',
   'MEDIA_DIR=/data/media',
   'EVIDENCE_DIR=/data/evidence',
+  'LOG_DIR=/data/logs',
   "FIREBASE_PROJECT_ID=$($cfg['FIREBASE_PROJECT_ID'])",
-  "ADMIN_FIREBASE_UIDS=$($cfg['ADMIN_FIREBASE_UIDS'])"
+  "ADMIN_FIREBASE_UIDS=$($cfg['ADMIN_FIREBASE_UIDS'])",
+  "ADMIN_EMAILS=$($cfg['ADMIN_EMAILS'])"
 )
 Railway variable set --service $Service --skip-deploys @vars | Out-Null
 # Los secretos van por stdin para que no queden en el historial de comandos.

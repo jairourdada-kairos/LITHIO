@@ -39,6 +39,7 @@ lithio_mobile/.expo/
 lithio_mobile/node_modules/
 lithio_backend/media/
 lithio_backend/evidence/
+lithio_backend/logs/
 
 # Firebase para Android (se envía a EAS como variable de archivo)
 lithio_mobile/google-services.json
