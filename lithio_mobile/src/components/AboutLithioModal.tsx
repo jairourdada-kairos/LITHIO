@@ -174,6 +174,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               variant="glass"
               onPress={() => goTo(index - 1)}
               disabled={index === 0}
+              containerStyle={styles.navSlot}
               style={[styles.navButton, styles.backButton, index === 0 && styles.navDisabled]}
               accessibilityLabel="Atrás"
             >
@@ -184,6 +185,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               variant="solid"
               accent={theme.colors.primary}
               onPress={() => (isLast ? onClose() : goTo(index + 1))}
+              containerStyle={styles.navSlot}
               style={[styles.navButton, styles.nextButton]}
               accessibilityLabel={isLast ? 'Entendido' : 'Siguiente'}
             >
@@ -606,10 +608,14 @@ const styles = themed(() => ({
     flexDirection: 'row',
     gap: 12,
   },
-  // Los dos botones comparten medidas y tipografía: solo cambia el relleno.
-  navButton: {
+  // Cada botón ocupa la mitad de la fila. El reparto va en el contenedor: con
+  // flex: 1 en el botón mismo, Android lo aplasta a alto 0 (se veían dos rayas).
+  navSlot: {
     flex: 1,
     flexBasis: 0,
+  },
+  // Los dos botones comparten medidas y tipografía: solo cambia el relleno.
+  navButton: {
     height: 52,
     flexDirection: 'row',
     alignItems: 'center',

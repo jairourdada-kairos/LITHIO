@@ -211,7 +211,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
               >
-                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>
+                <Text style={[styles.segmentText, selected && styles.segmentTextActive]} numberOfLines={1}>
                   {SECTION_LABEL[value]}{value === 'vouchers' && vouchers.length ? ` · ${vouchers.length}` : ''}
                 </Text>
               </Pressable>
@@ -469,21 +469,27 @@ const styles = themed(() => ({
     color: theme.colors.textMuted,
     textAlign: 'center',
   },
+  // Cuadrícula de 2 x 2: las cuatro pestañas miden lo mismo y "Postulaciones"
+  // cabe en una línea con aire a los lados, también en teléfonos angostos.
   segment: {
     flexDirection: 'row',
-    padding: 4,
-    borderRadius: theme.radius.full,
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: 6,
+    borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
   segmentItem: {
-    flex: 1,
-    minHeight: 40,
+    flexBasis: '45%',
+    flexGrow: 1,
+    minHeight: 44,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.radius.full,
+    borderRadius: theme.radius.md,
   },
   segmentActive: {
     backgroundColor: theme.colors.secondary,

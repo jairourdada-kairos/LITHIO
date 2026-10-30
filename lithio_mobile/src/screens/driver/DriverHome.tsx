@@ -143,18 +143,18 @@ export const DriverHome: React.FC<Props> = ({
       <View style={styles.quickRow}>
         <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Ver ganancias">
           <Icon name="credit-card-outline" size={24} color={theme.colors.diamond} />
-          <Text style={styles.quickValue}>◆ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
-          <Text style={styles.quickLabel}>Ganancias</Text>
+          <Text style={styles.quickValue} numberOfLines={1}>◆ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
+          <Text style={styles.quickLabel} numberOfLines={2}>Ganancias</Text>
         </PressableScale>
         <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Taller aliado">
           <Icon name="settings-2-outline" size={24} color={theme.colors.secondary} />
-          <Text style={styles.quickValue}>Taller</Text>
-          <Text style={styles.quickLabel}>Canjea servicios</Text>
+          <Text style={styles.quickValue} numberOfLines={1}>Taller</Text>
+          <Text style={styles.quickLabel} numberOfLines={2}>Canjea servicios</Text>
         </PressableScale>
         <View style={[styles.quick, styles.flex]}>
           <Icon name="star-outline" size={24} color={theme.colors.gold} />
-          <Text style={styles.quickValue}>{summary?.rating_avg ? summary.rating_avg.toFixed(2) : 'Nuevo'}</Text>
-          <Text style={styles.quickLabel}>{summary?.trips_completed ?? 0} viajes</Text>
+          <Text style={styles.quickValue} numberOfLines={1}>{summary?.rating_avg ? summary.rating_avg.toFixed(2) : 'Nuevo'}</Text>
+          <Text style={styles.quickLabel} numberOfLines={2}>{summary?.trips_completed ?? 0} viajes</Text>
         </View>
       </View>
     </ScrollView>
@@ -279,11 +279,15 @@ const styles = themed(() => ({
     fontSize: 16,
     color: theme.colors.secondary,
   },
+  // Las tres tarjetas miden lo mismo: la fila las estira al alto de la más alta
+  // y cada una llena su espacio (también la de calificación, que no se toca).
   quickRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: 10,
   },
   quick: {
+    flexGrow: 1,
     alignItems: 'flex-start',
     gap: 6,
     padding: 14,
@@ -301,6 +305,9 @@ const styles = themed(() => ({
   quickLabel: {
     fontFamily: theme.fonts.regular,
     fontSize: 12,
+    lineHeight: 16,
+    // Siempre reserva dos líneas: los textos de las tres tarjetas quedan alineados.
+    minHeight: 32,
     color: theme.colors.textMuted,
   },
 }));

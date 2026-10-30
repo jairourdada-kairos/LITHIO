@@ -96,7 +96,7 @@ export const AccountScreen: React.FC<Props> = ({
   };
 
   const items: MenuItem[] = [
-    ...(onOpenAdmin ? [{ icon: 'shield-crown-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
+    ...(onOpenAdmin ? [{ icon: 'shield-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
     { icon: 'credit-card-outline', label: 'Mis datos', onPress: onOpenProfile },
     ...(onOpenReviews ? [{ icon: 'star-outline' as IconName, label: 'Mis reseñas', onPress: onOpenReviews }] : []),
     { icon: 'people-outline', label: 'Enlaces', onPress: onOpenLinks },
