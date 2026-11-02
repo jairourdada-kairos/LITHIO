@@ -2,6 +2,7 @@
 
 Proyecto universitario para la materia de Programación - **Universidad Nacional de las Ciencias Dr. Humberto Fernández Morán (UNC)**.
 Desarrollado por **Jairo** (Estudiante de Ingeniería en Inteligencia Artificial) en conjunto con **Anti** (Antigravity).
+La idea y el nombre de LITHIO son creación de **Jhonnyer Andrade**.
 
 ---
 

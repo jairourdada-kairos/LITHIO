@@ -265,7 +265,7 @@ def seed_database():
         db.close()
         return
 
-    # 1. Creador del proyecto: Jairo
+    # 1. Desarrollador del proyecto: Jairo (la idea y el nombre son de Jhonnyer Andrade)
     jairo = User(
         name="Jairo Eduardo Urdaneta González",
         email="jairourdada@gmail.com",
