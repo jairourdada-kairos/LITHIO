@@ -325,7 +325,6 @@ export const apiService = {
   },
 
   async getDrivers(): Promise<Driver[]> {
-    // Con sesión: el servidor podrá exigirla cuando todas las apps estén actualizadas.
     const response = await authenticatedFetch(`${API_BASE}/api/drivers`);
     await assertOk(response);
     return response.json();

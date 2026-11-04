@@ -50,7 +50,7 @@ def test_new_driver_waits_for_admin_approval(client):
     assert [step["done"] for step in application["steps"]] == [True, False, False, False]
 
     # Mientras está en revisión no aparece ni puede conectarse ni retirar.
-    assert all(d["user_id"] != driver_id for d in client.get("/api/drivers").json())
+    assert all(d["user_id"] != driver_id for d in client.get("/api/drivers", headers=headers).json())
     toggle = client.put(f"/api/drivers/{driver_id}/availability", json={"is_available": True}, headers=headers)
     assert toggle.status_code == 403
     assert "revisión" in toggle.json()["detail"]
@@ -78,7 +78,7 @@ def test_new_driver_waits_for_admin_approval(client):
     approved = client.put(f"/api/admin/driver-applications/{driver_id}", json={"status": "aprobado"}, headers=ADMIN)
     assert approved.json()["status"] == "aprobado"
     assert client.put(f"/api/drivers/{driver_id}/availability", json={"is_available": True}, headers=headers).status_code == 200
-    assert any(d["user_id"] == driver_id and d["is_available"] for d in client.get("/api/drivers").json())
+    assert any(d["user_id"] == driver_id and d["is_available"] for d in client.get("/api/drivers", headers=headers).json())
 
     with client.session_factory() as db:
         raw = db.execute(text("SELECT license_number FROM driver_profiles WHERE user_id = :id"), {"id": driver_id}).scalar_one()

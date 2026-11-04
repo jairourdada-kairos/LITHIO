@@ -86,6 +86,9 @@ app = FastAPI(
     description="Linked Intelligent Transport for Higher Innovative Opportunities (Transporte Inteligente Vinculado para Oportunidades Innovadoras).",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if config.API_DOCS_ENABLED else None,
+    redoc_url="/redoc" if config.API_DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if config.API_DOCS_ENABLED else None,
 )
 
 # Configuración de CORS
@@ -972,7 +975,7 @@ async def register_driver(
 # DIRECTO DE CONDUCTORES (LO QUE VE EL PASAJERO)
 # -------------------------------------------------------------
 @app.get("/api/drivers", response_model=List[DriverCardItem])
-def list_drivers(db: Session = Depends(get_db)):
+def list_drivers(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Retorna el listado de conductores con su estado, moto y nivel"""
     # Una sola consulta: el usuario de cada conductor llega con el mismo JOIN.
     drivers = (

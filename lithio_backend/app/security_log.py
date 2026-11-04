@@ -25,6 +25,8 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Content-Security-Policy": "frame-ancestors 'none'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    # Los navegadores solo la toman sobre https: en la Wi-Fi local no cambia nada.
+    "Strict-Transport-Security": "max-age=31536000",
 }
 
 

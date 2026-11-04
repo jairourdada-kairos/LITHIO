@@ -57,7 +57,7 @@ Todo el proyecto usa el nombre LITHIO: carpetas `lithio_*`, identificador de And
 ## 3. Tecnologías y responsabilidades
 
 - **Móvil:** React Native, Expo, TypeScript, React 19, Firebase JS SDK y AsyncStorage para persistir la sesión Firebase en React Native.
-- **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2 y SQLite. La documentación interactiva de FastAPI queda disponible en `/docs`.
+- **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2 y SQLite. La documentación interactiva de FastAPI (`/docs`) solo se abre con `API_DOCS_ENABLED=true`.
 - **Autenticación:** Firebase Authentication para correo y contraseña; el backend valida Firebase ID tokens mediante Firebase Admin SDK. La autenticación real y el perfil de aplicación son dos partes coordinadas: Firebase prueba la identidad y la tabla `users` contiene el perfil LITHIO.
 - **Tiempo real:** WebSocket en `/ws`, autenticado con un primer mensaje JSON `{"type":"AUTH","token":"<Firebase ID token>"}`. Se utiliza para solicitudes de viaje, cambios de estado y disponibilidad.
 - **Panel:** HTML, CSS y JavaScript sin framework. Llama la API y usa Firebase Identity Toolkit para iniciar sesión con Firebase, luego comprueba privilegios administrativos con el backend.

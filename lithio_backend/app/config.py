@@ -18,6 +18,10 @@ load_dotenv(BACKEND_DIR / ".env")
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 IS_PRODUCTION = APP_ENV == "production"
 
+# La documentación interactiva (/docs) muestra el mapa completo de la API, y el
+# túnel público llega a este mismo servidor. Solo se abre si se pide en el .env.
+API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "").strip().lower() == "true"
+
 
 def _normalize_database_url(url: str) -> str:
     # Railway y Heroku entregan "postgres://", que SQLAlchemy 2 ya no acepta.

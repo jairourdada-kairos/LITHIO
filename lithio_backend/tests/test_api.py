@@ -197,8 +197,14 @@ def test_cors_allows_configured_dashboard_origins(client):
     assert "access-control-allow-origin" not in blocked.headers
 
 
-def test_public_driver_cards_exclude_private_data(client):
-    response = client.get("/api/drivers")
+def test_api_docs_are_closed_by_default(client):
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 404
+
+
+def test_driver_cards_require_session_and_exclude_private_data(client):
+    assert client.get("/api/drivers").status_code == 401
+    response = client.get("/api/drivers", headers=auth_headers(1))
     assert response.status_code == 200
     drivers = response.json()
     assert len(drivers) >= 1
@@ -659,7 +665,8 @@ def set_ride_status(client, ride_id, status, user_id=1):
 
 
 def public_driver(client, driver_id):
-    return next(d for d in client.get("/api/drivers").json() if d["user_id"] == driver_id)
+    drivers = client.get("/api/drivers", headers=auth_headers(driver_id)).json()
+    return next(d for d in drivers if d["user_id"] == driver_id)
 
 
 def test_sensitive_columns_are_encrypted_at_rest(client):

@@ -21,7 +21,7 @@ cd lithio_backend
 
 Documentación:
 
-- http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/docs (solo con `API_DOCS_ENABLED=true` en `lithio_backend/.env`)
 
 ## Dashboard
 
