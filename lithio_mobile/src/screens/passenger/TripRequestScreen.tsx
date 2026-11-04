@@ -20,6 +20,7 @@ import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import type { Driver, PresetRoute } from '../../types';
+import { apiService } from '../../services/api';
 import { formatBs, useBcvRate } from '../../services/rates';
 
 export interface TripSelection {
@@ -98,6 +99,15 @@ export const TripRequestScreen: React.FC<Props> = ({
   const available = drivers
     .filter((d) => d.is_available)
     .sort((a, b) => b.rating_avg - a.rating_avg || b.trips_count - a.trips_count);
+  const [driversAlerted, setDriversAlerted] = useState(false);
+  const noDriversNow = step === 'driver' && !scheduled && available.length === 0;
+
+  // Cuenta como demanda sin atender y avisa a los conductores fuera de servicio.
+  useEffect(() => {
+    if (!noDriversNow) return;
+    apiService.reportNoDrivers().then((result) => setDriversAlerted(result.drivers_notified > 0)).catch(() => {});
+  }, [noDriversNow]);
+
   const scheduleReady = !scheduled || Boolean(time);
   const canContinue = Boolean(route) && scheduleReady;
   const whenLabel = scheduled && time ? `${day.label} ${day.day} · ${time}` : 'Ahora';
@@ -257,7 +267,9 @@ export const TripRequestScreen: React.FC<Props> = ({
               {available.length === 0 ? (
                 <View style={styles.empty}>
                   <Icon name="motorbike-off" size={32} color={theme.colors.textMuted} />
-                  <Text style={styles.emptyText}>No hay conductores disponibles en este momento. Desliza hacia abajo en el inicio para actualizar.</Text>
+                  <Text style={styles.emptyText}>{driversAlerted
+                      ? 'No hay conductores disponibles en este momento. Ya les avisamos: cuando alguno se active, aparecerá aquí.'
+                      : 'No hay conductores disponibles en este momento. Desliza hacia abajo en el inicio para actualizar.'}</Text>
                 </View>
               ) : (
                 available.map((driver) => (

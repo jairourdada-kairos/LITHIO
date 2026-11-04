@@ -6,7 +6,7 @@
  * El rol se muestra pero no se cambia aquí: para eso se cierra sesión.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { Icon, IconName } from '../../components/ui/Icon';
 import { VersionTag } from '../../components/ui/VersionTag';
@@ -18,7 +18,7 @@ import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { ThemeMode, useThemeMode } from '../../theme/ThemeMode';
 import { electronConfiguration, FALLBACK_LEVEL, levelProgress } from '../../utils/elements';
 import type { AuthUser } from '../../services/auth';
-import type { AccountSummary } from '../../services/api';
+import { apiService, type AccountSummary } from '../../services/api';
 import type { SessionRole } from '../../services/session';
 
 interface MenuItem {
@@ -68,6 +68,7 @@ export const AccountScreen: React.FC<Props> = ({
   onSignOut,
 }) => {
   const { mode, setMode } = useThemeMode();
+  const [remindersChoice, setRemindersChoice] = useState<boolean | null>(null);
   const accent = roleColors(role).accent;
   const level = summary?.level ?? FALLBACK_LEVEL;
   const progress = levelProgress(level);
@@ -95,6 +96,23 @@ export const AccountScreen: React.FC<Props> = ({
     }
   };
 
+  const remindersOn = remindersChoice ?? summary?.retention_push_enabled ?? true;
+  const toggleReminders = () => {
+    const next = !remindersOn;
+    apiService
+      .setRetentionPush(next)
+      .then(() => {
+        setRemindersChoice(next);
+        Alert.alert(
+          next ? 'Recordatorios activados' : 'Recordatorios apagados',
+          next
+            ? 'Te avisaremos de vez en cuando para que no pierdas tu racha.'
+            : 'Ya no te los enviaremos. Los avisos de tus viajes y tu billetera siguen activos.',
+        );
+      })
+      .catch(() => Alert.alert('No se pudo cambiar', 'Revisa tu conexión e inténtalo de nuevo.'));
+  };
+
   const items: MenuItem[] = [
     ...(onOpenAdmin ? [{ icon: 'shield-outline' as IconName, label: 'Administración', onPress: onOpenAdmin }] : []),
     { icon: 'credit-card-outline', label: 'Mis datos', onPress: onOpenProfile },
@@ -102,6 +120,7 @@ export const AccountScreen: React.FC<Props> = ({
     { icon: 'people-outline', label: 'Enlaces', onPress: onOpenLinks },
     ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
     ...(pushSupported ? [{ icon: 'bell-outline' as IconName, label: 'Notificaciones', onPress: () => void manageNotifications() }] : []),
+    ...(pushSupported ? [{ icon: 'flash-outline' as IconName, label: `Recordatorios: ${remindersOn ? 'activados' : 'apagados'}`, onPress: toggleReminders }] : []),
     { icon: 'book-open-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
     { icon: 'atom', label: '¿Qué es LITHIO?', onPress: onOpenAbout },
     { icon: 'log-out-outline', label: 'Cerrar sesión', onPress: confirmSignOut, danger: true },

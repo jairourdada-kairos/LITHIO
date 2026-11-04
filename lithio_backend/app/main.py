@@ -57,7 +57,8 @@ from .links_service import (
 )
 from . import push_service
 from . import security_log
-from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, ride_details, wallet
+from . import retention_service
+from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, retention, ride_details, wallet
 from .timeutil import utcnow
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
@@ -75,7 +76,9 @@ async def lifespan(_app: FastAPI):
     # Crear tablas, migrar columnas, cifrar datos heredados y sembrar datos iniciales
     Base.metadata.create_all(bind=engine)
     seed_database()
+    reminders = asyncio.create_task(retention_service.reminders_loop())
     yield
+    reminders.cancel()
 
 
 app = FastAPI(
@@ -107,6 +110,7 @@ app.include_router(rates.router)
 app.include_router(ride_details.router)
 app.include_router(recovery.router)
 app.include_router(app_version.router)
+app.include_router(retention.router)
 app.include_router(legal.router)
 
 # Fotos de perfil subidas por los usuarios.
@@ -1284,7 +1288,16 @@ def get_my_summary(
         Ride.status.in_(ACTIVE_RIDE_STATUSES),
     ).count()
     profile = current_user.driver_profile
+    completed_at = [
+        created_at
+        for (created_at,) in db.query(Ride.created_at).filter(
+            participant_filter(current_user.id, role),
+            Ride.status == "completado",
+        )
+    ]
     return {
+        "streak": retention_service.streak_from(completed_at),
+        "retention_push_enabled": current_user.retention_push_enabled,
         "trips_completed": completed,
         "scheduled_count": scheduled,
         "points": current_user.points,

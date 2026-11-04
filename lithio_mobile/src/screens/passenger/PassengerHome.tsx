@@ -71,6 +71,7 @@ export const PassengerHome: React.FC<Props> = ({
   const suggested = [...routes].sort((a, b) => Number(b.popular) - Number(a.popular)).slice(0, 2);
   const diamonds = summary?.diamonds ?? 0;
   const points = summary?.points ?? user.points;
+  const streak = summary?.streak;
 
   return (
     <ScrollView
@@ -97,6 +98,22 @@ export const PassengerHome: React.FC<Props> = ({
             </View>
             <Icon name="chevron-right-outline" size={24} color={theme.colors.primary} />
           </PressableScale>
+        </Animated.View>
+      ) : null}
+
+      {streak && streak.weeks > 0 ? (
+        <Animated.View entering={enter(1)} style={styles.streak} accessibilityRole="text">
+          <View style={styles.streakIcon}>
+            <Icon name="flash-outline" size={22} color={theme.colors.gold} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.streakTitle}>
+              Racha de {streak.weeks} {streak.weeks === 1 ? 'semana' : 'semanas'}
+            </Text>
+            <Text style={styles.streakCaption}>
+              {streak.active_this_week ? 'Ya viajaste esta semana.' : 'Viaja antes del domingo para mantenerla.'}
+            </Text>
+          </View>
         </Animated.View>
       ) : null}
 
@@ -218,6 +235,34 @@ const styles = themed(() => ({
   },
   pressed: {
     opacity: 0.7,
+  },
+  streak: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+  },
+  streakIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${theme.colors.gold}22`,
+  },
+  streakTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+  },
+  streakCaption: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   hello: {
     fontFamily: theme.fonts.regular,

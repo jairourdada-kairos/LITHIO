@@ -42,6 +42,7 @@
 
             <nav class="nav-menu">
                 <button class="nav-item active" data-section="dashboard">📊 Resumen</button>
+                <button class="nav-item" data-section="analytics">📈 Analítica</button>
                 <button class="nav-item" data-section="approvals">✅ Aprobaciones</button>
                 <button class="nav-item" data-section="drivers">🛵 Conductores</button>
                 <button class="nav-item" data-section="reviews">⭐ Reseñas</button>
@@ -106,6 +107,28 @@
             </section>
 
             <div class="content-stack">
+                <section class="content-card glass-panel section-panel" id="analytics">
+                    <div class="card-header">
+                        <h3>Analítica (últimos 7 días)</h3>
+                    </div>
+                    <div class="stats-grid" id="analytics-cards"></div>
+                    <h4 class="subsection-title">Demanda sin conductores</h4>
+                    <p class="analytics-note" id="analytics-demand"></p>
+                    <h4 class="subsection-title">Últimas 8 semanas</h4>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Semana</th>
+                                    <th>Viajes completados</th>
+                                    <th>Pasajeros activos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analytics-weeks"></tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <section class="content-card glass-panel section-panel" id="approvals">
                     <div class="card-header">
                         <h3>Aprobaciones pendientes</h3>

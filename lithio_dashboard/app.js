@@ -211,6 +211,7 @@ async function fetchData() {
     // La tasa y las reseñas no deben impedir que cargue el resto del panel.
     state.bcv = await requestAdmin('/rates/bcv').catch(() => null);
     state.reviews = await requestAdmin(reviewsPath()).catch(() => []);
+    state.analytics = await requestAdmin('/admin/analytics').catch(() => null);
 
     state.drivers = driversRes;
     state.routes = routesRes;
@@ -222,6 +223,7 @@ async function fetchData() {
     announceNewRequests();
 
     renderStats();
+    renderAnalytics();
     renderApprovals();
     renderDrivers();
     renderRoutes();
@@ -233,6 +235,68 @@ async function fetchData() {
     setApiStatus(false);
     statusText.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los datos.';
   }
+}
+
+const pct = (value) => (value === null || value === undefined ? '—' : `${value}%`);
+
+function renderAnalytics() {
+  const data = state.analytics;
+  const cards = document.getElementById('analytics-cards');
+  const demand = document.getElementById('analytics-demand');
+  const weeks = document.getElementById('analytics-weeks');
+  cards.replaceChildren();
+  weeks.replaceChildren();
+  if (!data) {
+    demand.textContent = 'No se pudo cargar la analítica.';
+    return;
+  }
+  const metrics = [
+    ['👥', 'Usuarios', data.users.total, `+${data.users.new_7d} esta semana`],
+    ['🚀', 'Hicieron su primer viaje', pct(data.passengers.activation_pct), `${data.passengers.with_first_ride} personas`],
+    ['🔁', 'Repitieron viaje', pct(data.passengers.repeat_pct), 'dos viajes o más'],
+    ['📅', 'Volvieron esta semana', pct(data.passengers.retained_week_pct), 'de los de la semana pasada'],
+    ['🧍', 'Pasajeros activos', data.passengers.active_7d, `${data.passengers.active_30d} en 30 días`],
+    ['🏁', 'Viajes completados', data.rides_7d.completed, `${pct(data.rides_7d.completion_pct)} de ${data.rides_7d.requested} pedidos`],
+    ['🛵', 'Conductores disponibles', data.drivers.available_now, `de ${data.drivers.approved} aprobados`],
+    ['📝', 'Postulaciones por revisar', data.drivers.pending_applications, `${data.drivers.active_7d} conductores activos`],
+    ['⚡', 'Rachas de 2+ semanas', data.streaks.alive_2_plus, `mejor marca: ${data.streaks.best}`],
+    ['🔔', 'Reciben notificaciones', data.users.reachable_by_push, `${data.users.reminders_off} sin recordatorios`],
+  ];
+  metrics.forEach(([icon, title, value, caption]) => {
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    const iconEl = document.createElement('div');
+    iconEl.className = 'stat-icon';
+    iconEl.textContent = icon;
+    const info = document.createElement('div');
+    info.className = 'stat-info';
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    const valueEl = document.createElement('p');
+    valueEl.className = 'stat-value';
+    valueEl.textContent = String(value);
+    const captionEl = document.createElement('small');
+    captionEl.textContent = caption;
+    info.append(heading, valueEl, captionEl);
+    card.append(iconEl, info);
+    cards.append(card);
+  });
+
+  const unmet = data.unmet_demand_7d;
+  const hours = unmet.peak_hours.map(({ hour }) => `${String(hour).padStart(2, '0')}:00`).join(', ');
+  demand.textContent = unmet.events
+    ? `${unmet.events} búsquedas sin conductor de ${unmet.passengers} pasajeros. Horas con más demanda: ${hours}.`
+    : 'Esta semana nadie se quedó sin conductor.';
+
+  [...data.weekly].reverse().forEach(({ week, completed, passengers }) => {
+    const row = document.createElement('tr');
+    [week, completed, passengers].forEach((value) => {
+      const cell = document.createElement('td');
+      cell.textContent = String(value);
+      row.append(cell);
+    });
+    weeks.append(row);
+  });
 }
 
 function renderStats() {

@@ -171,6 +171,17 @@ button, input, select { font: inherit; }
     gap: 1rem;
 }
 
+#analytics-cards .stat-card {
+    background: rgba(255,255,255,0.04);
+    border-radius: 14px;
+}
+
+.analytics-note {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
 .stat-icon {
     width: 52px;
     height: 52px;

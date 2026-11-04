@@ -32,6 +32,9 @@ class User(Base):
     profile_updated_at = Column(DateTime, nullable=True)
     # Token de notificaciones push del dispositivo con la sesión activa.
     push_token = Column(String, nullable=True)
+    # Recordatorios para volver a viajar: se apagan desde el perfil. Los avisos de viajes y billetera no dependen de esto.
+    retention_push_enabled = Column(Boolean, default=True, nullable=False)
+    last_retention_push_at = Column(DateTime, nullable=True)
     # Última versión de los Términos y la Política de privacidad que aceptó, y cuándo.
     terms_version = Column(String(20), nullable=True)
     terms_accepted_at = Column(DateTime, nullable=True)
@@ -71,6 +74,8 @@ class DriverProfile(Base):
     moto_year = Column(Integer, nullable=True)
     submitted_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
+    # Último aviso de "hay pasajeros buscando moto" (como máximo uno cada 30 minutos).
+    last_demand_push_at = Column(DateTime, nullable=True)
     # Campos de pago del conductor
     binance_address = Column(EncryptedString, nullable=True)
     mobile_payment_number = Column(EncryptedString, nullable=True)
@@ -250,6 +255,16 @@ class PerkGrant(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     z = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=utcnow)
+
+
+class DemandEvent(Base):
+    """Un pasajero buscó conductor y no había ninguno disponible."""
+    __tablename__ = "demand_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    drivers_notified = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=utcnow, index=True)
 
 
 def phone_fingerprint(phone: str | None) -> str | None:

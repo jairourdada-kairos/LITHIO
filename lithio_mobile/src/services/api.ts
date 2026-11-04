@@ -18,6 +18,8 @@ export interface AccountSummary {
   has_driver_profile: boolean;
   verification_status: VerificationStatus | null;
   is_admin: boolean;
+  streak: { weeks: number; best: number; active_this_week: boolean };
+  retention_push_enabled: boolean;
 }
 
 export type VerificationStatus = 'pendiente' | 'en_revision' | 'inspeccion' | 'aprobado' | 'rechazado';
@@ -375,6 +377,21 @@ export const apiService = {
 
   async getSummary(role: SessionRole): Promise<AccountSummary> {
     const response = await authenticatedFetch(`${API_BASE}/api/users/me/summary?role=${role}`);
+    await assertOk(response);
+    return response.json();
+  },
+
+  async setRetentionPush(enabled: boolean): Promise<void> {
+    const response = await authenticatedFetch(`${API_BASE}/api/users/me/retention-push`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    await assertOk(response);
+  },
+
+  async reportNoDrivers(): Promise<{ recorded: boolean; drivers_notified: number }> {
+    const response = await authenticatedFetch(`${API_BASE}/api/demand/no-drivers`, { method: 'POST' });
     await assertOk(response);
     return response.json();
   },

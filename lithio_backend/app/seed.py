@@ -92,6 +92,8 @@ ADDED_COLUMNS = {
         "push_token": "VARCHAR",
         "terms_version": "VARCHAR(20)",
         "terms_accepted_at": "TIMESTAMP",
+        "retention_push_enabled": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "last_retention_push_at": "TIMESTAMP",
     },
     "rides": {
         "status_log": "TEXT",
@@ -103,6 +105,7 @@ ADDED_COLUMNS = {
         "receipt_file": "VARCHAR",
     },
     "driver_profiles": {
+        "last_demand_push_at": "TIMESTAMP",
         "mobile_payment_bank": "TEXT",
         "mobile_payment_id": "TEXT",
         # Los conductores que ya existían antes de la verificación quedan aprobados.
