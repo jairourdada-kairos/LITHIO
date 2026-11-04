@@ -137,7 +137,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Session-Id"],
     # La app web necesita leerla para cerrar la sesión cuando otro dispositivo entra.
-    expose_headers=["X-Session-Replaced", "X-Email-Verification", "X-Email-Domain"],
+    expose_headers=["X-Session-Replaced", "X-Email-Verification", "X-Email-Domain", "X-Terms-Required"],
 )
 
 # Montar Dashboard Web (HTML / CSS / JS)
@@ -328,6 +328,19 @@ async def notify_driver_whatsapp(driver: User, ride: Ride, passenger_name: str =
     except urllib.error.URLError:
         return "failed"
 
+def _socket_login(identity: FirebaseIdentity, session_id: str | None) -> tuple[int, bool, dict | None]:
+    """(id del usuario, sesión reemplazada, viaje activo) para quien abre el WebSocket."""
+    db = SessionLocal()
+    try:
+        user = get_user_for_identity(identity, db)
+        if not session_is_current(user, session_id):
+            return user.id, True, None
+        active_ride = get_active_ride(db, user.id)
+        return user.id, False, serialize_ride_for_socket(active_ride) if active_ride else None
+    finally:
+        db.close()
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     user_id = None
@@ -361,20 +374,15 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=1008, reason="Autenticación requerida")
             return
 
-        identity = verify_firebase_token(token)
-        db = SessionLocal()
-        try:
-            user = get_user_for_identity(identity, db)
-            session_id = auth_message.get("session_id") if isinstance(auth_message.get("session_id"), str) else None
-            if not session_is_current(user, session_id):
-                await websocket.send_json({"type": "SESSION_REPLACED"})
-                await websocket.close(code=4001, reason="Sesión iniciada en otro dispositivo")
-                return
-            user_id = user.id
-            active_ride = get_active_ride(db, user_id)
-            snapshot = serialize_ride_for_socket(active_ride) if active_ride else None
-        finally:
-            db.close()
+        # Firebase y la base de datos son llamadas que bloquean: van en un hilo para no frenar a los demás.
+        identity = await asyncio.to_thread(verify_firebase_token, token)
+        session_id = auth_message.get("session_id") if isinstance(auth_message.get("session_id"), str) else None
+        logged_in_id, replaced, snapshot = await asyncio.to_thread(_socket_login, identity, session_id)
+        if replaced:
+            await websocket.send_json({"type": "SESSION_REPLACED"})
+            await websocket.close(code=4001, reason="Sesión iniciada en otro dispositivo")
+            return
+        user_id = logged_in_id
 
         manager.connect(user_id, websocket, session_id)
         await websocket.send_json({"type": "AUTHENTICATED", "user_id": user_id})
@@ -680,11 +688,8 @@ def delete_admin_driver(driver_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == driver_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Conductor no encontrado")
-    profile = db.query(DriverProfile).filter(DriverProfile.user_id == driver_id).first()
-    if profile:
-        db.delete(profile)
-    db.delete(user)
-    db.commit()
+    # No se borra la fila: sus viajes, reseñas y movimientos siguen en el historial de otras personas.
+    profile.erase_account(db, user)
     return {"message": "Conductor eliminado correctamente"}
 
 
@@ -1144,7 +1149,6 @@ async def request_ride(
             "type": "NEW_RIDE_REQUEST",
             "ride_id": new_ride.id,
             "passenger_name": passenger.name,
-            "passenger_phone": passenger.phone,
             "origin": new_ride.origin,
             "destination": new_ride.destination,
             "is_scheduled": new_ride.is_scheduled,

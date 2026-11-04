@@ -622,7 +622,7 @@ const styles = themed(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
   },
   backButton: {

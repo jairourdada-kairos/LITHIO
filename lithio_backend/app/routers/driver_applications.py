@@ -88,7 +88,11 @@ async def review_application(user_id: int, data: ApplicationReviewIn, db: Sessio
 @router.get("/admin/drivers", dependencies=[Depends(require_admin)])
 def list_all_drivers(db: Session = Depends(get_db)):
     """Todos los conductores, en cualquier estado de verificación (panel web)."""
-    profiles = db.query(DriverProfile).join(User).order_by(User.name).all()
+    profiles = (
+        db.query(DriverProfile).join(User)
+        .filter(DriverProfile.verification_status != "eliminado")
+        .order_by(User.name).all()
+    )
     return [
         {
             **application_payload(profile.user, profile),

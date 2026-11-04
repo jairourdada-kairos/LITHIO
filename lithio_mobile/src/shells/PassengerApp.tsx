@@ -65,6 +65,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [routes, setRoutes] = useState<PresetRoute[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [driversError, setDriversError] = useState(false);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [linksCount, setLinksCount] = useState<number | null>(null);
   const [quizAnswered, setQuizAnswered] = useState<boolean | null>(null);
@@ -147,12 +148,18 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     return () => sub.remove();
   }, [overlay, tab, pending, reviewTarget]);
 
+  // Si falla, la pantalla del viaje lo dice y deja reintentar: una lista vacía no es lo mismo que una red caída.
+  const loadDrivers = () => {
+    setDriversError(false);
+    void apiService.getDrivers().then(setDrivers).catch(() => setDriversError(true));
+  };
+
   const openTrip = (options?: { route?: PresetRoute; scheduled?: boolean }) => {
     if (rides.activeRide) {
       setOverlay({ type: 'ride' });
       return;
     }
-    void apiService.getDrivers().then(setDrivers).catch(() => {});
+    loadDrivers();
     setOverlay({ type: 'trip', ...options });
   };
 
@@ -257,6 +264,8 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
         <TripRequestScreen
           routes={routes}
           drivers={drivers}
+          driversError={driversError}
+          onRetryDrivers={loadDrivers}
           initialRoute={overlay.route}
           initialScheduled={overlay.scheduled}
           onBack={() => setOverlay(null)}

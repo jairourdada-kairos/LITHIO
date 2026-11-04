@@ -10,6 +10,22 @@ import { API_BASE } from '../config/api';
 
 const REQUEST_TIMEOUT_MS = 8000;
 
+/** Para pantallas sin sesión (recuperar cuenta): lo mismo, sin pedir el token de Firebase. */
+async function fetchWithoutSession(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('El servidor no responde. Revisa tu conexión e intenta de nuevo.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -244,7 +260,7 @@ export async function sendPasswordReset(email: string): Promise<void> {
 /** Con la cédula o el teléfono: devuelve el correo de la cuenta parcialmente oculto y le envía el enlace. */
 /** Devuelve los correos (ocultos en parte) a los que se envió el enlace. */
 export async function recoverAccount(identity: { cedula: string } | { phone: string }): Promise<string[]> {
-  const response = await fetch(`${API_BASE}/api/auth/recover`, {
+  const response = await fetchWithoutSession(`${API_BASE}/api/auth/recover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(identity),

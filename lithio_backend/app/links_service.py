@@ -1,7 +1,7 @@
 """Códigos de enlace y niveles por elemento químico."""
 import secrets
 
-from sqlalchemy import and_, event, or_, select
+from sqlalchemy import and_, event, func, or_, select
 from sqlalchemy.orm import Session
 
 from .models import Link, Ride, User
@@ -159,5 +159,6 @@ MAX_REWARDED_RIDES_PER_PAIR_PER_DAY = 3
 
 def award_fe(user: User, amount: int) -> None:
     """Suma Fe al saldo canjeable y al histórico que define el nivel."""
-    user.points = (user.points or 0) + amount
-    user.fe_lifetime = (user.fe_lifetime or 0) + amount
+    # Expresión SQL y no un valor leído antes: dos premios a la vez (viaje y reto diario) no se pisan.
+    user.points = func.coalesce(User.points, 0) + amount
+    user.fe_lifetime = func.coalesce(User.fe_lifetime, 0) + amount

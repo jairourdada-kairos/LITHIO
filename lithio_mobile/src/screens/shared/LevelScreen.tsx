@@ -198,8 +198,8 @@ const styles = themed(() => ({
   button: {
     flexDirection: 'row',
     gap: 8,
-    minHeight: 54,
-    borderRadius: theme.radius.md,
+    minHeight: 52,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },

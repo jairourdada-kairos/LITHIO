@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { getDeviceSession, notifySessionReplaced } from './deviceSession';
 import { notifyEmailVerificationRequired } from './emailGate';
+import { notifyTermsRequired } from './termsGate';
 import { FirebaseError, getApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
@@ -73,5 +74,7 @@ export async function authenticatedFetch(
   if (response.status === 401 && response.headers.get('X-Session-Replaced')) notifySessionReplaced();
   // La cuenta aún no verificó su correo de Gmail: App muestra "Verifica tu correo".
   if (response.status === 428 && response.headers.get('X-Email-Verification')) notifyEmailVerificationRequired();
+  // Los Términos cambiaron con la sesión abierta: App muestra la pantalla de aceptación.
+  if (response.status === 403 && response.headers.get('X-Terms-Required')) notifyTermsRequired();
   return response;
 }

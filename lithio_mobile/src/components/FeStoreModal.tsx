@@ -367,15 +367,15 @@ const styles = themed(() => ({
     height: '100%',
   },
   primary: {
-    minHeight: 48,
-    borderRadius: theme.radius.md,
+    minHeight: 52,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.gold,
   },
   primaryText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 15,
+    fontSize: 16,
     color: theme.colors.bgDark,
   },
   voucherRow: {

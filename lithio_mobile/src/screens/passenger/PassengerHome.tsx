@@ -531,7 +531,7 @@ const styles = themed(() => ({
   primaryButton: {
     backgroundImage: theme.fx.gloss,
     boxShadow: theme.fx.glowOf(theme.colors.primary),
-    minHeight: 54,
+    minHeight: 52,
     borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',

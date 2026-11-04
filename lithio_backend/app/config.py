@@ -20,6 +20,9 @@ IS_PRODUCTION = APP_ENV == "production"
 
 # La documentación interactiva (/docs) muestra el mapa completo de la API, y el
 # túnel público llega a este mismo servidor. Solo se abre si se pide en el .env.
+# El Dockerfile lo activa: el servidor va detrás del proxy de la nube (ver rate_limit.client_ip).
+BEHIND_PROXY = os.getenv("BEHIND_PROXY", "").strip().lower() == "true"
+
 API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "").strip().lower() == "true"
 
 

@@ -5,7 +5,8 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    APP_ENV=production
+    APP_ENV=production \
+    BEHIND_PROXY=true
 
 WORKDIR /srv/lithio_backend
 

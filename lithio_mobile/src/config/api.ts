@@ -51,6 +51,21 @@ function resolveDevBase(): string {
 export let API_BASE = resolveDevBase();
 export let WS_BASE = API_BASE.replace(/^http/, 'ws');
 
+/**
+ * La dirección que viene de Firebase (o de la memoria del teléfono) recibe el token de sesión:
+ * solo se acepta https en los dominios donde LITHIO corre (túnel de Cloudflare, Railway) o el configurado.
+ */
+function isTrustedServer(url: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(url);
+    if (protocol !== 'https:') return false;
+    const own = configured.startsWith('https://') ? new URL(configured).hostname : null;
+    return hostname.endsWith('.trycloudflare.com') || hostname.endsWith('.up.railway.app') || hostname === own;
+  } catch {
+    return false;
+  }
+}
+
 function setBase(url: string) {
   API_BASE = url.replace(/\/+$/, '');
   WS_BASE = API_BASE.replace(/^http/, 'ws');
@@ -70,7 +85,7 @@ async function fetchPublishedBase(): Promise<string | null> {
     if (!response.ok) return null;
     const body = await response.json();
     const url: unknown = body?.fields?.api_url?.stringValue;
-    return typeof url === 'string' && url.startsWith('https://') ? url : null;
+    return typeof url === 'string' && isTrustedServer(url) ? url : null;
   } catch {
     return null;
   } finally {
@@ -86,7 +101,7 @@ export async function initApiBase(): Promise<void> {
   if (!isInstalledApp) return;
   try {
     const cached = await AsyncStorage.getItem(CACHE_KEY);
-    if (cached) setBase(cached);
+    if (cached && isTrustedServer(cached)) setBase(cached);
   } catch {
     // Sin almacenamiento: se usa la configurada.
   }

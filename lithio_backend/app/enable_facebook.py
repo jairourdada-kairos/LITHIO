@@ -46,10 +46,12 @@ def enable(app_id: str, app_secret: str) -> str:
 
 if __name__ == "__main__":
     load_dotenv()
-    if len(sys.argv) != 3 or not sys.argv[1].isdigit():
-        sys.exit("Uso: python -m app.enable_facebook IDENTIFICADOR_DE_LA_APP CLAVE_SECRETA")
+    # La clave va en la variable FACEBOOK_APP_SECRET (así no queda a la vista en la lista de procesos).
+    secret = os.environ.get("FACEBOOK_APP_SECRET") or (sys.argv[2] if len(sys.argv) == 3 else "")
+    if len(sys.argv) not in (2, 3) or not sys.argv[1].isdigit() or not secret:
+        sys.exit("Uso: FACEBOOK_APP_SECRET=... python -m app.enable_facebook IDENTIFICADOR_DE_LA_APP")
     try:
-        redirect = enable(sys.argv[1], sys.argv[2])
+        redirect = enable(sys.argv[1], secret)
     except urllib.error.HTTPError as error:
         reason = json.loads(error.read() or b"{}").get("error", {}).get("message", "")
         sys.exit(f"Firebase no activó Facebook ({error.code}): {reason}")

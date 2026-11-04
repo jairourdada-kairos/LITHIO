@@ -511,8 +511,8 @@ const styles = themed(() => ({
   // Sin flex: 1. En una columna de alto automático, Android (Yoga) dejaba el botón
   // con alto 0 + relleno: el texto no se veía y quedaba un recuadro vacío.
   actionBtn: {
-    borderRadius: theme.radius.sm,
-    minHeight: 48,
+    borderRadius: theme.radius.full,
+    minHeight: 52,
     paddingVertical: 12,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -609,17 +609,17 @@ const styles = themed(() => ({
   btnTextWhite: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.onAccent,
-    fontSize: 13,
+    fontSize: 16,
   },
   btnTextDark: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.onAccent,
-    fontSize: 13,
+    fontSize: 16,
   },
   btnTextRed: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.error,
-    fontSize: 13,
+    fontSize: 16,
   },
   completedNotice: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',

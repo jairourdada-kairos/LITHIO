@@ -7,11 +7,13 @@
 - Cada cambio de saldo queda registrado en WalletTransaction en la misma
   transacción de base de datos.
 """
+from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from .config import VENEZUELA_TZ
 from .models import Ride, User, WalletTransaction
 from .timeutil import utcnow
 
@@ -86,7 +88,9 @@ def reject(db: Session, tx: WalletTransaction) -> None:
 
 
 def outgoing_today_cents(db: Session, user_id: int) -> int:
-    start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    # El día cuenta desde la medianoche de Venezuela (guardamos UTC sin zona).
+    local_midnight = datetime.now(VENEZUELA_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = local_midnight.astimezone(timezone.utc).replace(tzinfo=None)
     rows = db.query(WalletTransaction.amount_cents).filter(
         WalletTransaction.user_id == user_id,
         WalletTransaction.kind.in_(["envio", "donacion"]),

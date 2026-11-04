@@ -176,10 +176,9 @@ async def transfer(data: TransferIn, user: User = Depends(get_current_user), db:
     if cents > wallet.MAX_TRANSFER_CENTS:
         raise HTTPException(status_code=400, detail="El envío máximo es de ◆ 50.")
     recipient = db.query(User).filter(func.upper(User.friend_code) == data.to_code.strip().upper()).first()
-    if not recipient or recipient.id == user.id:
-        raise HTTPException(status_code=404, detail="No encontramos un enlace con ese código.")
-    if not are_linked(db, user.id, recipient.id):
-        raise HTTPException(status_code=403, detail="Solo puedes enviar diamantes a tus enlaces.")
+    # Misma respuesta si el código no existe o no es un enlace: no se puede usar para adivinar códigos.
+    if not recipient or recipient.id == user.id or not are_linked(db, user.id, recipient.id):
+        raise HTTPException(status_code=404, detail="No encontramos un enlace con ese código. Solo puedes enviar diamantes a tus enlaces.")
     if wallet.outgoing_today_cents(db, user.id) + cents > wallet.MAX_DAILY_OUTGOING_CENTS:
         raise HTTPException(status_code=400, detail="Superas el límite diario de ◆ 100 en envíos y donaciones.")
 

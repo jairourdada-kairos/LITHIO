@@ -250,8 +250,8 @@ const styles = themed(() => ({
   },
   doneButton: {
     marginTop: 12,
-    minHeight: 50,
-    borderRadius: theme.radius.md,
+    minHeight: 52,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.secondarySoft,
@@ -260,7 +260,7 @@ const styles = themed(() => ({
   },
   doneText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14,
+    fontSize: 16,
     color: theme.colors.secondary,
   },
   list: {

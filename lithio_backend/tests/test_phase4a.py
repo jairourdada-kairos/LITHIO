@@ -112,7 +112,7 @@ def test_transfers_only_to_links_and_within_limits(client):
     code_2 = friend_code(client, 2)
 
     not_linked = client.post("/api/wallet/transfers", json={"to_code": code_2, "amount": 5}, headers=auth_headers(4))
-    assert not_linked.status_code == 403
+    assert not_linked.status_code == 404
 
     link_users(client, 4, 2)
     sent = client.post("/api/wallet/transfers", json={"to_code": code_2.lower(), "amount": 5.25, "note": "Pasaje"}, headers=auth_headers(4))

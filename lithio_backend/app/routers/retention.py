@@ -80,7 +80,7 @@ def freeze_streak(user: User = Depends(get_current_user), db: Session = Depends(
     if not streak["freeze"]["available"]:
         raise HTTPException(status_code=409, detail="No puedes usar un comodín en este momento.")
     cost = streak["freeze"]["cost"]
-    _spend_fe(user, cost)
+    _spend_fe(db, user, cost)
     db.add(StreakFreeze(user_id=user.id, week_start=week_of(utcnow()), fe_cost=cost))
     try:
         db.commit()

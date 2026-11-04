@@ -15,6 +15,7 @@ import { ColorScheme, theme, themed } from './src/constants/theme';
 import { ThemeModeProvider } from './src/theme/ThemeMode';
 import { AuthUser, loadOwnProfile } from './src/services/auth';
 import { isEmailVerificationPending, onEmailVerificationRequired } from './src/services/emailGate';
+import { onTermsRequired } from './src/services/termsGate';
 import { VerifyEmailScreen } from './src/screens/VerifyEmailScreen';
 import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { onSessionReplaced } from './src/services/deviceSession';
@@ -147,6 +148,9 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
   }, []);
 
   useEffect(() => onEmailVerificationRequired(() => setVerifyingEmail(true)), []);
+
+  // Términos nuevos con la sesión abierta: se vuelve a pedir la aceptación antes de seguir.
+  useEffect(() => onTermsRequired(() => setSession((current) => (current ? { ...current, user: { ...current.user, terms_pending: true } } : current))), []);
 
   const startSession = (role: SessionRole) => async (user: AuthUser) => {
     const denied = roleAccessError(user, role);

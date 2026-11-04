@@ -21,8 +21,11 @@ if (-not $secretText -or -not $clientToken) { Write-Host 'ERROR: faltan la clave
 Write-Host ''
 Write-Host '==> 1/3 Activando Facebook en Firebase' -ForegroundColor Cyan
 Push-Location (Join-Path $Root 'lithio_backend')
-& .\venv\Scripts\python.exe -m app.enable_facebook $appId $secretText
+# La clave va por variable de entorno y no como argumento: así no se ve en la lista de procesos.
+$env:FACEBOOK_APP_SECRET = $secretText
+& .\venv\Scripts\python.exe -m app.enable_facebook $appId
 $ok = $LASTEXITCODE -eq 0
+Remove-Item Env:FACEBOOK_APP_SECRET -ErrorAction SilentlyContinue
 Pop-Location
 $secretText = $null
 if (-not $ok) { exit 1 }

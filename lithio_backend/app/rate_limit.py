@@ -13,6 +13,7 @@ from collections import defaultdict, deque
 
 from fastapi import Depends, HTTPException, Request
 
+from . import config
 from .auth import FirebaseIdentity, get_firebase_identity
 
 _lock = threading.Lock()
@@ -54,6 +55,11 @@ def client_ip(request: Request) -> str:
     """IP real del cliente. Detrás del túnel de Cloudflare (que se conecta desde
     esta misma máquina) se usa CF-Connecting-IP; si no, la IP de la conexión."""
     host = request.client.host if request.client else "desconocido"
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if config.BEHIND_PROXY and forwarded:
+        # uvicorn toma la primera dirección, que el cliente puede inventar (incluso "127.0.0.1").
+        # La última la agrega el proxy de la nube y es la única de confianza.
+        return forwarded.split(",")[-1].strip() or host
     if host in {"127.0.0.1", "::1"}:
         return request.headers.get("CF-Connecting-IP", host)
     return host

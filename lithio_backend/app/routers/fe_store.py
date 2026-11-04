@@ -20,6 +20,7 @@ from ..links_service import GIFT_COUPONS, STORE_DISCOUNT_LEVEL, user_z
 from ..models import Coupon, GradeVoucher, PerkGrant, User
 from ..realtime import manager
 from .. import push_service
+from .legal import require_current_terms
 from .profile import _detect_format, commit_or_discard
 from ..timeutil import utcnow
 
@@ -46,12 +47,18 @@ def grant_level_perks(db: Session, user: User) -> None:
     db.commit()
 
 
-def _spend_fe(user: User, cost: int) -> None:
-    if (user.points or 0) < cost:
+def _spend_fe(db: Session, user: User, cost: int) -> None:
+    """Descuenta Fe con un UPDATE condicional: dos peticiones a la vez no pueden gastar el mismo saldo."""
+    spent = (
+        db.query(User)
+        .filter(User.id == user.id, User.points >= cost)
+        .update({User.points: User.points - cost}, synchronize_session=False)
+    )
+    db.refresh(user)
+    if not spent:
         raise HTTPException(
             status_code=400, detail=f"Fe insuficiente. Tienes {user.points or 0} Fe y necesitas {cost} Fe."
         )
-    user.points -= cost
 
 
 def coupon_payload(coupon: Coupon) -> dict:
@@ -95,17 +102,17 @@ class CouponIn(BaseModel):
     percent: Literal[25, 50]
 
 
-@router.post("/fe-store/coupons", dependencies=[Depends(rate_limit("tienda", 10, 600))])
+@router.post("/fe-store/coupons", dependencies=[Depends(require_current_terms), Depends(rate_limit("tienda", 10, 600))])
 def buy_coupon(data: CouponIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cost = price(user, COUPON_PRICES[data.percent])
-    _spend_fe(user, cost)
+    _spend_fe(db, user, cost)
     coupon = Coupon(user_id=user.id, percent=data.percent, fe_cost=cost)
     db.add(coupon)
     db.commit()
     return {"coupon": coupon_payload(coupon), "points": user.points}
 
 
-@router.post("/fe-store/vouchers", dependencies=[Depends(rate_limit("vales", 5, 600))])
+@router.post("/fe-store/vouchers", dependencies=[Depends(require_current_terms), Depends(rate_limit("vales", 5, 600))])
 async def request_voucher(
     subject: str = Form(..., min_length=3, max_length=80),
     note: Optional[str] = Form(None, max_length=200),
@@ -113,16 +120,17 @@ async def request_voucher(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if db.query(GradeVoucher).filter(GradeVoucher.user_id == user.id, GradeVoucher.status == "pendiente").first():
-        raise HTTPException(status_code=409, detail="Ya tienes un vale en revisión. Espera la respuesta del administrador.")
     data = await photo.read(MAX_EVIDENCE_BYTES + 1)
     if len(data) > MAX_EVIDENCE_BYTES:
         raise HTTPException(status_code=413, detail="La foto pesa más de 4 MB.")
     extension = _detect_format(data)
     if not extension:
         raise HTTPException(status_code=400, detail="Solo se aceptan fotos JPG, PNG o WEBP.")
+    # Sin ningún await desde aquí hasta el commit: dos peticiones a la vez no pueden pasar la revisión juntas.
+    if db.query(GradeVoucher).filter(GradeVoucher.user_id == user.id, GradeVoucher.status == "pendiente").first():
+        raise HTTPException(status_code=409, detail="Ya tienes un vale en revisión. Espera la respuesta del administrador.")
     cost = price(user, VOUCHER_COST)
-    _spend_fe(user, cost)
+    _spend_fe(db, user, cost)
 
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{user.id}-{secrets.token_hex(8)}.{extension}"
@@ -171,9 +179,14 @@ async def review_voucher(voucher_id: int, data: VoucherReviewIn, db: Session = D
     voucher = db.get(GradeVoucher, voucher_id)
     if not voucher:
         raise HTTPException(status_code=404, detail="Vale no encontrado.")
-    if voucher.status != "pendiente":
+    new_status = "aprobado" if data.action == "aprobar" else "rechazado"
+    # Cambio de estado condicional: dos revisiones a la vez no devuelven el Fe dos veces.
+    claimed = db.query(GradeVoucher).filter(
+        GradeVoucher.id == voucher_id, GradeVoucher.status == "pendiente"
+    ).update({GradeVoucher.status: new_status}, synchronize_session=False)
+    if not claimed:
         raise HTTPException(status_code=409, detail="Este vale ya fue revisado.")
-    voucher.status = "aprobado" if data.action == "aprobar" else "rechazado"
+    db.refresh(voucher)
     voucher.review_note = (data.note or "").strip() or None
     voucher.reviewed_at = utcnow()
     if voucher.status == "rechazado":

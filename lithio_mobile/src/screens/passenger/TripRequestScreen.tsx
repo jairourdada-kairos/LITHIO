@@ -11,7 +11,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Animated, { ReduceMotion, SlideInLeft, SlideInRight } from 'react-native-reanimated';
-import { PrimaryButton } from '../../components/brand/PrimaryButton';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +18,7 @@ import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { PressableScale } from '../../components/brand/PressableScale';
+import { PrimaryButton } from '../../components/brand/PrimaryButton';
 import type { Driver, PresetRoute } from '../../types';
 import { apiService } from '../../services/api';
 import { formatBs, useBcvRate } from '../../services/rates';
@@ -32,6 +32,9 @@ export interface TripSelection {
 interface Props {
   routes: PresetRoute[];
   drivers: Driver[];
+  /** La lista no se pudo cargar: se avisa y se deja reintentar en vez de mostrarla como vacía. */
+  driversError?: boolean;
+  onRetryDrivers?: () => void;
   initialRoute?: PresetRoute;
   initialScheduled?: boolean;
   onBack: () => void;
@@ -69,6 +72,8 @@ function timeSlots(isToday: boolean) {
 export const TripRequestScreen: React.FC<Props> = ({
   routes,
   drivers,
+  driversError = false,
+  onRetryDrivers,
   initialRoute,
   initialScheduled = false,
   onBack,
@@ -100,7 +105,7 @@ export const TripRequestScreen: React.FC<Props> = ({
     .filter((d) => d.is_available)
     .sort((a, b) => b.rating_avg - a.rating_avg || b.trips_count - a.trips_count);
   const [driversAlerted, setDriversAlerted] = useState(false);
-  const noDriversNow = step === 'driver' && !scheduled && available.length === 0;
+  const noDriversNow = step === 'driver' && !scheduled && available.length === 0 && !driversError;
 
   // Cuenta como demanda sin atender y avisa a los conductores fuera de servicio.
   useEffect(() => {
@@ -267,9 +272,14 @@ export const TripRequestScreen: React.FC<Props> = ({
               {available.length === 0 ? (
                 <View style={styles.empty}>
                   <Icon name="motorbike-off" size={32} color={theme.colors.textMuted} />
-                  <Text style={styles.emptyText}>{driversAlerted
+                  <Text style={styles.emptyText}>{driversError
+                    ? 'No pudimos cargar los conductores. Revisa tu conexión e intenta de nuevo.'
+                    : driversAlerted
                       ? 'No hay conductores disponibles en este momento. Ya les avisamos: cuando alguno se active, aparecerá aquí.'
                       : 'No hay conductores disponibles en este momento. Desliza hacia abajo en el inicio para actualizar.'}</Text>
+                  {driversError && onRetryDrivers ? (
+                    <PrimaryButton label="Reintentar" onPress={onRetryDrivers} style={styles.retryButton} />
+                  ) : null}
                 </View>
               ) : (
                 available.map((driver, index) => (
@@ -462,6 +472,10 @@ const styles = themed(() => ({
     fontFamily: theme.fonts.semibold,
     fontSize: 12,
     color: theme.colors.primary,
+  },
+  retryButton: {
+    alignSelf: 'stretch',
+    marginTop: 6,
   },
   change: {
     paddingHorizontal: 12,

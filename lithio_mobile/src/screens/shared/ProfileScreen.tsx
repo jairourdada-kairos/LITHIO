@@ -348,16 +348,16 @@ const styles = themed(() => ({
     minHeight: 44,
   },
   deleteButton: {
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.error,
   },
   deleteText: {
-    fontFamily: theme.fonts.semibold,
-    fontSize: 15,
+    fontFamily: theme.fonts.bold,
+    fontSize: 16,
     color: theme.colors.error,
   },
 }));

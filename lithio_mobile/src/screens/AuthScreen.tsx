@@ -294,9 +294,9 @@ const styles = themed(() => ({
   signInButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 52,
     marginTop: 4,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.primaryLine,
     backgroundColor: theme.colors.primarySoft,
@@ -304,7 +304,7 @@ const styles = themed(() => ({
   signInText: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
-    fontSize: 15,
+    fontSize: 16,
   },
   aboutLink: {
     flexDirection: 'row',
