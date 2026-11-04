@@ -252,6 +252,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   segmentItem: {
     flex: 1,

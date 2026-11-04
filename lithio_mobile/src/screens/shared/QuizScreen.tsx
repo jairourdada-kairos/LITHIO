@@ -154,6 +154,7 @@ const styles = themed(() => ({
     borderColor: theme.colors.cardBorder,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   pressed: {
     opacity: 0.8,
@@ -177,6 +178,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   resultTitle: {
     fontFamily: theme.fonts.bold,

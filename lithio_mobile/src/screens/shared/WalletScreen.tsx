@@ -243,6 +243,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glow.soft,
+    backgroundImage: theme.fx.sheen,
   },
   balance: {
     fontFamily: theme.fonts.bold,
@@ -321,6 +322,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     overflow: 'hidden',

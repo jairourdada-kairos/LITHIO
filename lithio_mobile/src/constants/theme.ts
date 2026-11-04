@@ -20,65 +20,67 @@ type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
  */
 
 const dark = {
-  bgDark: '#10191C',          // Fondo de la app
-  cardBg: 'rgba(27, 41, 43, 0.90)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)', // Canto del cristal
-  cardElevated: 'rgba(36, 54, 56, 0.92)',
+  bgDark: '#0B1416',          // Fondo de la app
+  cardBg: 'rgba(24, 38, 41, 0.92)',
+  cardBorder: 'rgba(190, 240, 232, 0.07)', // Canto del cristal
+  cardElevated: 'rgba(33, 50, 53, 0.94)',
   primary: '#45D6C5',         // Turquesa eléctrico: pasajero, acción principal
   onPrimary: '#0E2A27',       // Texto sobre turquesa
   secondary: '#FF765E',       // Coral: conductor, protones
   onSecondary: '#3A140B',
+  onAccent: '#0B1416', // Texto sobre cualquier color de relleno (éxito, error, oro, acentos)
   gold: '#FFC857',            // Fe (hierro de recompensa)
   diamond: '#7FD4FF',         // ◆ Diamantes (saldo)
-  success: '#10B981',
-  error: '#EF4444',
-  warning: '#F97316',
-  textPrimary: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#7D8FA6', // ≥ 4.5:1 sobre las tarjetas: se lee aunque sea texto secundario
+  success: '#34D399',
+  error: '#FF6B6B',
+  warning: '#FF9F4A',
+  textPrimary: '#F2F8F7',
+  textSecondary: '#A6BABB',
+  textMuted: '#8AA0A2', // ≥ 4.5:1 sobre las tarjetas: se lee aunque sea texto secundario
   accentGrad1: '#45D6C5',
   accentGrad2: '#FF765E',
-  glassBg: 'rgba(27, 41, 43, 0.86)',
-  glassBgStrong: 'rgba(36, 54, 56, 0.94)',
-  glassBorder: 'rgba(255, 255, 255, 0.09)',
+  glassBg: 'rgba(24, 38, 41, 0.88)',
+  glassBgStrong: 'rgba(33, 50, 53, 0.95)',
+  glassBorder: 'rgba(190, 240, 232, 0.08)',
   glassHighlight: 'rgba(255, 255, 255, 0.08)',
-  glassHover: 'rgba(46, 68, 71, 0.86)',     // Cristal bajo el puntero
-  glassPressed: 'rgba(16, 28, 31, 0.88)',   // Cristal presionado (más hundido)
-  glassBorderHover: 'rgba(255, 255, 255, 0.24)',
-  surface: 'rgba(24, 40, 43, 0.92)', // Tarjetas: cristal teñido
-  surfaceSolid: '#18292C', // Lo que flota encima (solicitudes, avisos): 100 % opaco
-  surfaceAlt: '#10191C',
-  primarySoft: 'rgba(69, 214, 197, 0.12)',
-  primaryLine: 'rgba(69, 214, 197, 0.45)',
-  secondarySoft: 'rgba(255, 118, 94, 0.12)',
-  secondaryLine: 'rgba(255, 118, 94, 0.45)',
-  goldSoft: 'rgba(255, 200, 87, 0.12)',
-  diamondSoft: 'rgba(127, 212, 255, 0.12)',
-  lattice: 'rgba(148, 163, 184, 0.16)',
+  glassHover: 'rgba(43, 64, 67, 0.88)',     // Cristal bajo el puntero
+  glassPressed: 'rgba(14, 25, 28, 0.90)',   // Cristal presionado (más hundido)
+  glassBorderHover: 'rgba(190, 240, 232, 0.26)',
+  surface: 'rgba(22, 36, 39, 0.94)', // Tarjetas: cristal teñido
+  surfaceSolid: '#162528', // Lo que flota encima (solicitudes, avisos): 100 % opaco
+  surfaceAlt: '#0B1416',
+  primarySoft: 'rgba(69, 214, 197, 0.14)',
+  primaryLine: 'rgba(69, 214, 197, 0.50)',
+  secondarySoft: 'rgba(255, 118, 94, 0.14)',
+  secondaryLine: 'rgba(255, 118, 94, 0.50)',
+  goldSoft: 'rgba(255, 200, 87, 0.14)',
+  diamondSoft: 'rgba(127, 212, 255, 0.14)',
+  lattice: 'rgba(166, 186, 187, 0.16)',
   scrim: 'rgba(5, 10, 12, 0.68)',
 };
 
 export type Palette = typeof dark;
 
 const light: Palette = {
-  bgDark: '#F3F6F5',
+  bgDark: '#F0F5F3',
   cardBg: 'rgba(255, 255, 255, 0.92)',
   cardBorder: 'rgba(22, 37, 42, 0.07)',
-  cardElevated: 'rgba(233, 239, 237, 0.92)',
-  primary: '#0F8F82',
+  cardElevated: 'rgba(231, 239, 236, 0.92)',
+  primary: '#0B7E72',
   onPrimary: '#FFFFFF',
-  secondary: '#E0533A',
+  secondary: '#C8432B',
   onSecondary: '#FFFFFF',
-  gold: '#A87A0C',
-  diamond: '#2477B3',
-  success: '#0E9F6E',
-  error: '#DC2626',
-  warning: '#EA580C',
-  textPrimary: '#16252A',
-  textSecondary: '#4E6168',
-  textMuted: '#62747A',
-  accentGrad1: '#0F8F82',
-  accentGrad2: '#E0533A',
+  onAccent: '#FFFFFF',
+  gold: '#8A6308',
+  diamond: '#1F6CA3',
+  success: '#0A7F58',
+  error: '#C9302C',
+  warning: '#C2470A',
+  textPrimary: '#0F2024',
+  textSecondary: '#445960',
+  textMuted: '#566A70',
+  accentGrad1: '#0B7E72',
+  accentGrad2: '#C8432B',
   glassBg: 'rgba(255, 255, 255, 0.86)',
   glassBgStrong: 'rgba(255, 255, 255, 0.95)',
   glassBorder: 'rgba(22, 37, 42, 0.07)',
@@ -88,13 +90,13 @@ const light: Palette = {
   glassBorderHover: 'rgba(22, 37, 42, 0.20)',
   surface: 'rgba(255, 255, 255, 0.92)',
   surfaceSolid: '#FFFFFF',
-  surfaceAlt: '#EEF3F2',
-  primarySoft: 'rgba(15, 143, 130, 0.10)',
-  primaryLine: 'rgba(15, 143, 130, 0.35)',
-  secondarySoft: 'rgba(224, 83, 58, 0.10)',
-  secondaryLine: 'rgba(224, 83, 58, 0.35)',
-  goldSoft: 'rgba(168, 122, 12, 0.12)',
-  diamondSoft: 'rgba(36, 119, 179, 0.10)',
+  surfaceAlt: '#E9F0EE',
+  primarySoft: 'rgba(11, 126, 114, 0.10)',
+  primaryLine: 'rgba(11, 126, 114, 0.35)',
+  secondarySoft: 'rgba(200, 67, 43, 0.10)',
+  secondaryLine: 'rgba(200, 67, 43, 0.35)',
+  goldSoft: 'rgba(138, 99, 8, 0.12)',
+  diamondSoft: 'rgba(31, 108, 163, 0.10)',
   lattice: 'rgba(22, 37, 42, 0.08)',
   scrim: 'rgba(16, 25, 28, 0.4)',
 };
@@ -136,6 +138,16 @@ export function themed<T extends NamedStyles<T> | NamedStyles<any>>(
 export const theme: {
   colors: Palette;
   glow: { primary: string; secondary: string; readonly soft: string };
+  fx: {
+    readonly sheen: string;
+    readonly aurora: string;
+    readonly auroraDriver: string;
+    gloss: string;
+    readonly energy: string;
+    glowOf: (accent: string) => string;
+    cardGlow: (accent: string) => string;
+    tint: (accent: string) => string;
+  };
   glass: {
     blur: number;
     readonly shadow: string;
@@ -154,6 +166,37 @@ export const theme: {
     get soft() {
       return theme.glass.shadow;
     },
+  },
+  // Efectos de marca. Los degradados son estilos de React Native: no necesitan un APK nuevo.
+  // glowOf, cardGlow y tint reciben colores en hexadecimal (#RRGGBB).
+  fx: {
+    /** Reflejo diagonal sobre las tarjetas de cristal. */
+    get sheen() {
+      return activeScheme === 'dark'
+        ? 'linear-gradient(155deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 48%)'
+        : 'linear-gradient(155deg, rgba(255, 255, 255, 1) 0%, rgba(226, 240, 236, 0.6) 100%)';
+    },
+    /** Fondo de las pantallas del pasajero: luz turquesa arriba y un toque coral al otro lado. */
+    get aurora() {
+      return activeScheme === 'dark'
+        ? 'radial-gradient(circle at 8% 0%, rgba(69, 214, 197, 0.20) 0%, rgba(69, 214, 197, 0) 50%), radial-gradient(circle at 100% 24%, rgba(255, 118, 94, 0.13) 0%, rgba(255, 118, 94, 0) 42%)'
+        : 'radial-gradient(circle at 8% 0%, rgba(11, 126, 114, 0.16) 0%, rgba(11, 126, 114, 0) 50%), radial-gradient(circle at 100% 24%, rgba(200, 67, 43, 0.08) 0%, rgba(200, 67, 43, 0) 42%)';
+    },
+    /** Lo mismo para el conductor, con el coral como luz principal. */
+    get auroraDriver() {
+      return activeScheme === 'dark'
+        ? 'radial-gradient(circle at 8% 0%, rgba(255, 118, 94, 0.18) 0%, rgba(255, 118, 94, 0) 50%), radial-gradient(circle at 100% 24%, rgba(69, 214, 197, 0.12) 0%, rgba(69, 214, 197, 0) 42%)'
+        : 'radial-gradient(circle at 8% 0%, rgba(200, 67, 43, 0.13) 0%, rgba(200, 67, 43, 0) 50%), radial-gradient(circle at 100% 24%, rgba(11, 126, 114, 0.08) 0%, rgba(11, 126, 114, 0) 42%)';
+    },
+    /** Brillo superior de los botones de color. */
+    gloss: 'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 58%)',
+    /** Línea de energía: electrones (turquesa) y protones (coral) en el canto de la tarjeta principal. */
+    get energy() {
+      return `linear-gradient(90deg, ${colors.primary}00 0%, ${colors.primary} 30%, ${colors.secondary} 72%, ${colors.secondary}00 100%)`;
+    },
+    glowOf: (accent: string) => `0 8px 22px ${accent}40, 0 1px 3px ${accent}33, inset 0 1px 0 rgba(255, 255, 255, 0.28)`,
+    cardGlow: (accent: string) => `0 18px 44px ${accent}1A, 0 2px 6px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.07)`,
+    tint: (accent: string) => `linear-gradient(155deg, ${accent}24 0%, ${accent}05 70%)`,
   },
   glass: {
     /** Desenfoque del fondo detrás del cristal (px). */
@@ -188,10 +231,11 @@ export const theme: {
   // Fuentes de marca, cargadas en App.tsx. En Android cada grosor es una
   // familia distinta, así que se usa fontFamily en lugar de fontWeight.
   fonts: {
-    light: 'SpaceGrotesk_300Light',
-    regular: 'SpaceGrotesk_400Regular',
-    medium: 'SpaceGrotesk_500Medium',
-    semibold: 'SpaceGrotesk_600SemiBold',
+    // Manrope para leer (se mantiene clara en tamaños pequeños); Space Grotesk para títulos y botones.
+    light: 'Manrope_300Light',
+    regular: 'Manrope_400Regular',
+    medium: 'Manrope_500Medium',
+    semibold: 'Manrope_600SemiBold',
     bold: 'SpaceGrotesk_700Bold',
     // Monoespaciada para datos "de laboratorio": número atómico, acrónimo, etiquetas
     mono: 'SpaceMono_400Regular',
@@ -200,9 +244,9 @@ export const theme: {
   // Esquinas generosas: tarjetas y botones se ven suaves, no como celdas.
   radius: {
     sm: 10,
-    md: 16,
-    lg: 24,
-    xl: 30,
+    md: 14,
+    lg: 20,
+    xl: 26,
     full: 9999,
   },
 };

@@ -139,7 +139,7 @@ interface RoleCardProps {
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({ title, description, icon, particle, accent, soft, line, onPress }) => (
-  <PressableScale variant="glass" accent={line} style={[styles.roleCard, { borderColor: line }]} onPress={onPress} accessibilityLabel={title}>
+  <PressableScale variant="glass" accent={line} style={[styles.roleCard, { borderColor: `${accent}33`, backgroundImage: theme.fx.tint(accent), boxShadow: theme.fx.cardGlow(accent) }]} onPress={onPress} accessibilityLabel={title}>
     <View style={[styles.roleIcon, { backgroundColor: soft, borderColor: line }]}>
       <Icon name={icon} size={26} color={accent} />
     </View>
@@ -233,7 +233,7 @@ const styles = themed(() => ({
   },
   sectionLabel: {
     fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textMuted,
     letterSpacing: 2,
     marginBottom: 12,
@@ -249,6 +249,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     backgroundColor: theme.colors.glassBg,
     boxShadow: theme.glow.soft,
+    backgroundImage: theme.fx.sheen,
   },
   roleIcon: {
     width: 52,
@@ -277,7 +278,7 @@ const styles = themed(() => ({
     // No se encoge: en pantallas de 320 px quedaba en vertical ("e" sobre "⁻").
     flexShrink: 0,
     fontFamily: theme.fonts.monoBold,
-    fontSize: 11,
+    fontSize: 12,
     borderWidth: 1,
     borderRadius: theme.radius.full,
     paddingHorizontal: 6,

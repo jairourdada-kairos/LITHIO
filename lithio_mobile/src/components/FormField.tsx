@@ -120,6 +120,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     // Web: sin el contorno del navegador, el foco lo dibuja el propio cristal.
     ...(Platform.OS === 'web'
       ? ({ outlineStyle: 'none', transition: 'border-color 160ms, box-shadow 160ms, background-color 160ms' } as object)

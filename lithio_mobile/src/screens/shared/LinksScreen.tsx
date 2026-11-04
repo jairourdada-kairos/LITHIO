@@ -232,6 +232,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   code: {
     fontFamily: theme.fonts.monoBold,
@@ -297,6 +298,7 @@ const styles = themed(() => ({
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   acceptBtn: {
     paddingHorizontal: 14,
@@ -327,6 +329,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   legendLabel: {
     fontFamily: theme.fonts.semibold,

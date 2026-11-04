@@ -112,6 +112,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   webBlur: {
     // react-native-web pasa estas propiedades tal cual al CSS.

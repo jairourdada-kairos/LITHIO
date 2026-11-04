@@ -13,7 +13,7 @@
     "android": {
       "package": "com.lithio.app",
       "adaptiveIcon": {
-        "backgroundColor": "#10191C",
+        "backgroundColor": "#0B1416",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -25,8 +25,8 @@
       "name": "LITHIO",
       "shortName": "LITHIO",
       "lang": "es",
-      "themeColor": "#10191C",
-      "backgroundColor": "#10191C"
+      "themeColor": "#0B1416",
+      "backgroundColor": "#0B1416"
     },
     "plugins": [
       "expo-font",
@@ -52,7 +52,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#10191C"
+          "backgroundColor": "#0B1416"
         }
       ]
     ],

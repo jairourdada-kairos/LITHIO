@@ -3,7 +3,8 @@
 La racha cuenta semanas seguidas (lunes a domingo, hora de Venezuela) con al
 menos un viaje completado. Se calcula de los viajes guardados: no hay un
 contador que pueda desincronizarse. La semana en curso no la rompe: sigue viva
-hasta que termine una semana completa sin viajar.
+hasta que termine una semana completa sin viajar. Un comodín comprado con Fe
+cubre una semana sin viajes: no suma a la racha, pero tampoco la rompe.
 
 Los recordatorios salen como máximo una vez cada 7 días por persona, solo de
 día y solo si hay conductores aprobados a quienes pedirles el viaje.
@@ -18,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from . import config, push_service
 from .database import SessionLocal
-from .models import DriverProfile, Ride, User
+from .models import DriverProfile, Ride, StreakFreeze, User
 from .timeutil import utcnow
 
 logger = logging.getLogger(__name__)
@@ -45,27 +46,40 @@ def week_of(moment: datetime) -> date:
     return day - timedelta(days=day.weekday())
 
 
-def streak_from(completed_at: Iterable[datetime], now: Optional[datetime] = None) -> dict:
+def streak_from(
+    completed_at: Iterable[datetime],
+    now: Optional[datetime] = None,
+    frozen_weeks: Iterable[date] = (),
+) -> dict:
     now = now or utcnow()
-    weeks = sorted({week_of(moment) for moment in completed_at if moment})
+    ridden = {week_of(moment) for moment in completed_at if moment}
+    frozen = set(frozen_weeks)
     best = run = 0
     previous = None
-    for week in weeks:
-        run = run + 1 if previous and week - previous == timedelta(weeks=1) else 1
+    for week in sorted(ridden | frozen):
+        if not previous or week - previous != timedelta(weeks=1):
+            run = 0
+        if week in ridden:
+            run += 1
         best = max(best, run)
         previous = week
     this_week = week_of(now)
-    alive = bool(weeks) and this_week - weeks[-1] <= timedelta(weeks=1)
+    alive = previous is not None and this_week - previous <= timedelta(weeks=1)
     return {
         "weeks": run if alive else 0,
         "best": best,
-        "active_this_week": bool(weeks) and weeks[-1] == this_week,
+        "active_this_week": this_week in ridden,
+        "protected_this_week": this_week in frozen and this_week not in ridden,
     }
 
 
-def _reminder_for(user: User, completed_at: list[datetime], now: datetime) -> Optional[tuple[str, str]]:
+def _reminder_for(
+    user: User, completed_at: list[datetime], now: datetime, frozen_weeks: Iterable[date] = ()
+) -> Optional[tuple[str, str]]:
     if completed_at:
-        streak = streak_from(completed_at, now)
+        streak = streak_from(completed_at, now, frozen_weeks)
+        if streak["protected_this_week"]:
+            return None
         if (
             streak["weeks"] >= MIN_STREAK_TO_REMIND
             and not streak["active_this_week"]
@@ -106,6 +120,11 @@ def send_due_reminders(db: Session, now: Optional[datetime] = None) -> int:
         Ride.passenger_id.in_([user.id for user in users]),
     ):
         rides_by_user[passenger_id].append(created_at)
+    frozen_by_user: dict[int, list[date]] = defaultdict(list)
+    for user_id, week_start in db.query(StreakFreeze.user_id, StreakFreeze.week_start).filter(
+        StreakFreeze.user_id.in_([user.id for user in users]),
+    ):
+        frozen_by_user[user_id].append(week_start)
     riding_now = {
         passenger_id
         for (passenger_id,) in db.query(Ride.passenger_id).filter(Ride.status.in_(OPEN_RIDE_STATUSES))
@@ -114,7 +133,7 @@ def send_due_reminders(db: Session, now: Optional[datetime] = None) -> int:
     for user in users:
         if user.id in riding_now:
             continue
-        reminder = _reminder_for(user, rides_by_user[user.id], now)
+        reminder = _reminder_for(user, rides_by_user[user.id], now, frozen_by_user[user.id])
         if reminder:
             user.last_retention_push_at = now
             due.append((user.id, *reminder))

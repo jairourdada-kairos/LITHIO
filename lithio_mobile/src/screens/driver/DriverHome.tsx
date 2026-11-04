@@ -12,15 +12,18 @@ import { Icon } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
+import { PulseRing } from '../../components/brand/PulseRing';
 import { ActiveRideCard } from '../../components/ActiveRideCard';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import type { AuthUser } from '../../services/auth';
-import type { AccountSummary } from '../../services/api';
+import type { AccountSummary, DemandHours } from '../../services/api';
+import { DemandHoursCard } from '../../components/driver/DemandHoursCard';
 import type { Ride, RideStatus } from '../../types';
 
 interface Props {
   user: AuthUser;
   summary: AccountSummary | null;
+  demandHours: DemandHours | null;
   isAvailable: boolean;
   togglingAvailability: boolean;
   connected: boolean;
@@ -39,6 +42,7 @@ interface Props {
 export const DriverHome: React.FC<Props> = ({
   user,
   summary,
+  demandHours,
   isAvailable,
   togglingAvailability,
   connected,
@@ -86,7 +90,9 @@ export const DriverHome: React.FC<Props> = ({
           ) : null}
         </View>
       ) : (
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, online && { backgroundImage: theme.fx.tint(theme.colors.success), borderColor: `${theme.colors.success}40` }]}>
+          <View style={styles.powerWrap}>
+          {online ? <PulseRing size={88} color={theme.colors.success} scale={1.5} style={styles.powerPulse} /> : null}
           <PressableScale variant="glass" accent={theme.colors.secondary}
             onPress={onToggleAvailability}
             disabled={togglingAvailability}
@@ -94,16 +100,17 @@ export const DriverHome: React.FC<Props> = ({
             style={[
               styles.power,
               online
-                ? { backgroundColor: theme.colors.success }
+                ? { backgroundColor: theme.colors.success, backgroundImage: theme.fx.gloss, boxShadow: `0 0 0 8px ${theme.colors.success}24, 0 0 0 18px ${theme.colors.success}12, 0 14px 40px ${theme.colors.success}66` }
                 : { backgroundColor: theme.colors.surfaceAlt, borderColor: theme.colors.cardBorder },
             ]}
           >
             {togglingAvailability ? (
-              <ActivityIndicator color={online ? '#FFFFFF' : theme.colors.textSecondary} />
+              <ActivityIndicator color={online ? theme.colors.onAccent : theme.colors.textSecondary} />
             ) : (
-              <Icon name="power-outline" size={36} color={online ? '#FFFFFF' : theme.colors.textSecondary} />
+              <Icon name="power-outline" size={36} color={online ? theme.colors.onAccent : theme.colors.textSecondary} />
             )}
           </PressableScale>
+          </View>
           <Text style={[styles.statusTitle, { color: statusColor }]}>{online ? 'Conectado' : 'Desconectado'}</Text>
           <Text style={styles.statusBody}>
             {online
@@ -157,6 +164,8 @@ export const DriverHome: React.FC<Props> = ({
           <Text style={styles.quickLabel} numberOfLines={2}>{summary?.trips_completed ?? 0} viajes</Text>
         </View>
       </View>
+
+      <DemandHoursCard data={demandHours} />
     </ScrollView>
   );
 };
@@ -193,6 +202,15 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glow.soft,
+    backgroundImage: theme.fx.sheen,
+  },
+  powerWrap: {
+    alignSelf: 'center',
+    width: 88,
+  },
+  powerPulse: {
+    top: 10,
+    left: 0,
   },
   power: {
     width: 88,
@@ -202,7 +220,8 @@ const styles = themed(() => ({
     borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginTop: 10,
+    marginBottom: 30,
   },
   statusTitle: {
     fontFamily: theme.fonts.bold,
@@ -248,6 +267,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.secondaryLine,
     overflow: 'hidden',
@@ -294,6 +314,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

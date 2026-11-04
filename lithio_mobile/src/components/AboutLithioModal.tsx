@@ -337,7 +337,7 @@ const styles = themed(() => ({
   },
   kicker: {
     fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 2,
     color: theme.colors.primary,
   },
@@ -417,7 +417,7 @@ const styles = themed(() => ({
   },
   hint: {
     fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 1.5,
     color: theme.colors.textMuted,
     textTransform: 'uppercase',
@@ -443,6 +443,7 @@ const styles = themed(() => ({
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.primarySoft,
     boxShadow: theme.glow.soft,
+    backgroundImage: theme.fx.sheen,
   },
   letter: {
     fontFamily: theme.fonts.bold,

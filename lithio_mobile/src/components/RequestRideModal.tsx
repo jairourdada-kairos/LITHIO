@@ -276,7 +276,7 @@ const styles = themed(() => ({
     textAlign: 'center',
     lineHeight: 20,
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.onPrimary,
     backgroundColor: theme.colors.primary,
   },
@@ -375,7 +375,7 @@ const styles = themed(() => ({
   },
   driverRating: {
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.gold,
   },
   routeBox: {
@@ -397,7 +397,7 @@ const styles = themed(() => ({
   },
   routeLabel: {
     fontFamily: theme.fonts.regular,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textMuted,
   },
   routeVal: {
@@ -457,7 +457,7 @@ const styles = themed(() => ({
   },
   paymentText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },
@@ -522,7 +522,7 @@ const styles = themed(() => ({
   referenceHint: {
     fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
-    fontSize: 11,
+    fontSize: 12,
   },
   rewardBanner: {
     flexDirection: 'row',
@@ -574,7 +574,7 @@ const styles = themed(() => ({
   },
   confirmBtnText: {
     fontFamily: theme.fonts.bold,
-    color: '#0B0F19',
+    color: theme.colors.onAccent,
     fontSize: 14,
   }
 }));

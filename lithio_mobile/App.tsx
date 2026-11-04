@@ -4,12 +4,12 @@ import { View, Alert, StatusBar, AppState, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
-  SpaceGrotesk_300Light,
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
+  Manrope_300Light,
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+} from '@expo-google-fonts/manrope';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { ColorScheme, theme, themed } from './src/constants/theme';
 import { ThemeModeProvider } from './src/theme/ThemeMode';
@@ -51,13 +51,13 @@ interface Session {
 // ENTRADA PRINCIPAL — Fuentes de marca y márgenes seguros
 // ============================================================================
 export default function App() {
-  // Space Grotesk (textos) y Space Mono (datos): la app se ve igual sin
+  // Manrope (textos), Space Grotesk (títulos) y Space Mono (datos): la app se ve igual sin
   // importar la fuente del sistema que tenga configurada el teléfono.
   const [fontsLoaded, fontError] = useFonts({
-    SpaceGrotesk_300Light,
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
+    Manrope_300Light,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
     SpaceGrotesk_700Bold,
     SpaceMono_400Regular,
     SpaceMono_700Bold,

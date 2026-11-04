@@ -46,7 +46,7 @@ export function BottomTabBar<K extends string>({ tabs, active, onChange, accent 
               accent={accent}
               onPress={() => onChange(tab.key)}
               containerStyle={styles.tab}
-              style={[styles.pill, selected && { backgroundColor: `${accent}24`, borderColor: `${accent}40` }]}
+              style={[styles.pill, selected && { backgroundImage: theme.fx.tint(accent), borderColor: `${accent}59`, boxShadow: `0 4px 16px ${accent}40` }]}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={tab.label}
@@ -115,6 +115,6 @@ const styles = themed(() => ({
   badgeText: {
     fontFamily: theme.fonts.bold,
     fontSize: 9,
-    color: '#FFFFFF',
+    color: theme.colors.onAccent,
   },
 }));

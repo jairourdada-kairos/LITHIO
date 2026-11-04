@@ -18,8 +18,20 @@ export interface AccountSummary {
   has_driver_profile: boolean;
   verification_status: VerificationStatus | null;
   is_admin: boolean;
-  streak: { weeks: number; best: number; active_this_week: boolean };
+  streak: {
+    weeks: number;
+    best: number;
+    active_this_week: boolean;
+    protected_this_week: boolean;
+    freeze: { cost: number; available: boolean };
+  };
   retention_push_enabled: boolean;
+}
+
+export interface DemandHours {
+  hours: { hour: number; requests: number }[];
+  total: number;
+  current_hour: number;
 }
 
 export type VerificationStatus = 'pendiente' | 'en_revision' | 'inspeccion' | 'aprobado' | 'rechazado';
@@ -388,6 +400,17 @@ export const apiService = {
       body: JSON.stringify({ enabled }),
     });
     await assertOk(response);
+  },
+
+  async freezeStreak(): Promise<void> {
+    const response = await authenticatedFetch(`${API_BASE}/api/streak/freeze`, { method: 'POST' });
+    await assertOk(response);
+  },
+
+  async getDemandHours(): Promise<DemandHours> {
+    const response = await authenticatedFetch(`${API_BASE}/api/drivers/demand-hours`);
+    await assertOk(response);
+    return response.json();
   },
 
   async reportNoDrivers(): Promise<{ recorded: boolean; drivers_notified: number }> {

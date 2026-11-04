@@ -203,6 +203,27 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     ]);
   };
 
+  const protectStreak = () => {
+    const streak = summary?.streak;
+    if (!streak) return;
+    Alert.alert(
+      'Usar comodín',
+      `Cuesta ${streak.freeze.cost} Fe. Si esta semana no viajas, tu racha de ${streak.weeks} semanas sigue viva. Puedes usar uno cada 4 semanas.`,
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        {
+          text: 'Usar comodín',
+          onPress: () => {
+            apiService
+              .freezeStreak()
+              .then(loadSummary)
+              .catch((error: Error) => Alert.alert('No se pudo usar el comodín', error.message));
+          },
+        },
+      ],
+    );
+  };
+
   const submitReview = async (review: ReviewSubmission) => {
     try {
       const result = await apiService.submitReview(user.id, review);
@@ -350,6 +371,8 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           <PassengerHome
             user={user}
             summary={summary}
+            availableDrivers={summary ? drivers.filter((d) => d.is_available).length : null}
+            onProtectStreak={protectStreak}
             routes={routes}
             activeRide={rides.activeRide}
             linksCount={linksCount}
@@ -448,6 +471,7 @@ const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
+    backgroundImage: theme.fx.aurora,
   },
   content: {
     flex: 1,

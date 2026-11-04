@@ -121,6 +121,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   average: {
     fontFamily: theme.fonts.bold,
@@ -142,6 +143,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   cardHead: {
     flexDirection: 'row',

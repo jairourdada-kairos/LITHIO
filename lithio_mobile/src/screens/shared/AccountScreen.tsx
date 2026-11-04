@@ -118,7 +118,7 @@ export const AccountScreen: React.FC<Props> = ({
     { icon: 'credit-card-outline', label: 'Mis datos', onPress: onOpenProfile },
     ...(onOpenReviews ? [{ icon: 'star-outline' as IconName, label: 'Mis reseñas', onPress: onOpenReviews }] : []),
     { icon: 'people-outline', label: 'Enlaces', onPress: onOpenLinks },
-    ...(onOpenRewards ? [{ icon: 'storefront-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
+    ...(onOpenRewards ? [{ icon: 'shopping-bag-outline' as IconName, label: 'Tienda de Fe', onPress: onOpenRewards }] : []),
     ...(pushSupported ? [{ icon: 'bell-outline' as IconName, label: 'Notificaciones', onPress: () => void manageNotifications() }] : []),
     ...(pushSupported ? [{ icon: 'flash-outline' as IconName, label: `Recordatorios: ${remindersOn ? 'activados' : 'apagados'}`, onPress: toggleReminders }] : []),
     { icon: 'book-open-outline', label: 'Cómo funciona LITHIO', onPress: onOpenTutorial },
@@ -161,7 +161,7 @@ export const AccountScreen: React.FC<Props> = ({
           <Text style={[styles.config, { color: accent }]}>{electronConfiguration(level.z)}</Text>
         </View>
         <View style={styles.track}>
-          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: accent }]} />
+          <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: accent, backgroundImage: theme.fx.gloss, boxShadow: `0 0 12px ${accent}99` }]} />
         </View>
         <View style={styles.levelHintRow}>
           <Text style={styles.levelHint}>
@@ -277,7 +277,7 @@ const styles = themed(() => ({
   },
   levelBadgeText: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textSecondary,
   },
   camera: {
@@ -307,6 +307,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },
@@ -403,6 +404,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     overflow: 'hidden',

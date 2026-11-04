@@ -92,7 +92,7 @@ const PagoMovilConfirm: React.FC<{ ride: Ride; onReferenceSaved?: (reference: st
         </>
       ) : (
         <View style={styles.infoRow}>
-          <Text style={styles.paySaved}>✅ Referencia {ride.payment_reference}</Text>
+          <Text style={styles.paySaved}>Referencia {ride.payment_reference}</Text>
           <TouchableOpacity onPress={() => setEditing(true)} accessibilityRole="button" hitSlop={10}>
             <Text style={styles.payLinkText}>Corregir</Text>
           </TouchableOpacity>
@@ -223,7 +223,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             <Text style={styles.infoVal}>{ride.origin}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>🏁 Destino:</Text>
+            <Text style={styles.infoLabel}>Destino:</Text>
             <Text style={styles.infoVal}>{ride.destination}</Text>
           </View>
           <View style={styles.infoRow}>
@@ -303,13 +303,13 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                   style={[styles.actionBtn, styles.rowBtn, styles.btnSuccess]}
                   onPress={() => onUpdateStatus('aceptado')}
                 >
-                  <Text style={styles.btnTextWhite}>✅ Aceptar Carrera</Text>
+                  <Text style={styles.btnTextWhite}>Aceptar Carrera</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.rowBtn, styles.btnDanger]}
                   onPress={() => onUpdateStatus('rechazado')}
                 >
-                  <Text style={styles.btnTextWhite}>✕ Rechazar</Text>
+                  <Text style={styles.btnTextWhite}>Rechazar</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -319,7 +319,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnPrimary]}
                 onPress={() => onUpdateStatus('en_camino')}
               >
-                <Text style={styles.btnTextDark}>🛵 Voy en camino al punto</Text>
+                <Text style={styles.btnTextDark}>Voy en camino al punto</Text>
               </TouchableOpacity>
             )}
 
@@ -328,7 +328,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnSecondary]}
                 onPress={() => onUpdateStatus('en_curso')}
               >
-                <Text style={styles.btnTextWhite}>🚀 Pasajero a bordo: Iniciar Carrera</Text>
+                <Text style={styles.btnTextWhite}>Pasajero a bordo: Iniciar Carrera</Text>
               </TouchableOpacity>
             )}
 
@@ -337,7 +337,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnSuccess]}
                 onPress={() => onUpdateStatus('completado')}
               >
-                <Text style={styles.btnTextWhite}>🏁 Finalizar Carrera y Cobrar</Text>
+                <Text style={styles.btnTextWhite}>Finalizar Carrera y Cobrar</Text>
               </TouchableOpacity>
             )}
 
@@ -351,7 +351,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
 
             {canCancel && (
               <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
-                <Text style={styles.btnTextRed}>✕ Cancelar viaje</Text>
+                <Text style={styles.btnTextRed}>Cancelar viaje</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -363,7 +363,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 style={[styles.actionBtn, styles.btnGold]}
                 onPress={onOpenReview}
               >
-                <Text style={styles.btnTextDark}>⭐ Calificar el viaje</Text>
+                <Text style={styles.btnTextDark}>Calificar el viaje</Text>
               </TouchableOpacity>
             ) : canCancel ? (
               <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
@@ -397,7 +397,7 @@ const styles = themed(() => ({
   bannerTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: 14,
-    color: '#0B0F19',
+    color: theme.colors.onAccent,
   },
   body: {
     padding: 16,
@@ -447,7 +447,7 @@ const styles = themed(() => ({
   infoHint: {
     fontFamily: theme.fonts.regular,
     color: theme.colors.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 4,
   },
   fareVal: {
@@ -608,12 +608,12 @@ const styles = themed(() => ({
   },
   btnTextWhite: {
     fontFamily: theme.fonts.bold,
-    color: '#FFFFFF',
+    color: theme.colors.onAccent,
     fontSize: 13,
   },
   btnTextDark: {
     fontFamily: theme.fonts.bold,
-    color: '#0B0F19',
+    color: theme.colors.onAccent,
     fontSize: 13,
   },
   btnTextRed: {

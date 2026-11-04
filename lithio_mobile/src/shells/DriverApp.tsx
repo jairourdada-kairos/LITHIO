@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Alert, BackHandler, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
-import { apiService, AccountSummary } from '../services/api';
+import { apiService, AccountSummary, DemandHours } from '../services/api';
 import { wsService } from '../services/websocket';
 import type { AuthUser } from '../services/auth';
 import { useRideCenter } from '../hooks/useRideCenter';
@@ -47,12 +47,14 @@ export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => 
   // Copia local para reflejar al instante cambios como la foto de perfil.
   const [user, setUser] = useState(initialUser);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
+  const [demandHours, setDemandHours] = useState<DemandHours | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
       setSummary(await apiService.getSummary('conductor'));
+      apiService.getDemandHours().then(setDemandHours).catch(() => {}); // Solo conductores aprobados.
     } catch {
       // Se reintenta al deslizar para actualizar.
     }
@@ -98,6 +100,7 @@ export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => 
       onAvatarChanged={(avatarUrl) => setUser((prev) => ({ ...prev, avatar_url: avatarUrl ?? undefined }))}
       onUserChanged={(changes) => setUser((prev) => ({ ...prev, ...changes }))}
       summary={summary}
+      demandHours={demandHours}
       setSummary={setSummary}
       reloadSummary={loadSummary}
       onOpenAbout={() => setAboutVisible(true)}
@@ -114,6 +117,7 @@ interface ApprovedProps {
   onAvatarChanged: (avatarUrl: string | null) => void;
   onUserChanged: (changes: Partial<AuthUser>) => void;
   summary: AccountSummary;
+  demandHours: DemandHours | null;
   setSummary: React.Dispatch<React.SetStateAction<AccountSummary | null>>;
   reloadSummary: () => Promise<void>;
   onOpenAbout: () => void;
@@ -127,6 +131,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   onAvatarChanged,
   onUserChanged,
   summary,
+  demandHours,
   setSummary,
   reloadSummary,
   onOpenAbout,
@@ -294,6 +299,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
           <DriverHome
             user={user}
             summary={summary}
+            demandHours={demandHours}
             isAvailable={isAvailable}
             togglingAvailability={toggling}
             connected={rides.connected}
@@ -368,6 +374,7 @@ const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
+    backgroundImage: theme.fx.auroraDriver,
   },
   content: {
     flex: 1,

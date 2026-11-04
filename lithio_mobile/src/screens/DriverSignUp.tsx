@@ -452,7 +452,7 @@ const styles = themed(() => ({
     marginBottom: 24,
     paddingHorizontal: 4,
   },
-  progressLabel: { fontFamily: theme.fonts.medium, fontSize: 11, color: theme.colors.textMuted },
+  progressLabel: { fontFamily: theme.fonts.medium, fontSize: 12, color: theme.colors.textMuted },
   progressLabelActive: { fontFamily: theme.fonts.bold, color: theme.colors.secondary },
   row: { flexDirection: 'row', gap: 12 },
   halfField: { flex: 1 },
@@ -495,7 +495,7 @@ const styles = themed(() => ({
   },
   switchTextGroup: { flex: 1 },
   switchLabel: { fontFamily: theme.fonts.semibold, fontSize: 14, color: theme.colors.textPrimary },
-  switchDesc: { fontFamily: theme.fonts.regular, fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+  switchDesc: { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   sectionHeader: { marginBottom: 12 },
   requiredNote: { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.textMuted, marginBottom: 12 },
   sectionTitle: {

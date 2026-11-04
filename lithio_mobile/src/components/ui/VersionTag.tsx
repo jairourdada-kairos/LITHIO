@@ -51,7 +51,7 @@ export const VersionTag: React.FC<{ variant?: 'line' | 'card' }> = ({ variant = 
 const styles = themed(() => ({
   line: {
     fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textMuted,
     textAlign: 'center',
     marginTop: 12,
@@ -64,6 +64,7 @@ const styles = themed(() => ({
     borderColor: theme.colors.glassBorder,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     marginBottom: 16,
   },
   cardTitle: {

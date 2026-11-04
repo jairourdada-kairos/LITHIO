@@ -23,7 +23,7 @@ export const Avatar: React.FC<Props> = ({ name, uri, size = 48, ringColor = them
   <View
     style={[
       styles.ring,
-      { width: size + 6, height: size + 6, borderRadius: (size + 6) / 2, borderColor: ringColor },
+      { width: size + 6, height: size + 6, borderRadius: (size + 6) / 2, borderColor: ringColor, boxShadow: `0 0 14px ${ringColor}33` },
     ]}
     accessibilityRole="image"
     accessibilityLabel={`Foto de ${name}`}
@@ -40,7 +40,7 @@ export const Avatar: React.FC<Props> = ({ name, uri, size = 48, ringColor = them
 
 const styles = themed(() => ({
   ring: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -266,6 +266,7 @@ const styles = themed(() => ({
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   balance: {
     flexDirection: 'row',
@@ -302,6 +303,7 @@ const styles = themed(() => ({
     borderColor: theme.colors.gold,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
   },
   couponPercent: {
     fontFamily: theme.fonts.monoBold,
@@ -322,6 +324,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     gap: 14,
   },
   cardTop: {

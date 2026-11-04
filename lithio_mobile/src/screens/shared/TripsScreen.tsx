@@ -87,6 +87,7 @@ const styles = themed(() => ({
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
+    backgroundImage: theme.fx.sheen,
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
   },

@@ -272,10 +272,11 @@ export const TripRequestScreen: React.FC<Props> = ({
                       : 'No hay conductores disponibles en este momento. Desliza hacia abajo en el inicio para actualizar.'}</Text>
                 </View>
               ) : (
-                available.map((driver) => (
+                available.map((driver, index) => (
                   <DriverOption
                     key={driver.user_id}
                     driver={driver}
+                    topRated={index === 0 && available.length > 1 && driver.trips_count > 0}
                     onChoose={() =>
                       onChooseDriver(driver, {
                         route,
@@ -333,11 +334,15 @@ const Stepper: React.FC<{ step: Step; onRouteStep: () => void }> = ({ step, onRo
   );
 };
 
-const DriverOption: React.FC<{ driver: Driver; onChoose: () => void }> = ({ driver, onChoose }) => (
+const DriverOption: React.FC<{ driver: Driver; topRated: boolean; onChoose: () => void }> = ({ driver, topRated, onChoose }) => (
   <PressableScale variant="glass" style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
     <Avatar name={driver.name} uri={driver.avatar_url} size={48} ringColor={theme.colors.secondary} />
     <View style={styles.driverText}>
-      <Text style={styles.driverName} numberOfLines={1}>{driver.name}</Text>
+      {topRated ? <Text style={styles.topRated}>Mejor calificado</Text> : null}
+      <View style={styles.driverNameRow}>
+        <Text style={styles.driverName} numberOfLines={1}>{driver.name}</Text>
+        <Icon name="checkmark-circle-2" size={15} color={theme.colors.primary} accessibilityLabel="Conductor verificado" />
+      </View>
       <Text style={styles.driverMoto} numberOfLines={1}>
         {driver.moto_brand_model} · {driver.moto_color}
       </Text>
@@ -365,6 +370,7 @@ const styles = themed(() => ({
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
+    backgroundImage: theme.fx.aurora,
   },
   page: {
     flex: 1,
@@ -443,7 +449,7 @@ const styles = themed(() => ({
     padding: 14,
     borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primaryLine,
+    borderColor: theme.colors.glassBorder,
     backgroundColor: theme.colors.primarySoft,
   },
   summaryMeta: {
@@ -604,7 +610,7 @@ const styles = themed(() => ({
   },
   routeBs: {
     fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.textMuted,
   },
   routeFare: {
@@ -620,7 +626,7 @@ const styles = themed(() => ({
   count: {
     fontFamily: theme.fonts.monoBold,
     fontSize: 12,
-    color: theme.colors.bgDark,
+    color: theme.colors.onAccent,
     backgroundColor: theme.colors.success,
     borderRadius: theme.radius.full,
     paddingHorizontal: 8,
@@ -657,7 +663,19 @@ const styles = themed(() => ({
     flex: 1,
     gap: 2,
   },
+  topRated: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 12,
+    color: theme.colors.gold,
+    marginBottom: 1,
+  },
+  driverNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   driverName: {
+    flexShrink: 1,
     fontFamily: theme.fonts.bold,
     fontSize: 15,
     color: theme.colors.textPrimary,
@@ -697,7 +715,7 @@ const styles = themed(() => ({
   },
   helmetText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.primary,
   },
   choose: {
@@ -705,6 +723,8 @@ const styles = themed(() => ({
     paddingVertical: 9,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.primary,
+    backgroundImage: theme.fx.gloss,
+    boxShadow: theme.fx.glowOf(theme.colors.primary),
   },
   chooseText: {
     fontFamily: theme.fonts.bold,

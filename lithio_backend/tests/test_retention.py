@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from app import main, retention_service
 from app.database import get_db
-from app.models import DemandEvent, DriverProfile, Ride, User
+from app.models import DemandEvent, DriverProfile, Ride, StreakFreeze, User
 from tests.test_api import auth_headers, client  # noqa: F401  (fixture compartido)
 
 ADMIN = {"Authorization": "Bearer test-admin"}
@@ -31,14 +31,18 @@ def set_drivers_unavailable(db):
 def test_streak_counts_consecutive_weeks_and_forgives_the_current_one():
     now = THURSDAY_NOON
     three_weeks = [now - timedelta(weeks=1), now - timedelta(weeks=2), now - timedelta(weeks=3)]
-    assert retention_service.streak_from(three_weeks, now) == {"weeks": 3, "best": 3, "active_this_week": False}
-    assert retention_service.streak_from([now, *three_weeks], now) == {"weeks": 4, "best": 4, "active_this_week": True}
+    streak = retention_service.streak_from(three_weeks, now)
+    assert (streak["weeks"], streak["best"], streak["active_this_week"]) == (3, 3, False)
+    streak = retention_service.streak_from([now, *three_weeks], now)
+    assert (streak["weeks"], streak["best"], streak["active_this_week"]) == (4, 4, True)
     # Dos viajes la misma semana cuentan una sola.
     assert retention_service.streak_from([now, now - timedelta(hours=1)], now)["weeks"] == 1
     # Una semana completa sin viajar la rompe, pero la mejor marca queda.
     broken = [now - timedelta(weeks=2), now - timedelta(weeks=3)]
-    assert retention_service.streak_from(broken, now) == {"weeks": 0, "best": 2, "active_this_week": False}
-    assert retention_service.streak_from([], now) == {"weeks": 0, "best": 0, "active_this_week": False}
+    streak = retention_service.streak_from(broken, now)
+    assert (streak["weeks"], streak["best"], streak["active_this_week"]) == (0, 2, False)
+    streak = retention_service.streak_from([], now)
+    assert (streak["weeks"], streak["best"], streak["active_this_week"]) == (0, 0, False)
 
 
 def test_week_boundary_uses_venezuela_time():
@@ -199,3 +203,102 @@ def test_analytics_measures_retention_and_unmet_demand(client):
     assert data["drivers"]["approved"] == 3 and data["drivers"]["available_now"] == 2
     assert data["unmet_demand_7d"]["events"] == 1 and data["unmet_demand_7d"]["passengers"] == 1
     assert len(data["weekly"]) == 8 and sum(w["completed"] for w in data["weekly"]) == 3
+
+
+# --- Comodín de racha ---------------------------------------------------------------
+
+def streak_ready(db, points=100):
+    """Dos semanas seguidas de viajes y ninguno todavía esta semana."""
+    db.get(User, 4).points = points
+    now = main.utcnow()
+    this_monday = retention_service.week_of(now)
+    midnight = datetime(this_monday.year, this_monday.month, this_monday.day, 12)
+    for weeks in (1, 2):
+        add_completed(db, 4, midnight - timedelta(weeks=weeks))
+    db.commit()
+    return now
+
+
+def test_freeze_keeps_the_streak_without_adding_a_week():
+    now = THURSDAY_NOON
+    monday = retention_service.week_of(now)
+    rides = [now - timedelta(weeks=2), now - timedelta(weeks=3)]
+    # Sin comodín, la semana pasada vacía rompe la racha.
+    assert retention_service.streak_from(rides, now)["weeks"] == 0
+    streak = retention_service.streak_from(rides, now, [monday - timedelta(weeks=1)])
+    assert streak["weeks"] == 2 and streak["best"] == 2
+    # Viajar después de la semana protegida sigue sumando sobre la misma racha.
+    assert retention_service.streak_from([now, *rides], now, [monday - timedelta(weeks=1)])["weeks"] == 3
+    assert retention_service.streak_from(rides[:1], now, [monday])["protected_this_week"] is True
+
+
+def test_buying_a_freeze_spends_fe_and_protects_the_week(client):
+    db = session()
+    streak_ready(db)
+    db.close()
+    before = client.get("/api/users/me/summary?role=pasajero", headers=auth_headers(4)).json()["streak"]
+    assert before["freeze"]["available"] is True and before["protected_this_week"] is False
+
+    response = client.post("/api/streak/freeze", headers=auth_headers(4))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["points"] == 100 - before["freeze"]["cost"]
+    assert body["streak"]["protected_this_week"] is True and body["streak"]["freeze"]["available"] is False
+
+    # No se puede comprar otro, y un segundo intento no cobra nada.
+    again = client.post("/api/streak/freeze", headers=auth_headers(4))
+    assert again.status_code == 409
+    db = session()
+    assert db.get(User, 4).points == body["points"] and db.query(StreakFreeze).count() == 1
+    db.close()
+
+
+def test_freeze_needs_enough_fe_and_a_streak_worth_saving(client):
+    assert client.post("/api/streak/freeze", headers=auth_headers(4)).status_code == 409
+    db = session()
+    streak_ready(db, points=5)
+    db.close()
+    assert client.post("/api/streak/freeze", headers=auth_headers(4)).status_code == 400
+    db = session()
+    assert db.get(User, 4).points == 5 and db.query(StreakFreeze).count() == 0
+    db.close()
+
+
+def test_freeze_is_limited_to_one_every_four_weeks(client):
+    db = session()
+    now = streak_ready(db)
+    monday = retention_service.week_of(now)
+    db.add(StreakFreeze(user_id=4, week_start=monday - timedelta(weeks=3), fe_cost=40, created_at=now - timedelta(days=21)))
+    db.commit()
+    db.close()
+    summary = client.get("/api/users/me/summary?role=pasajero", headers=auth_headers(4)).json()
+    assert summary["streak"]["freeze"]["available"] is False
+
+
+def test_no_streak_reminder_when_the_week_is_protected(client, push_outbox):
+    db = session()
+    give_token(db)
+    for weeks in (1, 2):
+        add_completed(db, 4, THURSDAY_NOON - timedelta(weeks=weeks))
+    db.add(StreakFreeze(user_id=4, week_start=retention_service.week_of(THURSDAY_NOON), fe_cost=40))
+    db.commit()
+    assert retention_service.send_due_reminders(db, THURSDAY_NOON) == 0
+    assert push_outbox == []
+    db.close()
+
+
+# --- Horas de demanda ----------------------------------------------------------------
+
+def test_demand_hours_are_for_approved_drivers_and_only_counts(client):
+    assert client.get("/api/drivers/demand-hours", headers=auth_headers(4)).status_code == 403
+    now = main.utcnow()
+    db = session()
+    add_completed(db, 4, now - timedelta(days=1))
+    db.add(DemandEvent(user_id=4, drivers_notified=0, created_at=now - timedelta(days=1)))
+    add_completed(db, 4, now - timedelta(days=20))  # Fuera de las dos semanas
+    db.commit()
+    db.close()
+    data = client.get("/api/drivers/demand-hours", headers=auth_headers(1)).json()
+    assert [item["hour"] for item in data["hours"]] == list(range(5, 23))
+    assert set(data["hours"][0]) == {"hour", "requests"}
+    assert data["total"] <= 2 and "current_hour" in data

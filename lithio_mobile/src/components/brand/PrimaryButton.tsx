@@ -35,7 +35,7 @@ export const PrimaryButton: React.FC<Props> = ({
     accessibilityState={{ busy: loading, disabled: disabled || loading }}
     variant="solid"
     accent={accent}
-    style={[styles.button, { backgroundColor: accent }, style]}
+    style={[styles.button, { backgroundColor: accent, backgroundImage: theme.fx.gloss, boxShadow: theme.fx.glowOf(accent) }, style]}
   >
     {loading ? (
       <ActivityIndicator color={theme.colors.bgDark} />
@@ -48,7 +48,7 @@ export const PrimaryButton: React.FC<Props> = ({
 const styles = themed(() => ({
   button: {
     minHeight: 52,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,

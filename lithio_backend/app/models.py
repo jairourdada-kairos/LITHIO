@@ -267,6 +267,18 @@ class DemandEvent(Base):
     created_at = Column(DateTime, default=utcnow, index=True)
 
 
+class StreakFreeze(Base):
+    """Comodín comprado con Fe: esa semana sin viajes no rompe la racha."""
+    __tablename__ = "streak_freezes"
+    __table_args__ = (UniqueConstraint("user_id", "week_start", name="uq_streak_freeze_week"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    week_start = Column(Date, nullable=False)  # Lunes de la semana protegida (hora de Venezuela)
+    fe_cost = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=utcnow)
+
+
 def phone_fingerprint(phone: str | None) -> str | None:
     """Índice ciego del teléfono normalizado (+58 412 1234567); sin descifrar nada se puede buscar."""
     if not phone:

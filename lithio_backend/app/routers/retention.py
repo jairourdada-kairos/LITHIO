@@ -1,18 +1,22 @@
-"""Demanda sin conductores, preferencia de recordatorios y analítica del panel."""
+"""Comodín de racha, demanda sin conductores, recordatorios y analítica del panel."""
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import push_service
 from ..auth import get_current_user, require_admin
 from ..database import get_db
-from ..models import DemandEvent, DriverProfile, Ride, User
+from ..drivers import require_approved_driver
+from ..models import DemandEvent, DriverProfile, Ride, StreakFreeze, User
 from ..rate_limit import rate_limit
 from ..retention_service import local_time, streak_from, week_of
 from ..timeutil import utcnow
+from .fe_store import _spend_fe, price
+from .legal import require_current_terms
 
 router = APIRouter(prefix="/api", tags=["retention"])
 
@@ -22,6 +26,11 @@ DEMAND_DEDUP = timedelta(minutes=15)
 DEMAND_PUSH_GAP = timedelta(minutes=30)
 QUIET_HOURS = {22, 23, 0, 1, 2, 3, 4, 5}  # Hora de Venezuela: no despertar a los conductores
 ANALYTICS_WEEKS = 8
+FREEZE_BASE_COST = 40  # Unos tres viajes de Fe; los niveles altos pagan menos, como en la tienda.
+FREEZE_MIN_STREAK = 2
+FREEZE_GAP = timedelta(days=28)  # Si fuera ilimitado, la racha dejaría de significar algo.
+DEMAND_WINDOW = timedelta(days=14)
+DEMAND_HOURS = range(5, 23)  # Hora de Venezuela; las mismas horas en que se pueden pedir viajes.
 
 
 def percent(part: int, whole: int) -> int | None:
@@ -37,6 +46,61 @@ def set_retention_push(data: RetentionPushIn, user: User = Depends(get_current_u
     user.retention_push_enabled = data.enabled
     db.commit()
     return {"retention_push_enabled": user.retention_push_enabled}
+
+
+def streak_payload(db: Session, user: User, completed_at: list) -> dict:
+    """La racha de la cuenta y si puede usar un comodín esta semana."""
+    now = utcnow()
+    freezes = db.query(StreakFreeze.week_start, StreakFreeze.created_at).filter(StreakFreeze.user_id == user.id).all()
+    streak = streak_from(completed_at, now, [freeze.week_start for freeze in freezes])
+    last = max((freeze.created_at for freeze in freezes if freeze.created_at), default=None)
+    streak["freeze"] = {
+        "cost": price(user, FREEZE_BASE_COST),
+        "available": (
+            streak["weeks"] >= FREEZE_MIN_STREAK
+            and not streak["active_this_week"]
+            and not streak["protected_this_week"]
+            and (last is None or now - last >= FREEZE_GAP)
+        ),
+    }
+    return streak
+
+
+@router.post(
+    "/streak/freeze",
+    dependencies=[Depends(require_current_terms), Depends(rate_limit("comodin", 5, 600))],
+)
+def freeze_streak(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Compra un comodín con Fe para la semana en curso."""
+    completed_at = [
+        created_at
+        for (created_at,) in db.query(Ride.created_at).filter(Ride.passenger_id == user.id, Ride.status == "completado")
+    ]
+    streak = streak_payload(db, user, completed_at)
+    if not streak["freeze"]["available"]:
+        raise HTTPException(status_code=409, detail="No puedes usar un comodín en este momento.")
+    cost = streak["freeze"]["cost"]
+    _spend_fe(user, cost)
+    db.add(StreakFreeze(user_id=user.id, week_start=week_of(utcnow()), fe_cost=cost))
+    try:
+        db.commit()
+    except IntegrityError:  # Dos toques a la vez: el índice único deja pasar solo uno y el Fe no se cobra.
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Esta semana ya está protegida.") from None
+    return {"points": user.points, "streak": streak_payload(db, user, completed_at)}
+
+
+@router.get("/drivers/demand-hours")
+def demand_hours(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """A qué horas se piden más viajes: solo cuentas, sin datos de ninguna persona."""
+    require_approved_driver(db, user)
+    now = utcnow()
+    since = now - DEMAND_WINDOW
+    moments = [moment for (moment,) in db.query(Ride.created_at).filter(Ride.created_at >= since)]
+    moments += [moment for (moment,) in db.query(DemandEvent.created_at).filter(DemandEvent.created_at >= since)]
+    counts = Counter(local_time(moment).hour for moment in moments if moment)
+    hours = [{"hour": hour, "requests": counts[hour]} for hour in DEMAND_HOURS]
+    return {"hours": hours, "total": sum(item["requests"] for item in hours), "current_hour": local_time(now).hour}
 
 
 @router.post("/demand/no-drivers", dependencies=[Depends(rate_limit("demanda", 6, 600))])

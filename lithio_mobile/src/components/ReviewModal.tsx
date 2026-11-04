@@ -126,7 +126,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ visible, rideId, drive
                 <Text style={styles.cancelBtnText}>Ahora no</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.submitBtn} onPress={handleSend} disabled={sending} accessibilityRole="button">
-                {sending ? <ActivityIndicator color="#0B0F19" /> : <Text style={styles.submitBtnText}>Enviar reseña</Text>}
+                {sending ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.submitBtnText}>Enviar reseña</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -271,7 +271,7 @@ const styles = themed(() => ({
   },
   submitBtnText: {
     fontFamily: theme.fonts.bold,
-    color: '#0B0F19',
+    color: theme.colors.onAccent,
     fontSize: 15,
   },
 }));

@@ -170,7 +170,8 @@ async function handleLogin(event) {
   event.preventDefault();
   loginButton.disabled = true;
   authStatus.textContent = 'Verificando acceso...';
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   try {
     adminToken = await firebaseSignIn(form.get('email'), form.get('password'));
     const profile = await requestAdmin('/admin/me');
@@ -178,7 +179,7 @@ async function handleLogin(event) {
     authGate.classList.add('hidden');
     dashboardApp.classList.remove('hidden');
     authStatus.textContent = '';
-    event.currentTarget.reset();
+    formElement.reset();
     await fetchData();
     startAlertPolling();
   } catch (error) {

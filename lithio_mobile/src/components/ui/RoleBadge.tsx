@@ -55,14 +55,14 @@ const styles = themed(() => ({
   },
   particle: {
     fontFamily: theme.fonts.monoBold,
-    fontSize: 11,
+    fontSize: 12,
   },
   particleMd: {
     fontSize: 14,
   },
   label: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 11,
+    fontSize: 12,
   },
   labelMd: {
     fontSize: 15,

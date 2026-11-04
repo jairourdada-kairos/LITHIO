@@ -1296,7 +1296,7 @@ def get_my_summary(
         )
     ]
     return {
-        "streak": retention_service.streak_from(completed_at),
+        "streak": retention.streak_payload(db, current_user, completed_at),
         "retention_push_enabled": current_user.retention_push_enabled,
         "trips_completed": completed,
         "scheduled_count": scheduled,
