@@ -250,6 +250,14 @@ def erase_account(db: Session, user: User) -> None:
     for voucher in db.query(GradeVoucher).filter(GradeVoucher.user_id == user.id):
         _delete_evidence_file(EVIDENCE_DIR, voucher.evidence_file)
         voucher.note = None
+    # Las capturas de Pago Móvil también: se borran las fotos; la referencia y el monto quedan para la contabilidad.
+    for tx in db.query(WalletTransaction).filter(WalletTransaction.user_id == user.id, WalletTransaction.receipt_file.isnot(None)):
+        _delete_evidence_file(EVIDENCE_DIR / "wallet", tx.receipt_file)
+        tx.receipt_file = None
+    for ride in db.query(Ride).filter(Ride.passenger_id == user.id, Ride.receipt_file.isnot(None)):
+        _delete_evidence_file(EVIDENCE_DIR / "receipts", ride.receipt_file)
+        ride.receipt_file = None
+        ride.receipt_uploaded_at = None
 
     db.query(Link).filter((Link.requester_id == user.id) | (Link.addressee_id == user.id)).delete(synchronize_session=False)
     profile = db.query(DriverProfile).filter(DriverProfile.user_id == user.id).first()

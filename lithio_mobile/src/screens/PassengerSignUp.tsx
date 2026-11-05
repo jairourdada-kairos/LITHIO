@@ -14,7 +14,7 @@ import { signUpPassenger, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
-import { LegalNotice } from '../components/LegalNotice';
+import { TermsCheckbox } from '../components/TermsCheckbox';
 import {
   IdentityErrors,
   IdentityFields,
@@ -42,6 +42,8 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState<string | undefined>();
 
   const updateIdentity = <K extends keyof IdentityForm>(field: K, value: IdentityForm[K]) => {
     setIdentity((prev) => ({ ...prev, [field]: value }));
@@ -57,7 +59,9 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
   };
 
   const handleSubmit = async () => {
-    if (!validate()) return;
+    const valid = validate();
+    if (!acceptedTerms) setTermsError('Marca la casilla para crear tu cuenta.');
+    if (!valid || !acceptedTerms) return;
 
     setLoading(true);
     try {
@@ -107,8 +111,16 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
 
         <Text style={styles.requiredNote}>* Campos obligatorios</Text>
 
+        <TermsCheckbox
+          checked={acceptedTerms}
+          onChange={(value) => {
+            setAcceptedTerms(value);
+            setTermsError(undefined);
+          }}
+          error={termsError}
+        />
+
         <PrimaryButton label="Crear mi cuenta →" onPress={handleSubmit} loading={loading} style={styles.submit} />
-        <LegalNotice lead="Al crear tu cuenta declaras ser mayor de 18 años y aceptas" />
     </AuthLayout>
   );
 };

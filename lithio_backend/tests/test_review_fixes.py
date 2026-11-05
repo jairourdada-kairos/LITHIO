@@ -113,3 +113,37 @@ def test_client_ip_uses_cloudflare_header_on_the_local_tunnel(monkeypatch):
     monkeypatch.setattr(config, "BEHIND_PROXY", False)
     request = request_with("127.0.0.1", {"CF-Connecting-IP": "198.51.100.4", "X-Forwarded-For": "1.1.1.1"})
     assert rate_limit.client_ip(request) == "198.51.100.4"
+
+
+def test_quiz_questions_are_well_formed_and_mix_topics():
+    from app.routers.quiz import GENERAL, QUESTIONS
+
+    assert len(QUESTIONS) > len(GENERAL) + 30
+    for question, options, correct, fact in QUESTIONS:
+        assert question.strip() and fact.strip()
+        assert len(options) == 3 and len(set(options)) == 3
+        assert 0 <= correct < 3
+    assert len({item[0] for item in QUESTIONS}) == len(QUESTIONS)
+    # Cada tema nuevo aparece en las primeras vueltas, no al final de la lista.
+    assert any("LLM" in item[0] for item in QUESTIONS[:12])
+    assert any("epistemicidio" in item[0] for item in QUESTIONS[:12])
+
+
+def test_erasing_an_account_deletes_receipt_and_voucher_photos(client, tmp_path, monkeypatch):
+    from app.models import GradeVoucher, WalletTransaction
+    from app.routers import profile
+
+    monkeypatch.setattr(profile, "EVIDENCE_DIR", tmp_path)
+    (tmp_path / "wallet").mkdir()
+    (tmp_path / "receipts").mkdir()
+    for folder, name in (("wallet", "tx.png"), ("receipts", "ride.png"), (".", "nota.png")):
+        (tmp_path / folder / name).write_bytes(b"x")
+    db = session()
+    db.add(WalletTransaction(user_id=4, kind="recarga", amount_cents=500, status="aprobado", receipt_file="tx.png"))
+    db.add(Ride(passenger_id=4, driver_id=1, origin="UNC", destination="IVIC", status="completado", receipt_file="ride.png"))
+    db.add(GradeVoucher(user_id=4, subject="Física", status="aprobado", evidence_file="nota.png", fe_cost=500))
+    db.commit()
+    assert client.delete("/api/users/me", headers=auth_headers(4)).status_code == 200
+    assert not (tmp_path / "wallet" / "tx.png").exists()
+    assert not (tmp_path / "receipts" / "ride.png").exists()
+    assert not (tmp_path / "nota.png").exists()

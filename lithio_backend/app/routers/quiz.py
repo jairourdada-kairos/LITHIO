@@ -12,13 +12,14 @@ from ..config import VENEZUELA_TZ
 from ..database import get_db
 from ..links_service import QUIZ_BONUS_LEVEL, award_fe, user_z
 from ..models import QuizAnswer, User
+from ..quiz_questions import BANCOS
 
 router = APIRouter(prefix="/api/quiz", tags=["reacción del día"])
 
 FE_REWARD = 10
 
 # (pregunta, opciones, índice correcto, dato curioso)
-QUESTIONS = [
+GENERAL = [
     ("¿Qué elemento tiene número atómico 3?", ["Litio", "Helio", "Boro"], 0,
      "El litio es el metal más ligero de la tabla periódica."),
     ("¿Qué gas necesitamos respirar para vivir?", ["Dióxido de carbono", "Oxígeno", "Nitrógeno"], 1,
@@ -62,6 +63,17 @@ QUESTIONS = [
     ("¿Qué molécula guarda la información genética?", ["ATP", "ARN de transferencia", "ADN"], 2,
      "Si estiraras el ADN de una célula humana mediría unos 2 metros."),
 ]
+
+
+def _interleave(*banks: list) -> list:
+    """Una pregunta de cada tema por turno: así dos días seguidos casi nunca repiten tema."""
+    mixed = []
+    for round_number in range(max(len(bank) for bank in banks)):
+        mixed += [bank[round_number] for bank in banks if round_number < len(bank)]
+    return mixed
+
+
+QUESTIONS = _interleave(GENERAL, *BANCOS)
 
 
 class AnswerIn(BaseModel):

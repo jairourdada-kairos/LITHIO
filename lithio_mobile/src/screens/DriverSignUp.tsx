@@ -22,7 +22,7 @@ import { signUpDriver, AuthUser } from '../services/auth';
 import { FormField } from '../components/FormField';
 import { AuthLayout } from '../components/brand/AuthLayout';
 import { PrimaryButton } from '../components/brand/PrimaryButton';
-import { LegalNotice } from '../components/LegalNotice';
+import { TermsCheckbox } from '../components/TermsCheckbox';
 import {
   IdentityErrors,
   IdentityFields,
@@ -88,6 +88,8 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState<string | undefined>();
 
   const updateField = (field: keyof DriverForm, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -143,7 +145,9 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
   };
 
   const handleSubmit = async () => {
-    if (!validateStep2()) return;
+    const valid = validateStep2();
+    if (!acceptedTerms) setTermsError('Marca la casilla para crear tu cuenta.');
+    if (!valid || !acceptedTerms) return;
 
     setLoading(true);
     try {
@@ -370,6 +374,16 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         keyboardType="numeric"
       />
 
+      <TermsCheckbox
+        checked={acceptedTerms}
+        accent={theme.colors.secondary}
+        onChange={(value) => {
+          setAcceptedTerms(value);
+          setTermsError(undefined);
+        }}
+        error={termsError}
+      />
+
       <View style={styles.buttonsRow}>
         <TouchableOpacity
           style={styles.btnSecondary}
@@ -388,7 +402,6 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
           />
         </View>
       </View>
-      <LegalNotice lead="Al crear tu cuenta declaras ser mayor de 18 años y aceptas" accent={theme.colors.secondary} />
     </>
   );
 
