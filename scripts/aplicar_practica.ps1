@@ -27,7 +27,7 @@ $allowed = @(
 $appFiles = $allowed | Where-Object { $_ -like 'lithio_mobile/*' }
 
 Write-Host "==> Buscando cambios nuevos en la rama '$branch'" -ForegroundColor Cyan
-git fetch origin $branch 2>&1 | Out-Host
+git fetch --quiet origin $branch
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: no existe la rama '$branch' en GitHub o no hay internet." -ForegroundColor Red; exit 1 }
 
 $base = (git merge-base HEAD "origin/$branch").Trim()
