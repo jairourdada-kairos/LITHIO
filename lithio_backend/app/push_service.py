@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 EXPO_TOKEN = re.compile(r"^Expo(nent)?PushToken\[[A-Za-z0-9_\-]+\]$")
 FCM_TOKEN = re.compile(r"^[A-Za-z0-9_:\-]{100,4096}$")
-BRAND_COLOR = "#45D6C5"
+BRAND_COLOR = "#45D6C5"  # AQUÍ se cambia el color de la notificación en el teléfono (el circulito del ícono). Es el único color del código Python.
 
 
 def is_expo_token(token: str) -> bool:

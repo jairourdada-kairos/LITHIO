@@ -15,19 +15,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #10191C;
+    --bg: #10191C;  /* CAMBIA AQUÍ el color de fondo de la página de descarga (modo oscuro) */
     --surface: #18292C;
     --surface-2: #213538;
     --line: rgba(255, 255, 255, 0.08);
-    --text: #F8FAFC;
+    --text: #F8FAFC;  /* CAMBIA AQUÍ el color del texto */
     --text-2: #A7B6C6;
     --muted: #7D8FA6;
-    --primary: #45D6C5;
+    --primary: #45D6C5;  /* CAMBIA AQUÍ el color principal: botón de descargar y títulos */
     --on-primary: #0E2A27;
     --primary-soft: rgba(69, 214, 197, 0.12);
-    --coral: #FF765E;
+    --coral: #FF765E;  /* CAMBIA AQUÍ el color coral de acento */
     --coral-soft: rgba(255, 118, 94, 0.12);
-    --gold: #FFC857;
+    --gold: #FFC857;  /* CAMBIA AQUÍ el dorado de acento */
     --gold-soft: rgba(255, 200, 87, 0.12);
     --phone: #0B1214;
     --dialog: #F4F6F6;
@@ -78,13 +78,13 @@
   .hero { text-align: center; padding: 40px 0 28px; }
   .hero img { width: 96px; height: 96px; border-radius: 26px; box-shadow: var(--shadow); }
   .brand { font-size: 13px; letter-spacing: 0.24em; font-weight: 700; color: var(--primary); margin: 18px 0 6px; }
-  h1 { font-size: clamp(28px, 7vw, 40px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.02em; text-wrap: balance; }
-  .lead { color: var(--text-2); margin: 0 auto 26px; max-width: 30em; font-size: 17px; text-wrap: pretty; }
+  h1 { font-size: clamp(28px, 7vw, 40px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.02em; text-wrap: balance; }  /* AQUÍ se cambia el tamaño del título (mínimo, ideal y máximo) */
+  .lead { color: var(--text-2); margin: 0 auto 26px; max-width: 30em; font-size: 17px; text-wrap: pretty; }  /* AQUÍ, donde dice 17px, se cambia el tamaño del texto bajo el título */
   .cta {
     display: flex; align-items: center; justify-content: center; gap: 12px;
     width: 100%; min-height: 64px; padding: 14px 24px; border-radius: 20px;
     background: var(--primary); color: var(--on-primary);
-    font: inherit; font-size: 19px; font-weight: 700; text-decoration: none;
+    font: inherit; font-size: 19px; font-weight: 700; text-decoration: none;  /* AQUÍ, donde dice 19px, se cambia el tamaño de la letra del botón de descarga */
     box-shadow: 0 14px 34px -12px rgba(69, 214, 197, 0.7);
     transition: transform 0.15s ease;
   }
@@ -97,7 +97,7 @@
   .iphone a { color: var(--primary); font-weight: 600; }
 
   /* ---------- Pasos ---------- */
-  .section-title { font-size: 22px; margin: 40px 0 6px; letter-spacing: -0.01em; }
+  .section-title { font-size: 22px; margin: 40px 0 6px; letter-spacing: -0.01em; }  /* AQUÍ, donde dice 22px, se cambia el tamaño de los subtítulos */
   .section-sub { color: var(--text-2); margin: 0 0 20px; }
   .step {
     background: var(--surface); border: 1px solid var(--line); border-radius: 24px;

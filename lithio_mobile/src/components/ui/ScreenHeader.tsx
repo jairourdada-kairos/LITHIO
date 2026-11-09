@@ -54,7 +54,7 @@ const styles = themed(() => ({
     flex: 1,
     textAlign: 'center',
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 18,  // AQUÍ poniendo otro número se cambia el tamaño del título arriba de cada pantalla
     color: theme.colors.textPrimary,
   },
   right: {

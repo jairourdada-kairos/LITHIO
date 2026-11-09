@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Términos y Condiciones · LITHIO</title>
 <style>
-  :root { --bg: #10191C; --card: #162629; --text: #F8FAFC; --muted: #A3B3BA; --accent: #45D6C5; --line: rgba(255,255,255,0.12); }
-  @media (prefers-color-scheme: light) { :root { --bg: #F3F6F5; --card: #FFFFFF; --text: #16252A; --muted: #4E6168; --accent: #0B6E64; --line: rgba(22,37,42,0.12); } }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  :root { --bg: #10191C; --card: #162629; --text: #F8FAFC; --muted: #A3B3BA; --accent: #45D6C5; --line: rgba(255,255,255,0.12); }  /* CAMBIA AQUÍ los colores del modo OSCURO: --bg fondo, --card tarjetas, --text texto, --muted texto gris, --accent títulos y enlaces */
+  @media (prefers-color-scheme: light) { :root { --bg: #F3F6F5; --card: #FFFFFF; --text: #16252A; --muted: #4E6168; --accent: #0B6E64; --line: rgba(22,37,42,0.12); } }  /* CAMBIA AQUÍ los mismos colores para el modo CLARO */
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }  /* AQUÍ, donde dice 16px, se cambia el tamaño de la letra del texto normal */
   main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 4px; }
-  h2 { font-size: 19px; margin: 32px 0 8px; color: var(--accent); }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 4px; }  /* AQUÍ, donde dice 30px, se cambia el tamaño del título principal */
+  h2 { font-size: 19px; margin: 32px 0 8px; color: var(--accent); }  /* AQUÍ, donde dice 19px, se cambia el tamaño de los subtítulos (y su color con var(--accent)) */
   p, li { color: var(--text); }
-  .muted { color: var(--muted); font-size: 14px; }
+  .muted { color: var(--muted); font-size: 14px; }  /* AQUÍ, donde dice 14px, se cambia el tamaño del texto gris pequeño */
   section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 4px 20px 16px; margin-top: 16px; }
   a { color: var(--accent); }
   ul { padding-left: 20px; }

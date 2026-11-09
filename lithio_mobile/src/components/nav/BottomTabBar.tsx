@@ -99,7 +99,7 @@ const styles = themed(() => ({
   },
   label: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 13,
+    fontSize: 13,  // AQUÍ poniendo otro número se cambia el tamaño de la letra de la barra de abajo (Inicio, Viajes...)
   },
   badge: {
     position: 'absolute',

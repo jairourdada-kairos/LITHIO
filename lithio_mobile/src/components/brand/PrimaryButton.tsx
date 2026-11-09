@@ -56,6 +56,6 @@ const styles = themed(() => ({
   label: {
     fontFamily: theme.fonts.bold,
     color: theme.colors.bgDark,
-    fontSize: 16,
+    fontSize: 16,  // AQUÍ poniendo otro número se cambia el tamaño de la letra de TODOS los botones grandes
   },
 }));
