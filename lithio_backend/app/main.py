@@ -58,7 +58,7 @@ from .links_service import (
 from . import push_service
 from . import security_log
 from . import retention_service
-from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, retention, ride_details, wallet
+from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, retention, ride_details, theme, wallet
 from .timeutil import utcnow
 
 ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
@@ -115,6 +115,7 @@ app.include_router(recovery.router)
 app.include_router(app_version.router)
 app.include_router(retention.router)
 app.include_router(legal.router)
+app.include_router(theme.router)
 
 # Fotos de perfil subidas por los usuarios.
 config.MEDIA_DIR.mkdir(parents=True, exist_ok=True)

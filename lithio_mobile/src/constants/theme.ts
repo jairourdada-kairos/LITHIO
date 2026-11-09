@@ -108,6 +108,56 @@ export type ColorScheme = 'dark' | 'light';
 const palettes: Record<ColorScheme, Palette> = { dark, light };
 let activeScheme: ColorScheme = 'dark';
 
+// ===== TEMA QUE LLEGA DEL BACKEND (lithio_backend/app/tema_app.py) =====
+// Copias de las paletas originales: sirven para volver atrás si el backend quita un cambio.
+const baseDark: Palette = { ...dark };
+const baseLight: Palette = { ...light };
+const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\([0-9.,%\s]{3,40}\))$/i;
+// Cada cambio de tema sube este número: los estilos guardados en caché se vuelven a calcular.
+let themeEpoch = 0;
+// Multiplica TODOS los tamaños de letra de los estilos `themed` (1 = normal). Lo define el backend.
+let fontScale = 1;
+
+export interface RemoteTheme {
+  font_scale?: number;
+  colors?: { dark?: Record<string, string>; light?: Record<string, string> };
+}
+
+/** Aplica colores y escala de letra recibidos del backend. Lo inválido se ignora; null restaura los originales. */
+export function applyRemoteTheme(remote: RemoteTheme | null) {
+  const merge = (target: Palette, base: Palette, overrides?: Record<string, string>) => {
+    Object.assign(target, base);
+    if (!overrides || typeof overrides !== 'object') return;
+    for (const [key, value] of Object.entries(overrides)) {
+      if (key in base && typeof value === 'string' && COLOR_RE.test(value.trim())) {
+        (target as Record<string, string>)[key] = value.trim();
+      }
+    }
+  };
+  merge(dark, baseDark, remote?.colors?.dark);
+  merge(light, baseLight, remote?.colors?.light);
+  const scale = remote?.font_scale;
+  fontScale = typeof scale === 'number' && Number.isFinite(scale) ? Math.min(1.4, Math.max(0.8, scale)) : 1;
+  themeEpoch += 1;
+}
+
+/** Con una escala distinta de 1, agranda o achica fontSize y lineHeight de cada estilo. */
+function scaleFonts<T extends object>(sheet: T): T {
+  if (fontScale === 1) return sheet;
+  const out: Record<string, unknown> = {};
+  for (const [name, style] of Object.entries(sheet)) {
+    if (style && typeof style === 'object' && !Array.isArray(style)) {
+      const s = { ...(style as TextStyle) };
+      if (typeof s.fontSize === 'number') s.fontSize = Math.round(s.fontSize * fontScale * 10) / 10;
+      if (typeof s.lineHeight === 'number') s.lineHeight = Math.round(s.lineHeight * fontScale * 10) / 10;
+      out[name] = s;
+    } else {
+      out[name] = style;
+    }
+  }
+  return out as T;
+}
+
 export function setActiveScheme(scheme: ColorScheme) {
   activeScheme = scheme;
 }
@@ -128,10 +178,15 @@ const colors = new Proxy({} as Palette, {
 export function themed<T extends NamedStyles<T> | NamedStyles<any>>(
   factory: () => T & NamedStyles<any>
 ): T {
-  const cache: Partial<Record<ColorScheme, T>> = {};
+  let cache: Partial<Record<ColorScheme, T>> = {};
+  let cacheEpoch = themeEpoch;
   return new Proxy({} as T, {
     get: (_target, key: string) => {
-      const sheet = cache[activeScheme] ?? (cache[activeScheme] = factory());
+      if (cacheEpoch !== themeEpoch) {
+        cache = {};
+        cacheEpoch = themeEpoch;
+      }
+      const sheet = cache[activeScheme] ?? (cache[activeScheme] = scaleFonts(factory()));
       return sheet[key as keyof T];
     },
   });

@@ -3,6 +3,20 @@
 En cada archivo busca con **Ctrl+F** el texto `CAMBIA AQUÍ` (colores) o `AQUÍ` (letras).
 Los comentarios ya están puestos al lado de cada línea.
 
+## 0. El archivo del backend que controla la app (el principal)
+Archivo: `lithio_backend/app/tema_app.py`
+
+- `ESCALA_LETRA = 1.0` → pon `1.2` y **todas** las letras de la app crecen un 20 % (rango 0.8 a 1.4).
+- `COLORES_OSCURO` y `COLORES_CLARO` → quita el `#` de una línea y cambia el color (`"primary": "#FF8800"`).
+- Se ve en la app del teléfono y en la web `/app` **sin reiniciar el servidor y sin publicar**: guarda y, en el teléfono, cierra y abre LITHIO (en la web, F5).
+- Es seguro: el archivo no se ejecuta, solo se leen valores. Un color mal escrito se ignora y la app sigue como estaba.
+
+### Flujo para los compañeros (desde su PC, sin acceso a tu PC)
+1. Tú los agregas en GitHub: repositorio → Settings → Collaborators → Add people.
+2. Ellos clonan el repo, abren la carpeta en VS Code y cambian a la rama de práctica: `git checkout practica`.
+3. Editan `lithio_backend/app/tema_app.py` (y los demás archivos de esta guía), y suben: `git add .` → `git commit -m "mis cambios"` → `git push origin practica`.
+4. Tú, en tu PC, haces doble clic en **`aplicar_practica.bat`**. Baja sus cambios, solo de archivos de estilo (todo lo demás lo ignora), publica si hace falta, y se ven en la app.
+
 ## 1. Panel web del backend (`/dashboard`) — el más fácil de mostrar
 Archivo: `lithio_dashboard/style.css`
 

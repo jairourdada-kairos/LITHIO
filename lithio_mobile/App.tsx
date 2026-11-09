@@ -20,6 +20,7 @@ import { VerifyEmailScreen } from './src/screens/VerifyEmailScreen';
 import { claimDeviceSession, restoreSession, roleAccessError, saveSessionRole, SessionRole, signOut } from './src/services/session';
 import { onSessionReplaced } from './src/services/deviceSession';
 import { initApiBase } from './src/config/api';
+import { loadCachedTheme, refreshRemoteTheme } from './src/services/remoteTheme';
 import { dismissPushOffer, registerForPush, shouldOfferPush, syncPushIfGranted, unregisterPush } from './src/services/notifications';
 import { NotificationPrimer } from './src/components/NotificationPrimer';
 import { checkAppVersion } from './src/services/appVersion';
@@ -52,6 +53,12 @@ interface Session {
 // ENTRADA PRINCIPAL — Fuentes de marca y márgenes seguros
 // ============================================================================
 export default function App() {
+  // Tema del backend (colores y tamaño de letra). Cada cambio nuevo vuelve a montar la interfaz.
+  const [themeKey, setThemeKey] = useState(0);
+  const [themeReady, setThemeReady] = useState(false);
+  useEffect(() => {
+    void loadCachedTheme().finally(() => setThemeReady(true));
+  }, []);
   // Manrope (textos), Space Grotesk (títulos) y Space Mono (datos): la app se ve igual sin
   // importar la fuente del sistema que tenga configurada el teléfono.
   const [fontsLoaded, fontError] = useFonts({
@@ -68,8 +75,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {/* Si las fuentes fallan se sigue con las del sistema en vez de bloquear la app. */}
-      {fontsLoaded || fontError ? (
-        <ThemeModeProvider>{(scheme) => <AppContent scheme={scheme} />}</ThemeModeProvider>
+      {(fontsLoaded || fontError) && themeReady ? (
+        <ThemeModeProvider key={themeKey}>
+          {(scheme) => <AppContent scheme={scheme} onThemeChanged={() => setThemeKey((k) => k + 1)} />}
+        </ThemeModeProvider>
       ) : (
         <View style={styles.blank} />
       )}
@@ -80,7 +89,7 @@ export default function App() {
 // ============================================================================
 // FLUJO DE SESIÓN — El rol se elige al entrar y queda fijo hasta cerrar sesión
 // ============================================================================
-function AppContent({ scheme }: { scheme: ColorScheme }) {
+function AppContent({ scheme, onThemeChanged }: { scheme: ColorScheme; onThemeChanged: () => void }) {
   const [authStep, setAuthStep] = useState<AuthStep>('restoring');
   const [session, setSession] = useState<Session | null>(null);
   // Entró con Google/Facebook por primera vez: el registro no pide contraseña.
@@ -104,7 +113,10 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     // Luego, en el APK, se averigua la dirección vigente del servidor.
     applyUpdateOnStartup()
       .then(initApiBase)
-      .then(async () => {
+      .then(refreshRemoteTheme)
+      .then(async (themeChanged) => {
+        // El backend cambió colores o letras: se vuelve a pintar con el tema nuevo.
+        if (themeChanged && !cancelled) onThemeChanged();
         // Cambios nativos: el servidor puede exigir (o sugerir) un APK más nuevo.
         const version = await checkAppVersion();
         if (version?.required) setRequiredUpdate(version.downloadUrl);
@@ -130,7 +142,11 @@ function AppContent({ scheme }: { scheme: ColorScheme }) {
     let offeredRestart = false;
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
-      void initApiBase();
+      void initApiBase()
+        .then(refreshRemoteTheme)
+        .then((themeChanged) => {
+          if (themeChanged && !cancelled) onThemeChanged();
+        });
       if (offeredRestart) return;
       void downloadUpdateInBackground().then((ready) => {
         if (!ready || cancelled) return;
