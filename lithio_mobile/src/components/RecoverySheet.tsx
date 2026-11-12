@@ -94,7 +94,7 @@ export const RecoverySheet: React.FC<Props> = ({ visible, accent, initialEmail, 
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
           <View style={styles.handle} />
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             <Text style={styles.title}>Recuperar tu cuenta</Text>
 
             {done ? (

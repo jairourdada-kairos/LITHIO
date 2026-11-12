@@ -3,19 +3,19 @@
  *
  * Una sola hoja para las acciones de la billetera. Recargas, donaciones por
  * Pago Móvil, retiros y canjes del taller quedan "En revisión" hasta que el
- * administrador los aprueba; envíos y donaciones con diamantes se aplican al
+ * administrador los aprueba; envíos y donaciones con iones se aplican al
  * instante. Recargas y donaciones por Pago Móvil muestran los datos del Pago
  * Móvil del administrador y llevan la captura del pago.
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert, Image, Linking } from 'react-native';
 import { Icon } from './ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
 import { FormField } from './FormField';
 import { PrimaryButton } from './brand/PrimaryButton';
-import { apiService, LinkPerson, PagoMovilDestination, WorkshopItem } from '../services/api';
+import { apiService, BinancePayDestination, LinkPerson, PagoMovilDestination, TopupMethod, WorkshopItem } from '../services/api';
 import { photoFormValue, pickDocumentPhoto } from '../services/avatar';
 import type { WalletAction } from '../screens/shared/WalletScreen';
 
@@ -24,6 +24,10 @@ interface Props {
   balance: number;
   /** Pago Móvil del administrador (null si aún no lo configuró). */
   pagoMovil: PagoMovilDestination | null;
+  /** Binance Pay de LITHIO para recargas (null si no está configurado). */
+  binancePay?: BinancePayDestination | null;
+  /** Método con el que se abre la recarga. */
+  initialTopupMethod?: TopupMethod;
   onClose: () => void;
   /** Se llama tras una operación exitosa para recargar la billetera. */
   onDone: () => void;
@@ -31,18 +35,18 @@ interface Props {
 
 const COPY: Record<WalletAction, { title: string; message: string; confirm: string }> = {
   recargar: {
-    title: 'Recargar diamantes',
-    message: 'Haz el Pago Móvil a estos datos, escribe la referencia y adjunta la captura. Los diamantes se acreditan cuando el administrador lo verifique.',
+    title: 'Recargar iones',
+    message: 'Haz el Pago Móvil a estos datos, escribe la referencia y adjunta la captura. Los iones se acreditan cuando el administrador lo verifique.',
     confirm: 'Enviar recarga',
   },
   enviar: {
     title: 'Enviar a un enlace',
-    message: 'Solo puedes enviar diamantes a tus enlaces. Máximo ◆50 por envío y ◆100 al día.',
-    confirm: 'Enviar diamantes',
+    message: 'Solo puedes enviar iones a tus enlaces. Máximo Li⁺ 50 por envío y Li⁺ 100 al día.',
+    confirm: 'Enviar iones',
   },
   donar: {
     title: 'Donar al Fondo Solidario',
-    message: 'Tu donación paga viajes a estudiantes que lo necesitan. Dona con tus diamantes o directo por Pago Móvil.',
+    message: 'Tu donación paga viajes a estudiantes que lo necesitan. Dona con tus iones o directo por Pago Móvil.',
     confirm: 'Donar',
   },
   retirar: {
@@ -52,14 +56,17 @@ const COPY: Record<WalletAction, { title: string; message: string; confirm: stri
   },
   taller: {
     title: 'Mecánico de confianza',
-    message: 'Paga servicios del taller aliado con tus diamantes. El administrador te confirma la cita.',
+    message: 'Paga servicios del taller aliado con tus iones. El administrador te confirma la cita.',
     confirm: '',
   },
 };
 
 type DonationMethod = 'diamantes' | 'pago_movil';
 
-export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil, onClose, onDone }) => {
+const BINANCE_MESSAGE =
+  'Envía el monto en USDT por Binance Pay a esta cuenta, escribe el ID de la orden y adjunta la captura. Los iones se acreditan cuando el administrador lo verifique.';
+
+export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil, binancePay = null, initialTopupMethod, onClose, onDone }) => {
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [text, setText] = useState('');
@@ -71,6 +78,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
   const [busy, setBusy] = useState(false);
   const [donationMethod, setDonationMethod] = useState<DonationMethod>('diamantes');
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [topupMethod, setTopupMethod] = useState<TopupMethod>('pago_movil');
 
   useEffect(() => {
     setAmount('');
@@ -80,14 +88,19 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
     setError(undefined);
     setDonationMethod('diamantes');
     setReceiptUri(null);
+    setTopupMethod(initialTopupMethod === 'binance_pay' && binancePay ? 'binance_pay' : 'pago_movil');
     if (action === 'enviar') apiService.getLinks().then((info) => setLinks(info.links)).catch(() => setLinks([]));
     if (action === 'taller') apiService.getWorkshop().then(setWorkshop).catch(() => setWorkshop([]));
+    // Solo al abrir otra acción: no se reinicia el formulario mientras se escribe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action]);
 
   if (!action) return null;
   const copy = COPY[action];
   // Recargas y donaciones por Pago Móvil: se paga al administrador y se adjunta la captura.
   const paysByPagoMovil = action === 'recargar' || (action === 'donar' && donationMethod === 'pago_movil');
+  // Recarga por Binance Pay: mismo formulario, con los datos de Binance en vez del Pago Móvil.
+  const byBinance = action === 'recargar' && topupMethod === 'binance_pay' && Boolean(binancePay);
 
   /** Sube la captura; si falla, el movimiento ya quedó y se adjunta luego desde la lista. */
   const sendReceipt = async (txId: number) => {
@@ -115,31 +128,31 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
       return;
     }
     if (!paysByPagoMovil && value > balance) {
-      setError(`Tu saldo es ◆ ${balance.toFixed(2)}.`);
+      setError(`Tu saldo es Li⁺ ${balance.toFixed(2)}.`);
       return;
     }
     setBusy(true);
     setError(undefined);
     try {
       if (action === 'recargar') {
-        if (text.trim().length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
-        if (!receiptUri) throw new Error('Adjunta la captura del Pago Móvil.');
-        const tx = await apiService.requestTopup(value, text.trim());
+        if (text.trim().length < 4) throw new Error(byBinance ? 'Escribe el ID de la orden de Binance Pay.' : 'Escribe la referencia del Pago Móvil.');
+        if (!receiptUri) throw new Error(byBinance ? 'Adjunta la captura del pago en Binance.' : 'Adjunta la captura del Pago Móvil.');
+        const tx = await apiService.requestTopup(value, text.trim(), byBinance ? 'binance_pay' : 'pago_movil');
         const sent = await sendReceipt(tx.id);
-        finish('Recarga enviada', `Verás los diamantes cuando el administrador confirme el pago.${receiptNote(sent)}`);
+        finish('Recarga enviada', `Verás los iones cuando el administrador confirme el pago.${receiptNote(sent)}`);
       } else if (action === 'enviar') {
         if (!recipient) throw new Error('Elige a qué enlace enviarle.');
         await apiService.sendDiamonds(recipient, value, note.trim());
-        finish('Diamantes enviados', `Enviaste ◆ ${value.toFixed(2)}.`);
+        finish('Iones enviados', `Enviaste Li⁺ ${value.toFixed(2)}.`);
       } else if (action === 'donar' && donationMethod === 'pago_movil') {
         if (text.trim().length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
         if (!receiptUri) throw new Error('Adjunta la captura del Pago Móvil.');
         const tx = await apiService.donate(value, 'pago_movil', text.trim());
         const sent = await sendReceipt(tx.id);
-        finish('¡Gracias por donar!', `Tu donación de ◆ ${value.toFixed(2)} se suma al fondo cuando el administrador la confirme.${receiptNote(sent)}`);
+        finish('¡Gracias por donar!', `Tu donación de Li⁺ ${value.toFixed(2)} se suma al fondo cuando el administrador la confirme.${receiptNote(sent)}`);
       } else if (action === 'donar') {
         await apiService.donate(value);
-        finish('¡Gracias por donar!', `Aportaste ◆ ${value.toFixed(2)} al Fondo Solidario LITHIO.`);
+        finish('¡Gracias por donar!', `Aportaste Li⁺ ${value.toFixed(2)} al Fondo Solidario LITHIO.`);
       } else if (action === 'retirar') {
         if (text.trim().length < 6) throw new Error('Indica tu Pago Móvil o cuenta para recibir.');
         await apiService.requestWithdrawal(value, text.trim());
@@ -153,7 +166,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
   };
 
   const redeem = (item: WorkshopItem) =>
-    Alert.alert(item.title, `Pagarás ◆ ${item.cost.toFixed(2)} del saldo. ¿Confirmas?`, [
+    Alert.alert(item.title, `Pagarás Li⁺ ${item.cost.toFixed(2)} del saldo. ¿Confirmas?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Canjear',
@@ -174,9 +187,9 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
           <View style={styles.handle} />
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             <Text style={styles.title}>{copy.title}</Text>
-            <Text style={styles.message}>{copy.message}</Text>
+            <Text style={styles.message}>{byBinance ? BINANCE_MESSAGE : copy.message}</Text>
             {action === 'donar' ? (
               <View style={styles.chips} accessibilityRole="radiogroup">
                 {(['diamantes', 'pago_movil'] as const).map((method) => {
@@ -200,8 +213,33 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
                 })}
               </View>
             ) : null}
-            {!paysByPagoMovil ? <Text style={styles.balance}>Disponible: ◆ {balance.toFixed(2)}</Text> : null}
-            {paysByPagoMovil ? <PagoMovilCard destination={pagoMovil} /> : null}
+            {action === 'recargar' && binancePay ? (
+              <View style={styles.chips} accessibilityRole="radiogroup">
+                {(['pago_movil', 'binance_pay'] as const).map((method) => {
+                  const selected = topupMethod === method;
+                  return (
+                    <Pressable
+                      key={method}
+                      onPress={() => {
+                        setTopupMethod(method);
+                        setError(undefined);
+                      }}
+                      style={[styles.chip, styles.flex, styles.chipCentered, selected && styles.chipActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextActive]}>
+                        {method === 'pago_movil' ? 'Pago Móvil' : 'Binance Pay'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            {!paysByPagoMovil ? <Text style={styles.balance}>Disponible: Li⁺ {balance.toFixed(2)}</Text> : null}
+            {paysByPagoMovil ? (
+              byBinance && binancePay ? <BinancePayCard destination={binancePay} /> : <PagoMovilCard destination={pagoMovil} />
+            ) : null}
 
             {action === 'taller' ? (
               workshop === null ? (
@@ -222,7 +260,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
                         <Text style={styles.optionTitle}>{item.title}</Text>
                         {item.description ? <Text style={styles.message}>{item.description}</Text> : null}
                       </View>
-                      <Text style={styles.cost}>◆ {item.cost.toFixed(2)}</Text>
+                      <Text style={styles.cost}>Li⁺ {item.cost.toFixed(2)}</Text>
                     </Pressable>
                   );
                 })
@@ -255,16 +293,22 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
                 ) : null}
 
                 <FormField
-                  label="Monto en diamantes"
+                  label="Monto en iones"
                   placeholder="0.00"
                   keyboardType="decimal-pad"
                   value={amount}
                   onChangeText={setAmount}
-                  hint="1 ◆ = 1 USD"
+                  hint="1 Li⁺ = 1 USD"
                 />
                 {paysByPagoMovil ? (
                   <>
-                    <FormField label="Referencia del Pago Móvil" placeholder="Últimos 6 dígitos" value={text} onChangeText={setText} maxLength={30} />
+                    <FormField
+                      label={byBinance ? 'ID de la orden de Binance Pay' : 'Referencia del Pago Móvil'}
+                      placeholder={byBinance ? 'Número de orden' : 'Últimos 6 dígitos'}
+                      value={text}
+                      onChangeText={setText}
+                      maxLength={30}
+                    />
                     <Pressable
                       onPress={async () => setReceiptUri((await pickDocumentPhoto()) ?? receiptUri)}
                       style={({ pressed }) => [styles.receiptPick, pressed && styles.pressed]}
@@ -296,7 +340,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
                   label={copy.confirm}
                   onPress={submit}
                   loading={busy}
-                  disabled={(action === 'enviar' && !links?.length) || (paysByPagoMovil && !pagoMovil)}
+                  disabled={(action === 'enviar' && !links?.length) || (paysByPagoMovil && !byBinance && !pagoMovil)}
                   accent={theme.colors.diamond}
                 />
               </>
@@ -324,6 +368,24 @@ const PagoMovilCard: React.FC<{ destination: PagoMovilDestination | null }> = ({
     <Text style={styles.error}>El administrador aún no configuró su Pago Móvil. Intenta más tarde.</Text>
   );
 
+/** Binance Pay de LITHIO para recargas. El dato se puede seleccionar y copiar. */
+const BinancePayCard: React.FC<{ destination: BinancePayDestination }> = ({ destination }) => (
+  <View style={styles.pmCard} accessibilityLabel="Datos de Binance Pay">
+    <Text style={styles.pmTitle}>Binance Pay de LITHIO</Text>
+    <PmRow label="Enviar a" value={destination.pay_id} />
+    <PmRow label="Moneda" value="USDT · 1 Li⁺ = 1 USD" />
+    <Text style={styles.pmHint}>Mantén presionado el dato para copiarlo. En Binance: Pay → Enviar.</Text>
+    <Pressable
+      onPress={() => void Linking.openURL(destination.url).catch(() => {})}
+      style={({ pressed }) => [styles.receiptPick, pressed && styles.pressed]}
+      accessibilityRole="button"
+    >
+      <Icon name="external-link-outline" size={22} color={theme.colors.diamond} />
+      <Text style={styles.receiptPickText}>Abrir Binance</Text>
+    </Pressable>
+  </View>
+);
+
 const PmRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={styles.pmRow}>
     <Text style={styles.pmLabel}>{label}</Text>
@@ -336,6 +398,10 @@ const PmRow: React.FC<{ label: string; value: string }> = ({ label, value }) => 
 const styles = themed(() => ({
   flex: {
     flex: 1,
+  },
+  chipCentered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pmCard: {
     gap: 8,

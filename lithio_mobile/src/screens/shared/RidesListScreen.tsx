@@ -3,15 +3,18 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { PrimaryButton } from '../../components/brand/PrimaryButton';
+import { Reveal, SkeletonCard } from '../../components/ui/Motion';
+import { EmptyState } from '../../components/ui/Decor';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService } from '../../services/api';
 import type { SessionRole } from '../../services/session';
 import type { Ride } from '../../types';
+import { placeName } from '../../utils/text';
 
 interface Props {
   scope: 'history' | 'scheduled';
@@ -72,36 +75,37 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
     <View style={styles.root}>
       {hideHeader ? null : <ScreenHeader title={title} />}
       {rides === null && !error ? (
-        <ActivityIndicator style={styles.loading} color={theme.colors.primary} />
+        <View style={styles.skeletons}>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
       ) : (
-        <FlatList
+        <FlatList showsVerticalScrollIndicator={false}
           data={rides || []}
           keyExtractor={(ride) => String(ride.id)}
           contentContainerStyle={[styles.list, { paddingBottom: TAB_BAR_HEIGHT + 64 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.primary} />}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Icon
-                name={scope === 'history' ? 'clock-outline' : 'calendar-outline'}
-                size={44}
-                color={theme.colors.textMuted}
-              />
-              <Text style={styles.emptyText}>
-                {error ||
-                  (scope === 'history'
-                    ? 'Aún no tienes viajes terminados.'
-                    : role === 'pasajero'
-                      ? 'No tienes viajes agendados por ahora.'
-                      : 'No tienes viajes programados aceptados ni pendientes.')}
-              </Text>
+            <EmptyState
+              text={
+                error ||
+                (scope === 'history'
+                  ? 'Aún no tienes viajes terminados.'
+                  : role === 'pasajero'
+                    ? 'No tienes viajes agendados por ahora.'
+                    : 'No tienes viajes programados aceptados ni pendientes.')
+              }
+            >
               {scope === 'scheduled' && role === 'pasajero' && onPrimaryAction ? (
                 <PrimaryButton label="Agendar un viaje" onPress={onPrimaryAction} style={styles.emptyButton} />
               ) : null}
-            </View>
+            </EmptyState>
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const status = statusInfo()[item.status] || { label: item.status, color: theme.colors.textMuted };
             return (
+              <Reveal index={Math.min(index, 8)}>
               <Pressable
                 onPress={() => onOpenRide?.(item.id)}
                 disabled={!onOpenRide}
@@ -109,6 +113,7 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
                 accessibilityRole="button"
                 accessibilityHint="Abre el detalle del viaje"
               >
+                <View style={[styles.statusStripe, { backgroundColor: status.color }]} pointerEvents="none" />
                 <View style={styles.cardTop}>
                   <Text style={styles.date}>{formatDate(item)}</Text>
                   <Text style={[styles.status, { color: status.color, borderColor: `${status.color}66` }]}>
@@ -122,8 +127,8 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
                     <View style={[styles.dot, { backgroundColor: theme.colors.secondary }]} />
                   </View>
                   <View style={styles.places}>
-                    <Text style={styles.place} numberOfLines={1}>{item.origin}</Text>
-                    <Text style={styles.place} numberOfLines={1}>{item.destination}</Text>
+                    <Text style={styles.place} numberOfLines={1}>{placeName(item.origin)}</Text>
+                    <Text style={styles.place} numberOfLines={1}>{placeName(item.destination)}</Text>
                   </View>
                   <Text style={styles.fare}>${item.fare_amount.toFixed(2)}</Text>
                 </View>
@@ -137,6 +142,7 @@ export const RidesListScreen: React.FC<Props> = ({ scope, role, reloadKey, onPri
                   {onOpenRide ? <Icon name="chevron-right-outline" size={20} color={theme.colors.textMuted} /> : null}
                 </View>
               </Pressable>
+              </Reveal>
             );
           }}
         />
@@ -155,8 +161,10 @@ const styles = themed(() => ({
   root: {
     flex: 1,
   },
-  loading: {
-    marginTop: 48,
+  skeletons: {
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   list: {
     paddingHorizontal: 20,
@@ -189,6 +197,14 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: theme.colors.glassBorder,
     backgroundColor: theme.colors.glassBg,
+    overflow: 'hidden',
+  },
+  statusStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
   },
   cardTop: {
     flexDirection: 'row',
@@ -196,7 +212,8 @@ const styles = themed(() => ({
     justifyContent: 'space-between',
   },
   date: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.medium,
+    fontVariant: ['tabular-nums'],
     fontSize: 12,
     color: theme.colors.textMuted,
   },
@@ -237,6 +254,7 @@ const styles = themed(() => ({
     color: theme.colors.textPrimary,
   },
   fare: {
+    fontVariant: ['tabular-nums'],
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: theme.colors.textPrimary,

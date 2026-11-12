@@ -25,15 +25,15 @@ const dark = {
   cardBg: 'rgba(24, 38, 41, 0.92)',  // CAMBIA AQUÍ el color de fondo de las tarjetas
   cardBorder: 'rgba(190, 240, 232, 0.07)', // Canto del cristal
   cardElevated: 'rgba(33, 50, 53, 0.94)',
-  primary: '#063df1',         // Turquesa eléctrico: pasajero, acción principal — CAMBIA AQUÍ el color principal (turquesa): botones, íconos y textos resaltados del pasajero
+  primary: '#45D6C5',         // Turquesa eléctrico: pasajero, acción principal — CAMBIA AQUÍ el color principal (turquesa): botones, íconos y textos resaltados del pasajero
   onPrimary: '#0E2A27',       // Texto sobre turquesa
-  secondary: '#0206fd',       // Coral: conductor, protones — CAMBIA AQUÍ el color secundario (coral): lo del conductor
+  secondary: '#FF765E',       // Coral: conductor, protones — CAMBIA AQUÍ el color secundario (coral): lo del conductor
   onSecondary: '#3A140B',
   onAccent: '#0B1416', // Texto sobre cualquier color de relleno (éxito, error, oro, acentos)
   gold: '#FFC857',            // Fe (hierro de recompensa) — CAMBIA AQUÍ el dorado de la Fe
-  diamond: '#7FD4FF',         // ◆ Diamantes (saldo) — CAMBIA AQUÍ el azul de los diamantes
+  diamond: '#8EE6DA',         // Li⁺ Iones (saldo) — CAMBIA AQUÍ el color de los iones (turquesa claro, sin azul)
   success: '#34D399',  // CAMBIA AQUÍ el verde de éxito
-  error: '#FF6B6B',  // CAMBIA AQUÍ el rojo de errores
+  error: '#FF5C7A',  // CAMBIA AQUÍ el rojo de errores (rosado: así no se confunde con el coral del conductor)
   warning: '#FF9F4A',  // CAMBIA AQUÍ el naranja de avisos
   textPrimary: '#F2F8F7',  // CAMBIA AQUÍ el color del texto principal
   textSecondary: '#A6BABB',  // CAMBIA AQUÍ el color del texto secundario
@@ -55,7 +55,7 @@ const dark = {
   secondarySoft: 'rgba(255, 118, 94, 0.14)',
   secondaryLine: 'rgba(255, 118, 94, 0.50)',
   goldSoft: 'rgba(255, 200, 87, 0.14)',
-  diamondSoft: 'rgba(127, 212, 255, 0.14)',
+  diamondSoft: 'rgba(142, 230, 218, 0.14)',
   lattice: 'rgba(166, 186, 187, 0.16)',
   scrim: 'rgba(5, 10, 12, 0.68)',
 };
@@ -74,9 +74,9 @@ const light: Palette = {
   onSecondary: '#FFFFFF',
   onAccent: '#FFFFFF',
   gold: '#8A6308',  // CAMBIA AQUÍ el dorado de la Fe
-  diamond: '#1F6CA3',  // CAMBIA AQUÍ el azul de los diamantes
+  diamond: '#2B7A8E',  // CAMBIA AQUÍ el color de los iones Li⁺ (petróleo suave, contraste AA sobre fondo claro)
   success: '#0A7F58',  // CAMBIA AQUÍ el verde de éxito
-  error: '#C9302C',  // CAMBIA AQUÍ el rojo de errores
+  error: '#C42150',  // CAMBIA AQUÍ el rojo de errores (carmesí: distinto del coral del conductor)
   warning: '#C2470A',  // CAMBIA AQUÍ el naranja de avisos
   textPrimary: '#0F2024',  // CAMBIA AQUÍ el color del texto principal
   textSecondary: '#445960',  // CAMBIA AQUÍ el color del texto secundario
@@ -98,7 +98,7 @@ const light: Palette = {
   secondarySoft: 'rgba(200, 67, 43, 0.10)',
   secondaryLine: 'rgba(200, 67, 43, 0.35)',
   goldSoft: 'rgba(138, 99, 8, 0.12)',
-  diamondSoft: 'rgba(31, 108, 163, 0.10)',
+  diamondSoft: 'rgba(43, 122, 142, 0.10)',
   lattice: 'rgba(22, 37, 42, 0.08)',
   scrim: 'rgba(16, 25, 28, 0.4)',
 };
@@ -251,7 +251,7 @@ export const theme: {
     get energy() {
       return `linear-gradient(90deg, ${colors.primary}00 0%, ${colors.primary} 30%, ${colors.secondary} 72%, ${colors.secondary}00 100%)`;
     },
-    glowOf: (accent: string) => `0 8px 22px ${accent}40, 0 1px 3px ${accent}33, inset 0 1px 0 rgba(255, 255, 255, 0.28)`,
+    glowOf: (accent: string) => `0 8px 22px ${accent}40, 0 1px 3px ${accent}33, inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -2px 0 rgba(0, 0, 0, 0.10)`,
     cardGlow: (accent: string) => `0 18px 44px ${accent}1A, 0 2px 6px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.07)`,
     tint: (accent: string) => `linear-gradient(155deg, ${accent}24 0%, ${accent}05 70%)`,
   },

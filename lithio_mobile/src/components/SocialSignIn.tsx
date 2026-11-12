@@ -114,7 +114,7 @@ const styles = themed(() => ({
   },
   soon: {
     fontFamily: theme.fonts.mono,
-    fontSize: 10,
+    fontSize: 11,
     color: theme.colors.textMuted,
   },
   orRow: {

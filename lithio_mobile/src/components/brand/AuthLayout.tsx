@@ -19,7 +19,7 @@ import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { LatticeBackground } from './LatticeBackground';
-import { PeriodicTile } from './PeriodicTile';
+import { LiSeal } from './LiSeal';
 
 interface Props {
   title: string;
@@ -57,7 +57,7 @@ export const AuthLayout: React.FC<Props> = ({ title, subtitle, accent = theme.co
         entering={FadeInDown.duration(260).reduceMotion(ReduceMotion.System)}
         style={styles.header}
       >
-        <PeriodicTile size={56} accent={accent} />
+        <LiSeal size={56} accent={accent} />
         <View style={styles.headerText}>
           <Text style={styles.title}>{title}</Text>
           <Text style={[styles.subtitle, { color: accent }]}>{subtitle}</Text>

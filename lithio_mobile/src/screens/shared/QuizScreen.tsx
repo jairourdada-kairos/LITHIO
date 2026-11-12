@@ -55,7 +55,7 @@ export const QuizScreen: React.FC<Props> = ({ accent, onBack, onAnswered }) => {
       {!quiz ? (
         <ActivityIndicator color={accent} style={{ marginTop: 48 }} />
       ) : (
-        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
           <View style={styles.flask}>
             <Icon name="droplet-outline" size={30} color={accent} />
             <Text style={styles.muted}>Acierta y gana <Text style={styles.gold}>+{quiz.reward} Fe</Text>. Una pregunta por día.</Text>
@@ -125,7 +125,7 @@ const styles = themed(() => ({
   muted: {
     flexShrink: 1,
     fontFamily: theme.fonts.regular,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 20,
     color: theme.colors.textSecondary,
   },
@@ -169,7 +169,7 @@ const styles = themed(() => ({
   optionText: {
     flex: 1,
     fontFamily: theme.fonts.medium,
-    fontSize: 15.5,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
   result: {
@@ -186,7 +186,7 @@ const styles = themed(() => ({
   },
   fact: {
     fontFamily: theme.fonts.regular,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 21,
     color: theme.colors.textPrimary,
   },

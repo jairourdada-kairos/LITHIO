@@ -33,7 +33,8 @@ export type RideStatus =
   | 'completado' 
   | 'cancelado';
 
-export type PaymentMethod = 'efectivo' | 'pago_movil' | 'diamantes';
+/** 'pase' = pase de un COMBO de la Tienda Fe (solo rutas internas). */
+export type PaymentMethod = 'diamantes' | 'efectivo' | 'pago_movil' | 'pase';
 
 export interface Ride {
   id: number;
@@ -69,6 +70,8 @@ export interface PresetRoute {
   estimated_minutes: number;
   popular: boolean;
   tag: string;
+  /** 'interna' = dentro del IVIC; 'externa' = del IVIC hacia afuera. */
+  scope?: 'interna' | 'externa';
 }
 
 export interface ReviewSubmission {

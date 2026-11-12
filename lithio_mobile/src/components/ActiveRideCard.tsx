@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import { Text, View, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Icon } from './ui/Icon';
+import { Breathe, Celebrate } from './ui/Motion';
 import { PressableScale } from './brand/PressableScale';
 import { Ride, RideStatus, UserRole } from '../types';
 import { formatBs, useBcvRate } from '../services/rates';
 import { apiService } from '../services/api';
 import { photoFormValue, pickDocumentPhoto } from '../services/avatar';
+import { placeName } from '../utils/text';
 
 /** Estados en los que tiene sentido pagar o anotar el Pago Móvil. */
-const PAYABLE: RideStatus[] = ['solicitado', 'aceptado', 'en_camino', 'en_curso', 'completado'];
+// El Pago Móvil se confirma con el viaje ya aceptado: al pedirlo aún no hay nada que pagar ni anotar.
+const PAYABLE: RideStatus[] = ['aceptado', 'en_camino', 'en_curso', 'completado'];
 
 interface ActiveRideCardProps {
   ride: Ride;
@@ -182,7 +185,11 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
   // Llamar: la app Teléfono se abre con el número ya escrito; solo falta tocar "Llamar".
   const counterpartName = (isDriver ? ride.passenger_name : ride.driver_name) || (isDriver ? 'el pasajero' : 'el conductor');
   const phone = ride.counterpart_phone;
-  const canCall = Boolean(phone) && ['aceptado', 'en_camino', 'en_curso'].includes(ride.status);
+  // El pasajero puede llamar desde que pide el viaje; el conductor, desde que lo acepta.
+  const canCall =
+    Boolean(phone) && (['aceptado', 'en_camino', 'en_curso'].includes(ride.status) || (!isDriver && ride.status === 'solicitado'));
+  // Pago Móvil recién pedido: el pasajero aún no ve forma de pago ni referencia.
+  const hidePayment = !isDriver && ride.payment_method === 'pago_movil' && ride.status === 'solicitado';
   const callCounterpart = () => {
     if (!phone) return;
     void Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`).catch(() => undefined);
@@ -201,18 +208,20 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
       </View>
 
       <View style={styles.body}>
+        {ride.status === 'completado' ? <Celebrate /> : null}
         <Text style={styles.bannerDesc}>{details.desc}</Text>
 
         {/* Barra de Progreso Gamificada */}
         <View style={styles.progressRow}>
           {[1, 2, 3, 4, 5].map((step) => (
-            <View
-              key={step}
-              style={[
-                styles.stepSegment,
-                step <= details.step && { backgroundColor: details.badgeColor }
-              ]}
-            />
+            <Breathe key={step} active={step === details.step && details.step < 5} style={styles.stepCell}>
+              <View
+                style={[
+                  styles.stepSegment,
+                  step <= details.step && { backgroundColor: details.badgeColor }
+                ]}
+              />
+            </Breathe>
           ))}
         </View>
 
@@ -220,11 +229,11 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>🛫 Origen:</Text>
-            <Text style={styles.infoVal}>{ride.origin}</Text>
+            <Text style={styles.infoVal}>{placeName(ride.origin)}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Destino:</Text>
-            <Text style={styles.infoVal}>{ride.destination}</Text>
+            <Text style={styles.infoVal}>{placeName(ride.destination)}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>💵 Tarifa:</Text>
@@ -232,12 +241,16 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
               ${ride.fare_amount.toFixed(2)} USD{bcv ? ` · ${formatBs(ride.fare_amount, bcv)}` : ''}
             </Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, hidePayment && { display: 'none' }]}>
             <Text style={styles.infoLabel}>💳 Pago:</Text>
             <Text style={styles.infoVal}>
               {ride.payment_method === 'pago_movil' 
-                ? `Pago Móvil (${ride.payment_reference || 'Ref pendiente'})` 
-                : ride.payment_method === 'diamantes' ? 'Diamantes' : 'Efectivo'}
+                ? (ride.payment_reference ? `Pago Móvil (${ride.payment_reference})` : 'Pago Móvil')
+                : ride.payment_method === 'diamantes'
+                  ? 'Iones'
+                  : ride.payment_method === 'pase'
+                    ? isDriver ? 'Pase de combo · cobras en iones' : 'Pase de combo'
+                    : 'Efectivo'}
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -246,7 +259,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
         </View>
 
-        {!isDriver && ride.payment_method === 'pago_movil' && ride.driver_mobile_payment_number && (
+        {!isDriver && ride.payment_method === 'pago_movil' && ride.driver_mobile_payment_number && !hidePayment && (
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>📲 Datos de Pago Móvil del conductor</Text>
             {ride.driver_mobile_payment_bank && (
@@ -414,8 +427,10 @@ const styles = themed(() => ({
     gap: 6,
     marginBottom: 14,
   },
-  stepSegment: {
+  stepCell: {
     flex: 1,
+  },
+  stepSegment: {
     height: 4,
     backgroundColor: theme.colors.cardElevated,
     borderRadius: 2,

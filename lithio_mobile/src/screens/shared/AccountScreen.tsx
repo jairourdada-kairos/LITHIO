@@ -10,6 +10,8 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { Icon, IconName } from '../../components/ui/Icon';
 import { VersionTag } from '../../components/ui/VersionTag';
+import { IconChip, ScreenTitle } from '../../components/ui/Decor';
+import { Orbiter, Reveal } from '../../components/ui/Motion';
 import { theme, themed } from '../../constants/theme';
 import { getPushStatus, openNotificationSettings, pushSupported, registerForPush } from '../../services/notifications';
 import { Avatar } from '../../components/ui/Avatar';
@@ -128,11 +130,14 @@ export const AccountScreen: React.FC<Props> = ({
 
   return (
     <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 56 }]} showsVerticalScrollIndicator={false}>
-      <Text style={styles.screenTitle}>Perfil</Text>
+      <ScreenTitle>Perfil</ScreenTitle>
 
       <View style={styles.identity}>
         <Pressable onPress={onEditPhoto} accessibilityRole="button" accessibilityLabel="Cambiar foto de perfil" hitSlop={6}>
           <Avatar name={fullName} uri={user.avatar_url} size={72} ringColor={accent} />
+          <View pointerEvents="none" style={styles.electron}>
+            <Orbiter size={88} color={accent} period={7000} />
+          </View>
           <View style={[styles.camera, { backgroundColor: accent }]}>
             <Icon name="camera-outline" size={14} color={theme.colors.bgDark} />
           </View>
@@ -171,7 +176,7 @@ export const AccountScreen: React.FC<Props> = ({
         </View>
         <View style={styles.stats}>
           <Stat value={String(summary?.trips_completed ?? '—')} label="Viajes" />
-          <Stat value={`◆ ${(summary?.diamonds ?? 0).toFixed(2)}`} label="Diamantes" color={theme.colors.diamond} />
+          <Stat value={`Li⁺ ${(summary?.diamonds ?? 0).toFixed(2)}`} label="Iones" color={theme.colors.diamond} />
           <Stat value={`Fe ${summary?.points ?? user.points}`} label="Hierro" color={theme.colors.gold} />
         </View>
       </Pressable>
@@ -198,7 +203,7 @@ export const AccountScreen: React.FC<Props> = ({
         </View>
       </View>
 
-      <View style={styles.menu}>
+      <Reveal index={2} style={styles.menu}>
         {items.map((item, index) => (
           <Pressable
             key={item.label}
@@ -206,12 +211,12 @@ export const AccountScreen: React.FC<Props> = ({
             style={({ pressed }) => [styles.item, index > 0 && styles.itemDivider, pressed && styles.itemPressed]}
             accessibilityRole="button"
           >
-            <Icon name={item.icon} size={22} color={item.danger ? theme.colors.error : theme.colors.textSecondary} />
+            <IconChip name={item.icon} size={36} color={item.danger ? theme.colors.error : accent} />
             <Text style={[styles.itemLabel, item.danger && { color: theme.colors.error }]}>{item.label}</Text>
             {!item.danger ? <Icon name="chevron-right-outline" size={22} color={theme.colors.textMuted} /> : null}
           </Pressable>
         ))}
-      </View>
+      </Reveal>
 
       <Text style={styles.footnote}>
         {role === 'pasajero'
@@ -246,6 +251,13 @@ const styles = themed(() => ({
   },
   flex: {
     flex: 1,
+  },
+  electron: {
+    position: 'absolute',
+    left: -8,
+    top: -8,
+    width: 88,
+    height: 88,
   },
   screenTitle: {
     fontFamily: theme.fonts.bold,
@@ -393,7 +405,7 @@ const styles = themed(() => ({
   },
   segmentText: {
     fontFamily: theme.fonts.medium,
-    fontSize: 13.5,
+    fontSize: 14,
     color: theme.colors.textMuted,
   },
   segmentTextActive: {
@@ -426,12 +438,12 @@ const styles = themed(() => ({
   itemLabel: {
     flex: 1,
     fontFamily: theme.fonts.semibold,
-    fontSize: 15.5,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
   footnote: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 18,
     color: theme.colors.textMuted,
     textAlign: 'center',

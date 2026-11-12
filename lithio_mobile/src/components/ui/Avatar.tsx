@@ -35,8 +35,26 @@ export const Avatar: React.FC<Props> = ({ name, uri, size = 48, ringColor = them
         <Text style={[styles.initials, { fontSize: size * 0.38, color: ringColor }]}>{initials(name)}</Text>
       </View>
     )}
+    {size >= 32 ? <ValenceDot ring={size + 6} color={ringColor} /> : null}
   </View>
 );
+
+/** Electrón de valencia sobre el anillo, a las 2 en punto: une la foto con el átomo de la marca. */
+function ValenceDot({ ring, color }: { ring: number; color: string }) {
+  const dot = Math.max(6, Math.round(ring * 0.12));
+  const r = ring / 2;
+  const at = r + r * Math.SQRT1_2; // 45° sobre el anillo
+  const top = r - r * Math.SQRT1_2;
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.valence,
+        { width: dot, height: dot, borderRadius: dot / 2, backgroundColor: color, left: at - dot / 2 - 1.5, top: top - dot / 2 - 1.5 },
+      ]}
+    />
+  );
+}
 
 const styles = themed(() => ({
   ring: {
@@ -48,6 +66,11 @@ const styles = themed(() => ({
     backgroundColor: theme.colors.cardElevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  valence: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: theme.colors.bgDark, // separa el punto del anillo
   },
   initials: {
     fontFamily: theme.fonts.bold,

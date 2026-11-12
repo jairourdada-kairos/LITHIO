@@ -28,9 +28,12 @@ export const ScreenHeader: React.FC<Props> = ({ title, onBack, right }) => (
     ) : (
       <View style={styles.back} />
     )}
-    <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
-      {title}
-    </Text>
+    <View style={styles.titleWrap}>
+      <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
+        {title}
+      </Text>
+      <View style={styles.energyLine} />
+    </View>
     <View style={styles.right}>{right}</View>
   </View>
 );
@@ -49,9 +52,23 @@ const styles = themed(() => ({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  titleWrap: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+  },
+  energyLine: {
+    width: 36,
+    height: 2,
+    borderRadius: 1,
+    backgroundImage: theme.fx.energy,
   },
   title: {
-    flex: 1,
+    alignSelf: 'stretch',
     textAlign: 'center',
     fontFamily: theme.fonts.bold,
     fontSize: 18,  // AQUÍ poniendo otro número se cambia el tamaño del título arriba de cada pantalla

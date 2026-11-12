@@ -13,6 +13,7 @@ import { theme, themed } from '../../constants/theme';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService, DriverReviews } from '../../services/api';
+import { placeName } from '../../utils/text';
 
 interface Props {
   accent: string;
@@ -54,7 +55,7 @@ export const DriverReviewsScreen: React.FC<Props> = ({ accent, onBack }) => {
       {!data ? (
         <ActivityIndicator color={accent} style={{ marginTop: 48 }} />
       ) : (
-        <ScrollView
+        <ScrollView showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 32 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={accent} />}
         >
@@ -79,7 +80,7 @@ export const DriverReviewsScreen: React.FC<Props> = ({ accent, onBack }) => {
                 </View>
                 {review.origin ? (
                   <Text style={styles.route} numberOfLines={1}>
-                    {review.origin} → {review.destination}
+                    {placeName(review.origin)} → {placeName(review.destination)}
                     {review.passenger_name ? ` · ${review.passenger_name.split(' ')[0]}` : ''}
                   </Text>
                 ) : null}

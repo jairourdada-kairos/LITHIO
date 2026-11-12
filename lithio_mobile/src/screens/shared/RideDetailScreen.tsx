@@ -20,7 +20,10 @@ import { photoFormValue, pickDocumentPhoto } from '../../services/avatar';
 import { formatBs, useBcvRate } from '../../services/rates';
 import { statusInfo } from './RidesListScreen';
 import { ReviewModal } from '../../components/ReviewModal';
+import { Reveal, SkeletonCard } from '../../components/ui/Motion';
 import type { ReviewSubmission } from '../../types';
+import { placeName } from '../../utils/text';
+import { LiSeal } from '../../components/brand/LiSeal';
 
 interface Props {
   rideId: number;
@@ -31,7 +34,8 @@ interface Props {
 const PAYMENT_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
   pago_movil: 'Pago Móvil',
-  diamantes: 'Diamantes ◆',
+  pase: 'Pase de combo',
+  diamantes: 'Iones Li⁺',
   puntos: 'Fe',
 };
 
@@ -102,7 +106,11 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
     return (
       <View style={styles.root}>
         <ScreenHeader title="Detalle del viaje" onBack={onBack} />
-        <ActivityIndicator color={accent} style={{ marginTop: 48 }} />
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard />
+        </View>
       </View>
     );
   }
@@ -114,7 +122,7 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   return (
     <View style={styles.root}>
       <ScreenHeader title={`Viaje #${ride.id}`} onBack={onBack} />
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 32 }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 32 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.date}>{ride.is_scheduled && ride.scheduled_time ? ride.scheduled_time : formatDateTime(ride.created_at)}</Text>
           <Text style={[styles.chip, { color: status.color, borderColor: status.color }]}>{status.label}</Text>
@@ -128,8 +136,8 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
               <View style={[styles.dot, { backgroundColor: theme.colors.secondary }]} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.place}>{ride.origin}</Text>
-              <Text style={[styles.place, { marginTop: 18 }]}>{ride.destination}</Text>
+              <Text style={styles.place}>{placeName(ride.origin)}</Text>
+              <Text style={[styles.place, { marginTop: 18 }]}>{placeName(ride.destination)}</Text>
             </View>
           </View>
         </View>
@@ -150,8 +158,9 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
           </View>
         </Section>
 
-        <Section title="Pago">
+        <Section title="Pago" receipt>
           <Row label="Monto" value={`$${ride.fare_amount.toFixed(2)}${bcv ? ` · ${formatBs(ride.fare_amount, bcv)}` : ''}`} strong />
+          <Perforation />
           {ride.coupon_percent ? (
             <Row label="Cupón" value={`−${ride.coupon_percent}%${fullFare ? ` (antes $${fullFare.toFixed(2)})` : ''}`} />
           ) : null}
@@ -198,11 +207,11 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
           {ride.timeline.map((entry, index) => {
             const info = statusInfo()[entry.status] || { label: entry.status, color: theme.colors.textMuted };
             return (
-              <View key={`${entry.status}-${index}`} style={styles.step}>
-                <View style={[styles.stepDot, { backgroundColor: info.color }]} />
+              <Reveal key={`${entry.status}-${index}`} index={index + 1} style={styles.step}>
+                <View style={[styles.stepDot, { backgroundColor: info.color, boxShadow: `0 0 8px ${info.color}99` }]} />
                 <Text style={[styles.strong, styles.flex]}>{info.label}</Text>
-                <Text style={styles.muted}>{entry.at ? formatDateTime(entry.at) : ''}</Text>
-              </View>
+                <Text style={[styles.muted, styles.tabular]}>{entry.at ? formatDateTime(entry.at) : ''}</Text>
+              </Reveal>
             );
           })}
         </Section>
@@ -252,10 +261,29 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   );
 };
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+/** `receipt`: la tarjeta se ve como un recibo, con el sello de LITHIO de fondo. */
+const Section: React.FC<{ title: string; children: React.ReactNode; receipt?: boolean }> = ({ title, children, receipt }) => (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.card}>{children}</View>
+    <View style={[styles.card, receipt && styles.receiptCard]}>
+      {receipt ? (
+        <View style={styles.seal} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <LiSeal size={56} framed={false} />
+        </View>
+      ) : null}
+      {children}
+    </View>
+  </View>
+);
+
+/** Línea troquelada de recibo con dos muescas en los bordes de la tarjeta. */
+const Perforation: React.FC = () => (
+  <View style={styles.perforation} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+    <View style={[styles.notch, { left: -23 }]} />
+    <View style={styles.dashClip}>
+      <View style={styles.dashes} />
+    </View>
+    <View style={[styles.notch, { right: -23 }]} />
   </View>
 );
 
@@ -267,6 +295,14 @@ const Row: React.FC<{ label: string; value: string; strong?: boolean; mono?: boo
 );
 
 const styles = themed(() => ({
+  skeletons: {
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  tabular: {
+    fontVariant: ['tabular-nums'],
+  },
   root: {
     flex: 1,
     backgroundColor: theme.colors.bgDark,
@@ -306,6 +342,41 @@ const styles = themed(() => ({
     backgroundColor: theme.colors.surface,
     boxShadow: theme.glass.shadow,
     backgroundImage: theme.fx.sheen,
+  },
+  receiptCard: {
+    overflow: 'hidden',
+  },
+  seal: {
+    position: 'absolute',
+    right: 10,
+    bottom: 6,
+    opacity: 0.1, // CAMBIA AQUÍ qué tan visible es el sello de fondo del recibo
+  },
+  perforation: {
+    height: 14,
+    justifyContent: 'center',
+    marginVertical: 2,
+  },
+  notch: {
+    position: 'absolute',
+    top: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: theme.colors.bgDark,
+  },
+  // Android no dibuja bordes punteados de un solo lado: se recorta un cuadro punteado a 1 px.
+  dashClip: {
+    height: 1,
+    overflow: 'hidden',
+  },
+  dashes: {
+    height: 3,
+    borderWidth: 1,
+    borderRadius: 1,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.textMuted,
+    opacity: 0.6,
   },
   route: {
     flexDirection: 'row',

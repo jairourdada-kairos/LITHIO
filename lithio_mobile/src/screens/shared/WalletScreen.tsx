@@ -1,5 +1,5 @@
 /**
- * WalletScreen.tsx — Billetera: saldo en diamantes, Fe y movimientos
+ * WalletScreen.tsx — Billetera: saldo en iones, Fe y movimientos
  *
  * Pasajero: Recargar · A un enlace · Donar al Fondo Solidario.
  * Conductor: Retirar · Taller aliado · A un enlace.
@@ -10,18 +10,23 @@ import { View, Text, ScrollView, RefreshControl, Pressable, Alert, ActivityIndic
 import { Icon, IconName } from '../../components/ui/Icon';
 import { theme, themed } from '../../constants/theme';
 import { PressableScale } from '../../components/brand/PressableScale';
+import { EmptyState, IconChip, OrbitDecor, ScreenTitle, SectionLabel } from '../../components/ui/Decor';
+import { CountUp, Reveal, Sheen, SkeletonCard } from '../../components/ui/Motion';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
-import { apiService, WalletInfo, WalletTransaction } from '../../services/api';
+import { apiService, TopupMethod, WalletInfo, WalletTransaction } from '../../services/api';
 import { WalletActionSheet } from '../../components/WalletActionSheet';
 import { formatBs, useBcvRate } from '../../services/rates';
 import { photoFormValue, pickDocumentPhoto } from '../../services/avatar';
 import type { SessionRole } from '../../services/session';
+import { personName, plural } from '../../utils/text';
 
 export type WalletAction = 'recargar' | 'enviar' | 'donar' | 'retirar' | 'taller';
 
 interface Props {
   role: SessionRole;
   reloadKey: number;
+  /** Abre la recarga con ese método; `nonce` cambia en cada petición. */
+  recharge?: { method: TopupMethod; nonce: number } | null;
 }
 
 const KIND_ICONS: Record<string, IconName> = {
@@ -34,14 +39,24 @@ const KIND_ICONS: Record<string, IconName> = {
   pago_viaje: 'motorbike',
   retiro: 'arrow-circle-up-outline',
   taller: 'settings-2-outline',
+  bono_bienvenida: 'gift-outline',
+  combo: 'shopping-bag-outline',
 };
 
 const STATUS_TEXT: Record<string, string> = { pendiente: 'En revisión', aprobado: '', rechazado: 'Rechazado' };
 // Se pagan por Pago Móvil y llevan la captura del pago.
 const RECEIPT_KINDS = new Set(['recarga', 'donacion_pm']);
 
-export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
+export const WalletScreen: React.FC<Props> = ({ role, reloadKey, recharge }) => {
   const [action, setAction] = useState<WalletAction | null>(null);
+  const [topupMethod, setTopupMethod] = useState<TopupMethod>('pago_movil');
+  const rechargeNonce = recharge?.nonce;
+  const rechargeMethod = recharge?.method;
+  useEffect(() => {
+    if (!rechargeNonce) return;
+    setTopupMethod(rechargeMethod ?? 'pago_movil');
+    setAction('recargar');
+  }, [rechargeNonce, rechargeMethod]);
   const bcv = useBcvRate();
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,13 +98,18 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.diamond} />}
     >
-      <Text style={styles.title}>Billetera</Text>
+      <ScreenTitle>Billetera</ScreenTitle>
 
-      <View style={styles.balanceCard}>
+      <Reveal index={1} style={styles.balanceCard}>
+        <OrbitDecor color={theme.colors.diamond} />
+        <Sheen />
         <Text style={styles.muted}>{role === 'conductor' ? 'Ganancias disponibles' : 'Saldo disponible'}</Text>
-        <Text style={styles.balance}>◆ {(wallet?.balance ?? 0).toFixed(2)}</Text>
+        <View style={styles.balanceRow}>
+          <Text style={[styles.balance, styles.balanceUnit]}>Li⁺</Text>
+          <CountUp value={wallet?.balance ?? 0} decimals={2} style={styles.balance} />
+        </View>
         <Text style={styles.muted}>
-          {bcv ? `≈ ${formatBs(wallet?.balance ?? 0, bcv)} · ` : ''}1 ◆ = 1 USD · Fe {wallet?.points ?? 0}
+          {bcv ? `≈ ${formatBs(wallet?.balance ?? 0, bcv)} · ` : ''}1 Li⁺ = 1 USD · Fe {wallet?.points ?? 0}
         </Text>
         {bcv ? (
           <Text style={styles.muted}>
@@ -105,18 +125,26 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
               onPress={() => setAction(action.key)}
               accessibilityLabel={action.label}
             >
-              <View style={[styles.actionIcon, action.primary ? { backgroundColor: theme.colors.diamond } : null]}>
+              {/* Recargar se destaca solo con borde e ícono turquesa: los tres botones siguen iguales. */}
+              <View
+                style={[
+                  styles.actionIcon,
+                  action.primary
+                    ? { backgroundColor: `${theme.colors.primary}1F`, borderWidth: 1, borderColor: `${theme.colors.primary}66` }
+                    : null,
+                ]}
+              >
                 <Icon
                   name={action.icon}
                   size={22}
-                  color={action.primary ? theme.colors.bgDark : theme.colors.textPrimary}
+                  color={action.primary ? theme.colors.primary : theme.colors.textPrimary}
                 />
               </View>
               <Text style={styles.actionLabel}>{action.label}</Text>
             </PressableScale>
           ))}
         </View>
-      </View>
+      </Reveal>
 
       {role === 'pasajero' ? (
         <View style={styles.fund}>
@@ -125,22 +153,30 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
             <Text style={styles.fundTitle}>Fondo Solidario LITHIO</Text>
             <Text style={styles.fundBody}>Tus donaciones pagan viajes a estudiantes que lo necesitan.</Text>
             <View style={styles.fundStats}>
-              <Text style={styles.fundValue}>◆ {(wallet?.fund.donated ?? 0).toFixed(2)}</Text>
-              <Text style={styles.muted}> donados · {wallet?.fund.donors ?? 0} donantes</Text>
+              <Text style={styles.fundValue}>Li⁺ {(wallet?.fund.donated ?? 0).toFixed(2)}</Text>
+              <Text style={styles.muted}> donados · {plural(wallet?.fund.donors ?? 0, 'donante')}</Text>
             </View>
           </View>
         </View>
       ) : null}
 
       <View>
-        <Text style={styles.sectionTitle}>Movimientos</Text>
+        <SectionLabel style={styles.sectionTitle}>Movimientos</SectionLabel>
         {error ? <Text style={styles.muted}>{error}</Text> : null}
-        {wallet && wallet.transactions.length === 0 ? (
-          <Text style={styles.empty}>Aún no tienes movimientos. Tus recargas, viajes y envíos aparecerán aquí.</Text>
+        {!wallet && !error ? (
+          <View style={styles.skeletons}>
+            <SkeletonCard lines={1} />
+            <SkeletonCard lines={1} />
+            <SkeletonCard lines={1} />
+          </View>
+        ) : wallet && wallet.transactions.length === 0 ? (
+          <EmptyState text="Aún no tienes movimientos. Tus recargas, viajes y envíos aparecerán aquí." />
         ) : (
           <View style={styles.list}>
             {wallet?.transactions.map((tx, index) => (
-              <Movement key={tx.id} tx={tx} divider={index > 0} onReceiptSaved={load} />
+              <Reveal key={tx.id} index={Math.min(index, 8)}>
+                <Movement tx={tx} divider={index > 0} onReceiptSaved={load} />
+              </Reveal>
             ))}
           </View>
         )}
@@ -150,7 +186,12 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey }) => {
       action={action}
       balance={wallet?.balance ?? 0}
       pagoMovil={wallet?.pago_movil ?? null}
-      onClose={() => setAction(null)}
+      binancePay={wallet?.binance_pay ?? null}
+      initialTopupMethod={topupMethod}
+      onClose={() => {
+        setAction(null);
+        setTopupMethod('pago_movil');
+      }}
       onDone={load}
     />
     </>
@@ -179,12 +220,12 @@ const Movement: React.FC<{ tx: WalletTransaction; divider: boolean; onReceiptSav
     }
   };
   const color = tx.status === 'rechazado' ? theme.colors.textMuted : pending ? theme.colors.gold : incoming ? theme.colors.success : theme.colors.textPrimary;
-  const detail = [tx.counterpart_name, tx.note, STATUS_TEXT[tx.status]].filter(Boolean).join(' · ');
+  // Verde si entra, coral si sale, dorado si está en revisión
+  const chipColor = tx.status === 'rechazado' ? theme.colors.textMuted : pending ? theme.colors.gold : incoming ? theme.colors.success : theme.colors.secondary;
+  const detail = [personName(tx.counterpart_name), tx.note, STATUS_TEXT[tx.status]].filter(Boolean).join(' · ');
   return (
     <View style={[styles.movement, divider && styles.divider]}>
-      <View style={styles.movementIcon}>
-        <Icon name={KIND_ICONS[tx.kind] || 'swap-outline'} size={18} color={theme.colors.textSecondary} />
-      </View>
+      <IconChip name={KIND_ICONS[tx.kind] || 'swap-outline'} size={36} color={chipColor} />
       <View style={styles.flex}>
         <Text style={styles.movementLabel}>{tx.label}</Text>
         {detail ? <Text style={styles.movementDetail} numberOfLines={1}>{detail}</Text> : null}
@@ -244,8 +285,10 @@ const styles = themed(() => ({
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glow.soft,
     backgroundImage: theme.fx.sheen,
+    overflow: 'hidden',
   },
   balance: {
+    fontVariant: ['tabular-nums'],
     fontFamily: theme.fonts.bold,
     fontSize: 38,
     color: theme.colors.diamond,
@@ -269,6 +312,18 @@ const styles = themed(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceAlt,
+  },
+  skeletons: {
+    gap: 10,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  balanceUnit: {
+    fontSize: 24, // el símbolo Li⁺ más pequeño que la cifra, como una unidad
+    opacity: 0.85,
   },
   actionLabel: {
     fontFamily: theme.fonts.semibold,
@@ -307,9 +362,6 @@ const styles = themed(() => ({
     color: theme.colors.primary,
   },
   sectionTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 17,
-    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   empty: {
@@ -348,16 +400,17 @@ const styles = themed(() => ({
   },
   movementLabel: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 14.5,
+    fontSize: 15,
     color: theme.colors.textPrimary,
   },
   movementDetail: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.textMuted,
     marginTop: 2,
   },
   amount: {
+    fontVariant: ['tabular-nums'],
     fontFamily: theme.fonts.bold,
     fontSize: 15,
   },

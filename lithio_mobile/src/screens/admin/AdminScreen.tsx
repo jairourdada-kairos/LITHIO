@@ -190,7 +190,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Administración" onBack={onBack} />
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.secondary} />}
       >
@@ -240,7 +240,14 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <Fact label="Cédula" value={app.cedula} />
                     <Fact label="Licencia" value={app.license_number} />
                     <Fact label="Teléfono" value={app.phone} />
-                    <Fact label="Carrera" value={[app.career, app.semester && `${app.semester}°`].filter(Boolean).join(' · ')} />
+                    {app.occupation === 'trabajador' ? (
+                      <Fact label="Trabajador" value={[app.institution, app.work_area].filter(Boolean).join(' · ')} />
+                    ) : (
+                      <Fact
+                        label={app.occupation === 'estudiante' ? 'Estudiante' : 'Carrera'}
+                        value={[app.institution, app.career, app.semester && (/^\d+$/.test(app.semester) ? `${app.semester}°` : app.semester)].filter(Boolean).join(' · ')}
+                      />
+                    )}
                     <Fact label="Moto" value={`${app.moto.color}${app.moto.year ? ` · ${app.moto.year}` : ''} · casco extra: ${app.moto.helmet_provided ? 'sí' : 'no'}`} />
                     {app.inspection_date ? <Fact label="Inspección" value={app.inspection_date} /> : null}
                     {app.notes ? <Fact label="Nota" value={app.notes} /> : null}
@@ -284,7 +291,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                       <View style={styles.flex}>
                         <Text style={styles.name}>{route.origin} → {route.destination}</Text>
                         <Text style={styles.muted}>
-                          ${route.fare_usd.toFixed(2)}{bcv ? ` · ${formatBs(route.fare_usd, bcv)}` : ''} · {route.estimated_minutes} min
+                          {route.scope === 'interna' ? 'Interna' : 'Externa'} · ${route.fare_usd.toFixed(2)}{bcv ? ` · ${formatBs(route.fare_usd, bcv)}` : ''} · {route.estimated_minutes} min
                           {route.tag ? ` · ${route.tag}` : ''}
                         </Text>
                       </View>
@@ -350,7 +357,7 @@ export const AdminScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <Icon name={KIND_ICON[item.kind]} size={20} color={theme.colors.diamond} />
                   </View>
                   <View style={styles.flex}>
-                    <Text style={styles.name}>{item.label} · ◆ {Math.abs(item.amount).toFixed(2)}</Text>
+                    <Text style={styles.name}>{item.label} · Li⁺ {Math.abs(item.amount).toFixed(2)}</Text>
                     <Text style={styles.muted}>{item.user_name} · {item.user_email}</Text>
                   </View>
                 </View>
@@ -467,7 +474,7 @@ const styles = themed(() => ({
   },
   counterLabel: {
     fontFamily: theme.fonts.regular,
-    fontSize: 11.5,
+    fontSize: 12,
     color: theme.colors.textMuted,
     textAlign: 'center',
   },
@@ -522,7 +529,7 @@ const styles = themed(() => ({
   },
   name: {
     fontFamily: theme.fonts.bold,
-    fontSize: 15.5,
+    fontSize: 16,
     color: theme.colors.textPrimary,
   },
   muted: {
@@ -532,7 +539,7 @@ const styles = themed(() => ({
   },
   badge: {
     fontFamily: theme.fonts.semibold,
-    fontSize: 11.5,
+    fontSize: 12,
     color: theme.colors.gold,
     backgroundColor: theme.colors.goldSoft,
     paddingHorizontal: 9,
@@ -591,7 +598,7 @@ const styles = themed(() => ({
   },
   primaryText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14.5,
+    fontSize: 15,
   },
   kindIcon: {
     width: 40,

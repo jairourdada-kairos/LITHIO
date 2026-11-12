@@ -244,7 +244,7 @@ const styles = themed(() => ({
   },
   message: {
     fontFamily: theme.fonts.regular,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 21,
     textAlign: 'center',
     color: theme.colors.textSecondary,

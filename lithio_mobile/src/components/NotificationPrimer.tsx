@@ -23,7 +23,7 @@ const BENEFITS: Record<SessionRole, { icon: IconName; text: string }[]> = {
   pasajero: [
     { icon: 'motorbike', text: 'Cuando tu conductor acepta y va en camino' },
     { icon: 'pin-outline', text: 'Al llegar a tu destino, con el Fe que ganaste' },
-    { icon: 'award-outline', text: 'Recargas aprobadas y diamantes que te envían tus enlaces' },
+    { icon: 'award-outline', text: 'Recargas aprobadas y iones que te envían tus enlaces' },
   ],
 };
 

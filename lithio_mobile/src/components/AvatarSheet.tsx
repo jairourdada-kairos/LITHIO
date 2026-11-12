@@ -155,7 +155,7 @@ const styles = themed(() => ({
   },
   hint: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.textMuted,
     marginTop: 2,
   },

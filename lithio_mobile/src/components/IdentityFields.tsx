@@ -1,27 +1,27 @@
 /**
  * IdentityFields.tsx — Datos de identidad comunes a pasajero y conductor
  *
- * Nombres, apellidos, cédula, correo, carrera / semestre y teléfono, con la
- * validación y el formato que espera POST /api/{passengers|drivers}/register.
+ * Nombres, apellidos, cédula, correo, perfil (estudiante: carrera y semestre;
+ * trabajador: institución y área) y teléfono, con la validación y el formato
+ * que espera POST /api/{passengers|drivers}/register.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { FormField, fieldStyles } from './FormField';
+import { SelectField } from './SelectField';
 import {
   CedulaNationality,
-  SEMESTER_OPTIONS,
   collapseSpaces,
   formatCedula,
   normalizePhone,
-  validateCareer,
   validateCedulaDigits,
   validateGmail,
   validatePersonName,
   validatePhone,
-  validateSemester,
 } from '../utils/validation';
+import { FALLBACK_OPTIONS, Occupation, fetchRegistrationOptions } from '../utils/registrationOptions';
 
 export interface IdentityForm {
   name: string;
@@ -29,8 +29,12 @@ export interface IdentityForm {
   nationality: CedulaNationality;
   cedula_digits: string;
   email: string;
+  /** Estudiante (carrera y semestre) o trabajador (institución y área). */
+  occupation: Occupation | '';
+  institution: string;
   career: string;
   semester: string;
+  work_area: string;
   phone: string;
 }
 
@@ -42,8 +46,11 @@ export const EMPTY_IDENTITY: IdentityForm = {
   nationality: 'V',
   cedula_digits: '',
   email: '',
+  occupation: '',
+  institution: '',
   career: '',
   semester: '',
+  work_area: '',
   phone: '',
 };
 
@@ -59,10 +66,17 @@ export function validateIdentity(form: IdentityForm): IdentityErrors {
     last_name: validatePersonName(form.last_name, 'El apellido'),
     cedula_digits: validateCedulaDigits(form.cedula_digits),
     email: validateGmail(form.email),
-    career: validateCareer(form.career),
-    semester: validateSemester(form.semester),
+    occupation: form.occupation ? undefined : 'Elige si eres estudiante o trabajador',
     phone: validatePhone(form.phone),
   };
+  // El servidor comprueba que cada valor esté en sus listas; aquí solo se exige elegirlo.
+  if (form.occupation === 'estudiante') {
+    errors.career = form.career ? undefined : 'Elige tu carrera';
+    errors.semester = form.semester ? undefined : 'Selecciona tu semestre';
+  } else if (form.occupation === 'trabajador') {
+    errors.institution = form.institution ? undefined : 'Elige la institución donde trabajas';
+    errors.work_area = form.work_area ? undefined : 'Elige tu área de trabajo';
+  }
   (Object.keys(errors) as (keyof IdentityForm)[]).forEach((key) => {
     if (!errors[key]) delete errors[key];
   });
@@ -75,8 +89,12 @@ export function toIdentityPayload(form: IdentityForm) {
     last_name: collapseSpaces(form.last_name),
     cedula: formatCedula(form.nationality, form.cedula_digits),
     email: form.email.trim().toLowerCase(),
-    career: collapseSpaces(form.career),
-    semester: form.semester,
+    occupation: (form.occupation || 'estudiante') as Occupation,
+    institution: form.institution,
+    // Cada perfil envía solo sus datos.
+    ...(form.occupation === 'trabajador'
+      ? { work_area: form.work_area }
+      : { career: form.career, semester: form.semester }),
     phone: normalizePhone(form.phone),
   };
 }
@@ -91,7 +109,50 @@ interface Props {
   emailLocked?: boolean;
 }
 
-export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent = theme.colors.primary, emailLocked = false }) => (
+export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent = theme.colors.primary, emailLocked = false }) => {
+  // Listas del servidor; mientras llegan (o sin conexión) se usa la copia de la app.
+  const [options, setOptions] = useState(FALLBACK_OPTIONS);
+  useEffect(() => {
+    let alive = true;
+    void fetchRegistrationOptions().then((fresh) => {
+      if (alive && fresh) setOptions(fresh);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const chooseOccupation = (occupation: Occupation) => {
+    if (form.occupation === occupation) return;
+    onChange('occupation', occupation);
+    // Al cambiar de perfil se limpian los datos del otro. Por ahora los estudiantes son de una sola universidad.
+    onChange('institution', occupation === 'estudiante' ? options.student.institutions[0] : '');
+    onChange('career', '');
+    onChange('semester', '');
+    onChange('work_area', '');
+  };
+  const chooseWorkerInstitution = (institution: string) => {
+    if (form.institution === institution) return;
+    onChange('institution', institution);
+    onChange('work_area', ''); // Las áreas cambian con la institución (el comedor es solo del IVIC).
+  };
+  const studentInstitution = form.institution || options.student.institutions[0];
+  const careers = options.student.careers[studentInstitution] ?? [];
+  const areas = options.worker.areas[form.institution] ?? [];
+
+  const choiceButton = (key: string, text: string, selected: boolean, onPress: () => void, hasError: boolean) => (
+    <TouchableOpacity
+      key={key}
+      onPress={onPress}
+      style={[styles.choice, selected && { backgroundColor: accent, borderColor: accent }, hasError ? styles.chipError : null]}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+    >
+      <Text style={[styles.choiceText, selected && styles.chipTextSelected]}>{text}</Text>
+    </TouchableOpacity>
+  );
+
+  return (
   <>
     <View style={styles.row}>
       <FormField accent={accent}
@@ -166,50 +227,112 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       error={errors.email}
     />
 
-    <FormField accent={accent}
-      label="Carrera universitaria"
-      required
-      value={form.career}
-      onChangeText={(v) => onChange('career', v)}
-      placeholder="Ingeniería en Computación"
-      autoCapitalize="sentences"
-      error={errors.career}
-    />
-
-    <View style={styles.semesterGroup}>
+    <View style={styles.choiceGroup}>
       <Text style={fieldStyles.label}>
-        Semestre<Text style={{ color: theme.colors.secondary }}> *</Text>
+        ¿Qué eres en el campus?<Text style={{ color: theme.colors.secondary }}> *</Text>
       </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        accessibilityRole="radiogroup"
-        accessibilityLabel="Semestre"
-      >
-        {SEMESTER_OPTIONS.map((option) => {
-          const selected = form.semester === option;
-          return (
-            <TouchableOpacity
-              key={option}
-              onPress={() => onChange('semester', option)}
-              style={[
-                styles.chip,
-                selected && { backgroundColor: accent, borderColor: accent },
-                errors.semester && !form.semester ? styles.chipError : null,
-              ]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {/^\d+$/.test(option) ? `${option}°` : option}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      {errors.semester ? <Text style={styles.error}>{errors.semester}</Text> : null}
+      <View style={styles.choiceRow} accessibilityRole="radiogroup" accessibilityLabel="Estudiante o trabajador">
+        {choiceButton('estudiante', 'Estudiante', form.occupation === 'estudiante', () => chooseOccupation('estudiante'), !!errors.occupation)}
+        {choiceButton('trabajador', 'Trabajador', form.occupation === 'trabajador', () => chooseOccupation('trabajador'), !!errors.occupation)}
+      </View>
+      {errors.occupation ? <Text style={styles.error}>{errors.occupation}</Text> : null}
     </View>
+
+    {form.occupation === 'estudiante' ? (
+      <>
+        {options.student.institutions.length > 1 ? (
+          <SelectField
+            accent={accent}
+            label="Universidad"
+            required
+            value={studentInstitution}
+            options={options.student.institutions}
+            onSelect={(v) => {
+              if (v === form.institution) return;
+              onChange('institution', v);
+              onChange('career', '');
+            }}
+            placeholder="Elige tu universidad"
+            error={errors.institution}
+          />
+        ) : null}
+
+        <SelectField
+          accent={accent}
+          label={`Carrera (${studentInstitution})`}
+          required
+          value={form.career}
+          options={careers}
+          onSelect={(v) => onChange('career', v)}
+          placeholder="Elige tu carrera"
+          error={errors.career}
+        />
+
+        <View style={styles.semesterGroup}>
+          <Text style={fieldStyles.label}>
+            Semestre<Text style={{ color: theme.colors.secondary }}> *</Text>
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chips}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Semestre"
+          >
+            {options.student.semesters.map((option) => {
+              const selected = form.semester === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => onChange('semester', option)}
+                  style={[
+                    styles.chip,
+                    selected && { backgroundColor: accent, borderColor: accent },
+                    errors.semester && !form.semester ? styles.chipError : null,
+                  ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                >
+                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    {/^\d+$/.test(option) ? `${option}°` : option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          {errors.semester ? <Text style={styles.error}>{errors.semester}</Text> : null}
+        </View>
+      </>
+    ) : null}
+
+    {form.occupation === 'trabajador' ? (
+      <>
+        <View style={styles.choiceGroup}>
+          <Text style={fieldStyles.label}>
+            Institución donde trabajas<Text style={{ color: theme.colors.secondary }}> *</Text>
+          </Text>
+          <View style={styles.choiceRow} accessibilityRole="radiogroup" accessibilityLabel="Institución">
+            {options.worker.institutions.map((institution) =>
+              choiceButton(institution, institution, form.institution === institution, () => chooseWorkerInstitution(institution), !!errors.institution)
+            )}
+          </View>
+          {errors.institution ? <Text style={styles.error}>{errors.institution}</Text> : null}
+        </View>
+
+        {form.institution ? (
+          <SelectField
+            accent={accent}
+            label={`Área (${form.institution})`}
+            required
+            value={form.work_area}
+            options={areas}
+            onSelect={(v) => onChange('work_area', v)}
+            placeholder="Elige tu área de trabajo"
+            error={errors.work_area}
+          />
+        ) : null}
+      </>
+    ) : null}
 
     <FormField accent={accent}
       label="Teléfono celular"
@@ -223,7 +346,8 @@ export const IdentityFields: React.FC<Props> = ({ form, errors, onChange, accent
       error={errors.phone}
     />
   </>
-);
+  );
+};
 
 const styles = themed(() => ({
   row: {
@@ -258,6 +382,29 @@ const styles = themed(() => ({
   },
   semesterGroup: {
     marginBottom: 16,
+  },
+  choiceGroup: {
+    marginBottom: 16,
+  },
+  // Botones iguales, lado a lado (Estudiante / Trabajador, UNC / IVIC).
+  choiceRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  choice: {
+    flex: 1,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBgStrong,
+  },
+  choiceText: {
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.textSecondary,
+    fontSize: 16,
   },
   chips: {
     gap: 8,

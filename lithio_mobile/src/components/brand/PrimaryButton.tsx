@@ -52,9 +52,12 @@ const styles = themed(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   label: {
     fontFamily: theme.fonts.bold,
+    letterSpacing: 0.3,
     color: theme.colors.bgDark,
     fontSize: 16,  // AQUÍ poniendo otro número se cambia el tamaño de la letra de TODOS los botones grandes
   },

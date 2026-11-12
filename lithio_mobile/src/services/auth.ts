@@ -111,6 +111,9 @@ export interface AuthUser {
   cedula?: string;
   career?: string;
   semester?: string;
+  occupation?: 'estudiante' | 'trabajador' | null;
+  institution?: string | null;
+  work_area?: string | null;
   role: 'pasajero' | 'conductor' | 'ambos' | 'admin';
   avatar_url?: string;
   points: number;
@@ -127,8 +130,11 @@ export interface IdentitySignUpData {
   last_name: string;
   cedula: string;
   email: string;
-  career: string;
-  semester: string;
+  occupation: 'estudiante' | 'trabajador';
+  institution: string;
+  career?: string;
+  semester?: string;
+  work_area?: string;
   phone: string;
   avatar_url?: string;
 }

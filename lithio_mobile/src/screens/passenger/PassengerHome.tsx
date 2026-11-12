@@ -15,10 +15,13 @@ import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanima
 import { theme, themed } from '../../constants/theme';
 import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
+import { SectionLabel } from '../../components/ui/Decor';
+import { MotoTrack, Sheen } from '../../components/ui/Motion';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import type { AuthUser } from '../../services/auth';
 import type { AccountSummary } from '../../services/api';
 import type { PresetRoute, Ride } from '../../types';
+import { placeName } from '../../utils/text';
 
 interface Props {
   user: AuthUser;
@@ -49,6 +52,9 @@ const STATUS_LABEL: Record<string, string> = {
   en_curso: 'Viaje en curso',
   completado: 'Viaje completado · califícalo',
 };
+
+/** Hasta dónde llegó la moto en la pista según el estado del viaje. */
+const RIDE_PROGRESS: Record<string, number> = { solicitado: 0, aceptado: 0.2, en_camino: 0.45, en_curso: 0.75, completado: 1 };
 
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const enter = (index: number) =>
@@ -103,8 +109,9 @@ export const PassengerHome: React.FC<Props> = ({
             <View style={styles.flex}>
               <Text style={styles.activeTitle}>{STATUS_LABEL[activeRide.status] || 'Viaje activo'}</Text>
               <Text style={styles.activeRoute} numberOfLines={1}>
-                {activeRide.origin} → {activeRide.destination}
+                {placeName(activeRide.origin)} → {placeName(activeRide.destination)}
               </Text>
+              <MotoTrack color={theme.colors.primary} progress={RIDE_PROGRESS[activeRide.status] ?? 0.1} style={styles.rideTrack} />
             </View>
             <Icon name="chevron-right-outline" size={24} color={theme.colors.primary} />
           </PressableScale>
@@ -169,6 +176,7 @@ export const PassengerHome: React.FC<Props> = ({
       ) : null}
 
       <Animated.View entering={enter(2)} style={styles.hero}>
+        <Sheen delay={500} />
         {/* Órbitas decorativas: el átomo de la marca, sin cargar la tarjeta */}
         <View style={styles.watermark} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
           {[0, 60, -60].map((tilt) => (
@@ -202,8 +210,8 @@ export const PassengerHome: React.FC<Props> = ({
             >
               <View style={[styles.dot, { backgroundColor: index === 0 ? theme.colors.primary : theme.colors.secondary }]} />
               <View style={styles.flex}>
-                <Text style={styles.suggestionText} numberOfLines={1}>
-                  {route.origin} → {route.destination}
+                <Text style={styles.suggestionText} numberOfLines={2}>
+                  {placeName(route.origin)} → {placeName(route.destination)}
                 </Text>
                 <Text style={styles.suggestionTime}>{route.estimated_minutes} min</Text>
               </View>
@@ -228,8 +236,8 @@ export const PassengerHome: React.FC<Props> = ({
       <Animated.View entering={enter(3)}>
         <PressableScale variant="glass" style={styles.energy} onPress={onOpenWallet} accessibilityLabel="Abrir billetera">
           <View style={styles.flex}>
-            <Text style={styles.energyLabel}>Diamantes</Text>
-            <Text style={[styles.energyValue, { color: theme.colors.diamond }]}>◆ {diamonds.toFixed(2)}</Text>
+            <Text style={styles.energyLabel}>Iones</Text>
+            <Text style={[styles.energyValue, { color: theme.colors.diamond }]}>Li⁺ {diamonds.toFixed(2)}</Text>
           </View>
           <View style={styles.divider} />
           <View style={[styles.flex, styles.energyRight]}>
@@ -241,7 +249,7 @@ export const PassengerHome: React.FC<Props> = ({
       </Animated.View>
 
       <Animated.View entering={enter(4)}>
-        <Text style={styles.sectionTitle}>Explora</Text>
+        <SectionLabel style={styles.sectionTitle}>Explora</SectionLabel>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
           <ExploreCard
             icon="droplet-outline"
@@ -577,9 +585,11 @@ const styles = themed(() => ({
     backgroundColor: theme.colors.glassBorder,
   },
   energyLabel: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontFamily: theme.fonts.semibold,
+    fontSize: 12,
     color: theme.colors.textMuted,
+    textTransform: 'uppercase', // etiqueta pequeña en mayúsculas espaciadas, igual que en el detalle del viaje
+    letterSpacing: 0.8,
   },
   energyValue: {
     fontFamily: theme.fonts.bold,
@@ -587,10 +597,10 @@ const styles = themed(() => ({
     marginTop: 2,
   },
   sectionTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 17,
-    color: theme.colors.textPrimary,
     marginBottom: 12,
+  },
+  rideTrack: {
+    marginTop: 6,
   },
   carousel: {
     gap: 12,
@@ -616,12 +626,12 @@ const styles = themed(() => ({
   },
   exploreTitle: {
     fontFamily: theme.fonts.bold,
-    fontSize: 14.5,
+    fontSize: 15,
     color: theme.colors.textPrimary,
   },
   exploreCaption: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.textSecondary,
   },
 }));

@@ -2,7 +2,9 @@
  * LithiumAtom.tsx — Emblema animado de LITHIO
  *
  * Átomo de litio (Z = 3): núcleo con 3 protones (coral) y 4 neutrones, y
- * 3 electrones (turquesa) en órbitas elípticas inclinadas.
+ * 3 electrones en dos capas, como su configuración real (1s² 2s¹): dos turquesa
+ * en la capa interna y uno coral en la externa, el electrón de valencia, el
+ * que el litio cede con facilidad: el que "sale de viaje".
  *
  * La posición de cada electrón se calcula en un worklet sobre el hilo de UI
  * (Reanimated), así que la órbita no se traba aunque JS esté ocupado.
@@ -29,14 +31,10 @@ interface Props {
   animated?: boolean;
 }
 
-// Tres órbitas a 60° entre sí, como el símbolo clásico del átomo.
-const ORBITS = [
-  { tilt: 0, phase: 0 },
-  { tilt: Math.PI / 3, phase: 1 / 3 },
-  { tilt: -Math.PI / 3, phase: 2 / 3 },
-];
-const ORBIT_MINOR_RATIO = 0.36;
-const ORBIT_PERIOD_MS = 4200;
+// Capa externa: elipse inclinada. CAMBIA AQUÍ la inclinación (grados) o qué tan achatada es (0 a 1).
+const OUTER_TILT = (-30 * Math.PI) / 180;
+const OUTER_MINOR_RATIO = 0.5;
+const ORBIT_PERIOD_MS = 5200; // CAMBIA AQUÍ la velocidad de giro (ms por vuelta de la capa externa)
 
 // Disposición fija de los 7 nucleones (3 protones, 4 neutrones), en unidades del radio del núcleo.
 // Se dibujan en orden: los protones van al final para quedar encima.
@@ -64,7 +62,7 @@ export const LithiumAtom: React.FC<Props> = ({ size = 200, animated = true }) =>
 
   const radius = size / 2;
   const majorAxis = radius * 0.92;
-  const minorAxis = majorAxis * ORBIT_MINOR_RATIO;
+  const innerRadius = radius * 0.4;
   const nucleusRadius = size * 0.11;
   const nucleonSize = nucleusRadius * 0.78;
   const electronSize = Math.max(6, size * 0.055);
@@ -75,20 +73,21 @@ export const LithiumAtom: React.FC<Props> = ({ size = 200, animated = true }) =>
       accessibilityRole="image"
       accessibilityLabel="Átomo de litio, emblema de LITHIO"
     >
-      {ORBITS.map((orbit, index) => (
-        <View
-          key={`orbit-${index}`}
-          style={[
-            styles.orbit,
-            {
-              width: majorAxis * 2,
-              height: majorAxis * 2,
-              borderRadius: majorAxis,
-              transform: [{ rotate: `${orbit.tilt}rad` }, { scaleY: ORBIT_MINOR_RATIO }],
-            },
-          ]}
-        />
-      ))}
+      {/* Capa interna (1s): círculo */}
+      <View style={[styles.orbit, { width: innerRadius * 2, height: innerRadius * 2, borderRadius: innerRadius }]} />
+      {/* Capa externa (2s): elipse inclinada */}
+      <View
+        style={[
+          styles.orbit,
+          styles.outerOrbit,
+          {
+            width: majorAxis * 2,
+            height: majorAxis * 2,
+            borderRadius: majorAxis,
+            transform: [{ rotate: `${OUTER_TILT}rad` }, { scaleY: OUTER_MINOR_RATIO }],
+          },
+        ]}
+      />
 
       <View style={[styles.nucleus, { width: nucleusRadius * 2.4, height: nucleusRadius * 2.4, borderRadius: nucleusRadius * 1.2 }]}>
         {NUCLEONS.map((nucleon, index) => (
@@ -111,17 +110,10 @@ export const LithiumAtom: React.FC<Props> = ({ size = 200, animated = true }) =>
         ))}
       </View>
 
-      {ORBITS.map((orbit, index) => (
-        <Electron
-          key={`electron-${index}`}
-          progress={progress}
-          tilt={orbit.tilt}
-          phase={orbit.phase}
-          majorAxis={majorAxis}
-          minorAxis={minorAxis}
-          size={electronSize}
-        />
+      {[0, 0.5].map((phase) => (
+        <Electron key={phase} progress={progress} turns={2} tilt={0} phase={phase} majorAxis={innerRadius} minorAxis={innerRadius} size={electronSize} />
       ))}
+      <Electron progress={progress} turns={1} tilt={OUTER_TILT} phase={0} majorAxis={majorAxis} minorAxis={majorAxis * OUTER_MINOR_RATIO} size={electronSize * 1.45} valence depth />
     </View>
   );
 };
@@ -130,21 +122,27 @@ interface ElectronProps {
   progress: SharedValue<number>;
   tilt: number;
   phase: number;
+  /** Vueltas por ciclo: la capa interna gira el doble de rápido. */
+  turns: number;
+  /** Electrón de valencia: coral y más grande. */
+  valence?: boolean;
+  /** Simula profundidad (más grande delante del núcleo). */
+  depth?: boolean;
   majorAxis: number;
   minorAxis: number;
   size: number;
 }
 
-const Electron: React.FC<ElectronProps> = ({ progress, tilt, phase, majorAxis, minorAxis, size }) => {
+const Electron: React.FC<ElectronProps> = ({ progress, tilt, phase, turns, valence, depth: withDepth, majorAxis, minorAxis, size }) => {
   const cosTilt = Math.cos(tilt);
   const sinTilt = Math.sin(tilt);
 
   const style = useAnimatedStyle(() => {
-    const angle = (progress.get() + phase) * Math.PI * 2;
+    const angle = (progress.get() * turns + phase) * Math.PI * 2;
     const x = majorAxis * Math.cos(angle);
     const y = minorAxis * Math.sin(angle);
     // Profundidad simulada: delante del núcleo el electrón es más grande y brillante.
-    const depth = (Math.sin(angle) + 1) / 2;
+    const depth = withDepth ? (Math.sin(angle) + 1) / 2 : 0.7;
     return {
       opacity: 0.55 + depth * 0.45,
       transform: [
@@ -157,7 +155,7 @@ const Electron: React.FC<ElectronProps> = ({ progress, tilt, phase, majorAxis, m
 
   return (
     <Animated.View
-      style={[styles.electron, { width: size, height: size, borderRadius: size / 2 }, style]}
+      style={[styles.electron, valence && styles.valence, { width: size, height: size, borderRadius: size / 2 }, style]}
     />
   );
 };
@@ -186,6 +184,13 @@ const styles = themed(() => ({
   },
   neutron: {
     backgroundColor: '#5E7178',
+  },
+  outerOrbit: {
+    borderWidth: 2,
+  },
+  valence: {
+    backgroundColor: theme.colors.secondary, // CAMBIA AQUÍ el color del electrón de valencia (el que viaja)
+    boxShadow: '0 0 14px rgba(255, 118, 94, 0.85)',
   },
   electron: {
     position: 'absolute',

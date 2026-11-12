@@ -16,6 +16,7 @@ import type { AuthUser } from '../services/auth';
 import { useRideCenter } from '../hooks/useRideCenter';
 import { GlassBlurScope, GlassBlurTarget } from '../components/ui/GlassSurface';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
+import { ScreenFade } from '../components/ui/Motion';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { AboutLithioModal } from '../components/AboutLithioModal';
@@ -324,7 +325,9 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <GlassBlurScope>
-        <GlassBlurTarget style={styles.content}>{renderTab()}</GlassBlurTarget>
+        <GlassBlurTarget style={styles.content}>
+          <ScreenFade key={`${tab}-${overlay ?? ''}-${profileOpen ? 'perfil' : ''}`}>{renderTab()}</ScreenFade>
+        </GlassBlurTarget>
 
         {!profileOpen && !overlay ? (
           <BottomTabBar<Tab>

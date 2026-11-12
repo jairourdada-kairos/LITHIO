@@ -15,6 +15,9 @@ import { theme, themed } from '../../constants/theme';
 import { Avatar } from '../ui/Avatar';
 import { PressableScale } from '../brand/PressableScale';
 import type { Ride } from '../../types';
+import { Breathe } from '../ui/Motion';
+import { hapticSuccess } from '../../services/haptics';
+import { placeName } from '../../utils/text';
 
 const RESPONSE_SECONDS = 25;
 const PAYMENT_LABEL: Record<string, string> = {
@@ -37,6 +40,7 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
 
   useEffect(() => {
     if (!ride) return;
+    hapticSuccess();
     setSeconds(RESPONSE_SECONDS);
     const timer = setInterval(() => setSeconds((s) => s - 1), 1000);
     return () => clearInterval(timer);
@@ -47,7 +51,8 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
   }, [seconds, ride, onDismiss]);
 
   if (!ride) return null;
-  const diamonds = ride.payment_method === 'diamantes';
+  // Con un pase de combo el conductor también cobra la tarifa en iones.
+  const diamonds = ride.payment_method === 'diamantes' || ride.payment_method === 'pase';
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onDismiss} statusBarTranslucent>
@@ -62,7 +67,9 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
         <View style={styles.headerRow}>
           <View style={styles.flex}>
             <View style={styles.kickerRow}>
-              <View style={styles.liveDot} />
+              <Breathe>
+                <View style={styles.liveDot} />
+              </Breathe>
               <Text style={styles.kicker}>Nueva solicitud</Text>
             </View>
             <Text style={styles.muted}>Responde en {Math.max(seconds, 0)} s</Text>
@@ -87,8 +94,8 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
             <View style={[styles.stopDot, { backgroundColor: theme.colors.secondary }]} />
           </View>
           <View style={styles.places}>
-            <Text style={styles.place} numberOfLines={1}>{ride.origin}</Text>
-            <Text style={styles.place} numberOfLines={1}>{ride.destination}</Text>
+            <Text style={styles.place} numberOfLines={1}>{placeName(ride.origin)}</Text>
+            <Text style={styles.place} numberOfLines={1}>{placeName(ride.destination)}</Text>
           </View>
         </View>
 
@@ -102,7 +109,7 @@ export const RequestSheet: React.FC<Props> = ({ ride, busy, onAccept, onReject, 
             <Text style={styles.paymentText}>{PAYMENT_LABEL[ride.payment_method] || ride.payment_method}</Text>
           </View>
           <Text style={[styles.fare, diamonds && { color: theme.colors.diamond }]}>
-            {diamonds ? '◆' : '$'} {ride.fare_amount.toFixed(2)}
+            {diamonds ? 'Li⁺' : '$'} {ride.fare_amount.toFixed(2)}
           </Text>
         </View>
 

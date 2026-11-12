@@ -9,11 +9,13 @@
  */
 
 import { View, Text } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { filledIcon, Icon, IconName } from '../ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
 import { GlassSurface } from '../ui/GlassSurface';
 import { PressableScale } from '../brand/PressableScale';
+import { hapticSelect } from '../../services/haptics';
 
 export interface TabItem<K extends string> {
   key: K;
@@ -32,6 +34,8 @@ interface Props<K extends string> {
 
 export const TAB_BAR_HEIGHT = 64;
 
+const TAB_RESIZE = LinearTransition.duration(200); // CAMBIA AQUÍ la duración (ms) del ensanche de la pestaña activa
+
 export function BottomTabBar<K extends string>({ tabs, active, onChange, accent = theme.colors.primary }: Props<K>) {
   const insets = useSafeAreaInsets();
   return (
@@ -40,25 +44,32 @@ export function BottomTabBar<K extends string>({ tabs, active, onChange, accent 
         {tabs.map((tab) => {
           const selected = tab.key === active;
           return (
+            // La pestaña activa se ensancha con una transición corta en lugar de saltar.
+            <Animated.View key={tab.key} layout={TAB_RESIZE} style={[styles.slot, selected && { flex: 2 }]}>
             <PressableScale
-              key={tab.key}
               variant="glass"
               accent={accent}
-              onPress={() => onChange(tab.key)}
+              onPress={() => {
+                if (!selected) hapticSelect();
+                onChange(tab.key);
+              }}
               containerStyle={styles.tab}
               style={[styles.pill, selected && { backgroundImage: theme.fx.tint(accent), borderColor: `${accent}59`, boxShadow: `0 4px 16px ${accent}40` }]}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={tab.label}
             >
-                <Icon name={selected ? filledIcon(tab.icon) : tab.icon} size={22} color={selected ? accent : theme.colors.textMuted} />
-                {selected ? <Text style={[styles.label, { color: accent }]}>{tab.label}</Text> : null}
-                {tab.badge ? (
-                  <View style={[styles.badge, { backgroundColor: theme.colors.secondary }]}>
-                    <Text style={styles.badgeText}>{tab.badge > 9 ? '9+' : tab.badge}</Text>
-                  </View>
-                ) : null}
+                <View>
+                  <Icon name={selected ? filledIcon(tab.icon) : tab.icon} size={22} color={selected ? accent : theme.colors.textMuted} />
+                  {tab.badge ? (
+                    <View style={[styles.badge, { backgroundColor: theme.colors.secondary }]}>
+                      <Text style={styles.badgeText}>{tab.badge > 9 ? '9+' : tab.badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                {selected ? <Text style={[styles.label, { color: accent }]} numberOfLines={1}>{tab.label}</Text> : null}
             </PressableScale>
+            </Animated.View>
           );
         })}
       </GlassSurface>
@@ -80,6 +91,10 @@ const styles = themed(() => ({
     alignItems: 'center',
     borderRadius: 32,
     paddingHorizontal: 6,
+  },
+  slot: {
+    flex: 1,
+    alignSelf: 'stretch',
   },
   tab: {
     flex: 1,
@@ -103,18 +118,18 @@ const styles = themed(() => ({
   },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -6,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
     fontFamily: theme.fonts.bold,
-    fontSize: 9,
+    fontSize: 11,
     color: theme.colors.onAccent,
   },
 }));

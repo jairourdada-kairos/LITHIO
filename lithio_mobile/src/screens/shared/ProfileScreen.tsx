@@ -167,8 +167,17 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
     ['Apellidos', current.last_name],
     ['Correo electrónico', current.email],
     ['Teléfono', current.phone],
-    ['Carrera', profile?.career ?? user.career],
-    ['Semestre', semesterLabel(profile?.semester ?? user.semester)],
+    ...((profile?.occupation ?? user.occupation) === 'trabajador'
+      ? ([
+          ['Perfil', 'Trabajador'],
+          ['Institución', profile?.institution ?? user.institution ?? undefined],
+          ['Área', profile?.work_area ?? user.work_area ?? undefined],
+        ] as [string, string | undefined][])
+      : ([
+          ...((profile?.institution ?? user.institution) ? [['Universidad', (profile?.institution ?? user.institution) as string]] : []),
+          ['Carrera', profile?.career ?? user.career],
+          ['Semestre', semesterLabel(profile?.semester ?? user.semester)],
+        ] as [string, string | undefined][])),
   ];
 
   return (
@@ -185,7 +194,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
         }
       />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
           <View style={styles.avatar}>
             <Avatar name={fullName} uri={user.avatar_url} size={96} ringColor={accent} />
           </View>
@@ -333,7 +342,7 @@ const styles = themed(() => ({
   },
   note: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 18,
     color: theme.colors.textMuted,
     textAlign: 'center',

@@ -58,9 +58,6 @@ export const AuthScreen: React.FC<Props> = ({ onSelectPassenger, onSelectDriver,
           <Text style={styles.wordmark} accessibilityRole="header">
             <Text style={styles.wordmarkAccent}>LI</Text>THIO
           </Text>
-          <Text style={styles.acronym}>
-            Linked Intelligent Transport for Higher Innovative Opportunities
-          </Text>
           <Text style={styles.tagline}>Energía universitaria en movimiento.</Text>
         </Animated.View>
 
@@ -191,7 +188,7 @@ const styles = themed(() => ({
   },
   acronym: {
     fontFamily: theme.fonts.mono,
-    fontSize: 10,
+    fontSize: 11,
     color: theme.colors.textMuted,
     textAlign: 'center',
     marginTop: 6,

@@ -10,12 +10,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Alert, BackHandler, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
-import { apiService, AccountSummary } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiService, AccountSummary, TopupMethod } from '../services/api';
 import { wsService } from '../services/websocket';
 import type { AuthUser } from '../services/auth';
 import { useRideCenter } from '../hooks/useRideCenter';
 import { GlassBlurScope, GlassBlurTarget } from '../components/ui/GlassSurface';
 import { BottomTabBar } from '../components/nav/BottomTabBar';
+import { ScreenFade } from '../components/ui/Motion';
 import { NoticeBanner } from '../components/ui/NoticeBanner';
 import { useAdminAlerts } from '../hooks/useAdminAlerts';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
@@ -40,7 +42,7 @@ import { AvatarSheet } from '../components/AvatarSheet';
 import { FALLBACK_LEVEL } from '../utils/elements';
 import type { Driver, PaymentMethod, PresetRoute, ReviewSubmission } from '../types';
 
-type Tab = 'home' | 'trips' | 'wallet' | 'profile';
+type Tab = 'home' | 'trips' | 'fe' | 'wallet' | 'profile';
 type Overlay =
   | { type: 'trip'; route?: PresetRoute; scheduled?: boolean }
   | { type: 'ride' }
@@ -73,7 +75,9 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState<{ driver: Driver; selection: TripSelection } | null>(null);
   const [reviewTarget, setReviewTarget] = useState<{ rideId: number; driverName: string } | null>(null);
-  const [rewardsVisible, setRewardsVisible] = useState(false);
+  // Petición de abrir la recarga de iones (desde un viaje, la tienda o el aviso de bienvenida).
+  const [recharge, setRecharge] = useState<{ method: TopupMethod; nonce: number } | null>(null);
+  const [tutorialChecked, setTutorialChecked] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
@@ -106,7 +110,10 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
 
   useEffect(() => {
     void loadData();
-    shouldShowTutorial(user.id, 'pasajero').then(setTutorialVisible);
+    shouldShowTutorial(user.id, 'pasajero').then((show) => {
+      setTutorialVisible(show);
+      setTutorialChecked(true);
+    });
     // El directorio y la billetera se actualizan en vivo.
     return wsService.subscribe((msg) => {
       if (msg.type === 'DRIVER_AVAILABILITY_CHANGED') {
@@ -118,7 +125,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     });
   }, [loadData, loadSummary, user.id]);
 
-  // Cada cambio de estado del viaje puede sumar Fe, mover diamantes o el historial.
+  // Cada cambio de estado del viaje puede sumar Fe, mover iones o el historial.
   const rideStatus = rides.activeRide?.status;
   useEffect(() => {
     loadSummary();
@@ -147,6 +154,42 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     });
     return () => sub.remove();
   }, [overlay, tab, pending, reviewTarget]);
+
+  const openRecharge = useCallback((method: TopupMethod = 'pago_movil') => {
+    setPending(null);
+    setOverlay(null);
+    setTab('wallet');
+    setRecharge({ method, nonce: Date.now() });
+  }, []);
+
+  // Cuenta nueva: avisa una sola vez de los iones de bienvenida e invita a recargar.
+  // Espera a que se cierre el tutorial para no tapar una ventana con otra.
+  useEffect(() => {
+    if (!tutorialChecked || tutorialVisible) return;
+    const key = `lithio.bonoBienvenida.${user.id}`;
+    let cancelled = false;
+    (async () => {
+      if (await AsyncStorage.getItem(key)) return;
+      const wallet = await apiService.getWallet();
+      if (cancelled) return;
+      await AsyncStorage.setItem(key, '1');
+      const bonus = wallet.transactions.find((tx) => tx.kind === 'bono_bienvenida');
+      // Solo a cuentas recientes: quien ya lleva tiempo en LITHIO no necesita el aviso.
+      const recent = bonus ? Date.now() - new Date(`${bonus.created_at}Z`).getTime() < 7 * 24 * 3600 * 1000 : false;
+      if (!bonus || !recent) return;
+      Alert.alert(
+        '¡Bienvenido a LITHIO!',
+        `Te regalamos Li⁺ ${bonus.amount.toFixed(2)} para tus primeros viajes. Recarga cuando quieras para seguir viajando sin efectivo.`,
+        [
+          { text: 'Entendido', style: 'cancel' },
+          { text: 'Recargar', onPress: () => openRecharge() },
+        ],
+      );
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tutorialChecked, tutorialVisible, user.id, openRecharge]);
 
   // Si falla, la pantalla del viaje lo dice y deja reintentar: una lista vacía no es lo mismo que una red caída.
   const loadDrivers = () => {
@@ -192,7 +235,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
     const message =
       ride.status === 'solicitado'
         ? '¿Seguro que quieres cancelar esta solicitud?'
-        : `¿Seguro que quieres cancelar el viaje? ${ride.driver_name || 'El conductor'} recibirá un aviso${ride.payment_method === 'diamantes' ? ' y te devolvemos los diamantes' : ''}.`;
+        : `¿Seguro que quieres cancelar el viaje? ${ride.driver_name || 'El conductor'} recibirá un aviso${ride.payment_method === 'diamantes' ? ' y te devolvemos los diamantes' : ride.payment_method === 'pase' ? ' y te devolvemos el pase' : ''}.`;
     Alert.alert('Cancelar viaje', message, [
       { text: 'No', style: 'cancel' },
       {
@@ -357,7 +400,18 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           />
         );
       case 'wallet':
-        return <WalletScreen role="pasajero" reloadKey={reloadKey} />;
+        return <WalletScreen role="pasajero" reloadKey={reloadKey} recharge={recharge} />;
+      case 'fe':
+        return (
+          <FeStoreModal
+            variant="screen"
+            visible
+            reloadKey={reloadKey}
+            onClose={() => setTab('home')}
+            onPointsChanged={(value) => setSummary((prev) => (prev ? { ...prev, points: value } : prev))}
+            onRecharge={() => openRecharge()}
+          />
+        );
       case 'profile':
         return (
           <AccountScreen
@@ -369,7 +423,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
             onOpenLevel={() => setOverlay({ type: 'level' })}
             onOpenAdmin={summary?.is_admin ? () => setOverlay({ type: 'admin' }) : undefined}
             onOpenLinks={() => setOverlay({ type: 'links' })}
-            onOpenRewards={() => setRewardsVisible(true)}
+            onOpenRewards={() => setTab('fe')}
             onOpenTutorial={() => setTutorialVisible(true)}
             onOpenAbout={() => setAboutVisible(true)}
             onSignOut={onSignOut}
@@ -394,7 +448,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
             onOpenProfile={() => setTab('profile')}
             onOpenQuiz={() => setOverlay({ type: 'quiz' })}
             onOpenLinks={() => setOverlay({ type: 'links' })}
-            onOpenRewards={() => setRewardsVisible(true)}
+            onOpenRewards={() => setTab('fe')}
             onOpenAbout={() => setAboutVisible(true)}
           />
         );
@@ -404,13 +458,16 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <GlassBlurScope>
-        <GlassBlurTarget style={styles.content}>{overlay ? renderOverlay() : renderTab()}</GlassBlurTarget>
+        <GlassBlurTarget style={styles.content}>
+          <ScreenFade key={overlay ? `overlay-${overlay.type}` : `tab-${tab}`}>{overlay ? renderOverlay() : renderTab()}</ScreenFade>
+        </GlassBlurTarget>
 
         {!overlay ? (
           <BottomTabBar<Tab>
             tabs={[
               { key: 'home', label: 'Inicio', icon: 'home-outline' },
               { key: 'trips', label: 'Viajes', icon: 'navigation-2-outline', badge: summary?.scheduled_count },
+              { key: 'fe', label: 'Tienda Fe', icon: 'shopping-bag-outline' },
               { key: 'wallet', label: 'Billetera', icon: 'credit-card-outline' },
               { key: 'profile', label: 'Perfil', icon: 'person-outline' },
             ]}
@@ -443,8 +500,10 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           fareAmount={pending?.selection.route.fare_usd || 0}
           isScheduled={Boolean(pending?.selection.isScheduled)}
           scheduledTime={pending?.selection.scheduledTime || ''}
+          routeScope={pending?.selection.route.scope}
           onClose={() => setPending(null)}
           onConfirm={confirmRide}
+          onRecharge={openRecharge}
         />
 
         {/* Siempre montado: si el viaje deja de estar activo mientras se escribe, la reseña sigue abierta. */}
@@ -454,12 +513,6 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
           driverName={reviewTarget?.driverName ?? 'tu conductor'}
           onClose={() => setReviewTarget(null)}
           onSubmit={submitReview}
-        />
-
-        <FeStoreModal
-          visible={rewardsVisible}
-          onClose={() => setRewardsVisible(false)}
-          onPointsChanged={(value) => setSummary((prev) => (prev ? { ...prev, points: value } : prev))}
         />
 
         <AvatarSheet

@@ -66,7 +66,7 @@ export const DriverApplicationScreen: React.FC<Props> = ({ user, onApproved, onO
   const reached = application ? application.steps.filter((s) => s.done).length : 1;
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       style={styles.root}
       contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.secondary} />}

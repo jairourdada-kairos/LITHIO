@@ -99,7 +99,7 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Enlaces" onBack={onBack} />
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={accent} />}
@@ -319,7 +319,7 @@ const styles = themed(() => ({
   },
   empty: {
     fontFamily: theme.fonts.regular,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 20,
     color: theme.colors.textSecondary,
   },

@@ -3,7 +3,7 @@
  *
  * Estado de conexión con un botón grande, el viaje en curso, una bandeja
  * compacta de solicitudes (cada una se abre en la hoja inferior) y las
- * ganancias en diamantes con acceso al taller aliado.
+ * ganancias en iones con acceso al taller aliado.
  */
 
 import React from 'react';
@@ -13,12 +13,16 @@ import { theme, themed } from '../../constants/theme';
 import { TopBar, greeting } from '../../components/home/TopBar';
 import { PressableScale } from '../../components/brand/PressableScale';
 import { PulseRing } from '../../components/brand/PulseRing';
+import { Reveal, Sheen } from '../../components/ui/Motion';
+import { OrbitDecor } from '../../components/ui/Decor';
+import { hapticTap } from '../../services/haptics';
 import { ActiveRideCard } from '../../components/ActiveRideCard';
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import type { AuthUser } from '../../services/auth';
 import type { AccountSummary, DemandHours } from '../../services/api';
 import { DemandHoursCard } from '../../components/driver/DemandHoursCard';
 import type { Ride, RideStatus } from '../../types';
+import { placeName } from '../../utils/text';
 
 interface Props {
   user: AuthUser;
@@ -91,10 +95,16 @@ export const DriverHome: React.FC<Props> = ({
         </View>
       ) : (
         <View style={[styles.statusCard, online && { backgroundImage: theme.fx.tint(theme.colors.success), borderColor: `${theme.colors.success}40` }]}>
+          <OrbitDecor color={online ? theme.colors.success : theme.colors.secondary} />
+          {/* Un brillo cruza la tarjeta al ponerse en línea (la key lo repite en cada cambio) */}
+          <Sheen key={online ? 'on' : 'off'} delay={150} />
           <View style={styles.powerWrap}>
           {online ? <PulseRing size={88} color={theme.colors.success} scale={1.5} style={styles.powerPulse} /> : null}
           <PressableScale variant="glass" accent={theme.colors.secondary}
-            onPress={onToggleAvailability}
+            onPress={() => {
+              hapticTap();
+              onToggleAvailability();
+            }}
             disabled={togglingAvailability}
             accessibilityLabel={online ? 'Desconectarme' : 'Conectarme'}
             style={[
@@ -126,8 +136,8 @@ export const DriverHome: React.FC<Props> = ({
           <Text style={styles.sectionTitle}>Solicitudes pendientes</Text>
           <View style={styles.list}>
             {requests.map((ride, index) => (
+              <Reveal key={ride.id} index={index}>
               <Pressable
-                key={ride.id}
                 onPress={() => onOpenRequest(ride)}
                 style={({ pressed }) => [styles.requestRow, index > 0 && styles.rowDivider, pressed && styles.pressed]}
                 accessibilityRole="button"
@@ -135,13 +145,14 @@ export const DriverHome: React.FC<Props> = ({
               >
                 <View style={styles.flex}>
                   <Text style={styles.requestName} numberOfLines={1}>{ride.passenger_name || 'Pasajero'}</Text>
-                  <Text style={styles.requestRoute} numberOfLines={1}>{ride.origin} → {ride.destination}</Text>
+                  <Text style={styles.requestRoute} numberOfLines={1}>{placeName(ride.origin)} → {placeName(ride.destination)}</Text>
                 </View>
                 <Text style={styles.requestFare}>
-                  {ride.payment_method === 'diamantes' ? '◆' : '$'} {ride.fare_amount.toFixed(2)}
+                  {ride.payment_method === 'diamantes' || ride.payment_method === 'pase' ? 'Li⁺' : '$'} {ride.fare_amount.toFixed(2)}
                 </Text>
                 <Icon name="chevron-right-outline" size={22} color={theme.colors.textMuted} />
               </Pressable>
+              </Reveal>
             ))}
           </View>
         </View>
@@ -150,7 +161,7 @@ export const DriverHome: React.FC<Props> = ({
       <View style={styles.quickRow}>
         <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Ver ganancias">
           <Icon name="credit-card-outline" size={24} color={theme.colors.diamond} />
-          <Text style={styles.quickValue} numberOfLines={1}>◆ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
+          <Text style={styles.quickValue} numberOfLines={1}>Li⁺ {(summary?.diamonds ?? 0).toFixed(2)}</Text>
           <Text style={styles.quickLabel} numberOfLines={2}>Ganancias</Text>
         </PressableScale>
         <PressableScale variant="glass" accent={theme.colors.secondary} containerStyle={styles.flex} style={styles.quick} onPress={onOpenWallet} accessibilityLabel="Taller aliado">
@@ -203,6 +214,7 @@ const styles = themed(() => ({
     borderColor: theme.colors.glassBorder,
     boxShadow: theme.glow.soft,
     backgroundImage: theme.fx.sheen,
+    overflow: 'hidden',
   },
   powerWrap: {
     alignSelf: 'center',
@@ -238,7 +250,7 @@ const styles = themed(() => ({
   },
   offline: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.warning,
     marginTop: 8,
   },
@@ -295,6 +307,7 @@ const styles = themed(() => ({
     marginTop: 2,
   },
   requestFare: {
+    fontVariant: ['tabular-nums'],
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: theme.colors.secondary,

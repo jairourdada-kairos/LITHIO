@@ -20,6 +20,7 @@ export interface RouteDraft {
   fare_usd: number;
   estimated_minutes: number;
   tag: string | null;
+  scope: 'interna' | 'externa';
 }
 
 interface Props {
@@ -40,6 +41,7 @@ export const RouteFormSheet: React.FC<Props> = ({ visible, route, onClose, onSub
   const [fare, setFare] = useState('');
   const [minutes, setMinutes] = useState('');
   const [tag, setTag] = useState('');
+  const [scope, setScope] = useState<'interna' | 'externa'>('externa');
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +52,7 @@ export const RouteFormSheet: React.FC<Props> = ({ visible, route, onClose, onSub
     setFare(route ? String(route.fare_usd) : '');
     setMinutes(route ? String(route.estimated_minutes) : '');
     setTag(route?.tag ?? '');
+    setScope(route?.scope === 'interna' ? 'interna' : 'externa');
     setErrors({});
   }, [visible, route]);
 
@@ -74,6 +77,7 @@ export const RouteFormSheet: React.FC<Props> = ({ visible, route, onClose, onSub
         fare_usd: Math.round(fareValue * 100) / 100,
         estimated_minutes: minutesValue,
         tag: tag.trim() || null,
+        scope,
       });
       onClose();
     } catch (error) {
@@ -89,10 +93,34 @@ export const RouteFormSheet: React.FC<Props> = ({ visible, route, onClose, onSub
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
           <View style={styles.handle} />
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             <Text style={styles.title}>{route ? 'Editar ruta' : 'Nueva ruta'}</Text>
             <FormField label="Origen" placeholder="Campus UNC" value={origin} onChangeText={setOrigin} error={errors.origin} maxLength={120} />
             <FormField label="Destino" placeholder="IVIC" value={destination} onChangeText={setDestination} error={errors.destination} maxLength={120} />
+            <View>
+              <Text style={styles.scopeLabel}>Tipo de ruta</Text>
+              <View style={styles.scopeRow} accessibilityRole="radiogroup">
+                {([
+                  { value: 'interna', label: 'Interna', hint: 'Dentro del IVIC' },
+                  { value: 'externa', label: 'Externa', hint: 'Hacia afuera' },
+                ] as const).map((option) => {
+                  const selected = scope === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setScope(option.value)}
+                      style={[styles.scopeBtn, selected && styles.scopeBtnActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`Ruta ${option.label.toLowerCase()}, ${option.hint}`}
+                    >
+                      <Text style={[styles.scopeText, selected && styles.scopeTextActive]}>{option.label}</Text>
+                      <Text style={[styles.scopeHint, selected && styles.scopeTextActive]}>{option.hint}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             <View style={styles.row}>
               <FormField
                 label="Tarifa (USD)"
@@ -160,6 +188,44 @@ const styles = themed(() => ({
   row: {
     flexDirection: 'row',
     gap: 12,
+  },
+  scopeLabel: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: 6,
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  scopeBtn: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  scopeBtnActive: {
+    backgroundColor: theme.colors.secondary,
+    borderColor: theme.colors.secondary,
+  },
+  scopeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+  },
+  scopeHint: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  scopeTextActive: {
+    color: theme.colors.onSecondary,
   },
   error: {
     fontFamily: theme.fonts.medium,

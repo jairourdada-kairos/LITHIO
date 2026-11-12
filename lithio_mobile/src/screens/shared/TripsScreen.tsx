@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, BackHandler } from 'react-native';
 import { theme, themed } from '../../constants/theme';
+import { ScreenTitle } from '../../components/ui/Decor';
 import { RidesListScreen } from './RidesListScreen';
 import { RideDetailScreen } from './RideDetailScreen';
 import type { SessionRole } from '../../services/session';
@@ -36,7 +37,7 @@ export const TripsScreen: React.FC<Props> = ({ role, reloadKey, accent, onSchedu
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>Viajes</Text>
+      <ScreenTitle style={styles.title}>Viajes</ScreenTitle>
       <View style={styles.segment} accessibilityRole="tablist">
         {(['history', 'scheduled'] as const).map((value) => {
           const selected = scope === value;
@@ -75,9 +76,6 @@ const styles = themed(() => ({
     gap: 14,
   },
   title: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 26,
-    color: theme.colors.textPrimary,
     paddingHorizontal: 20,
   },
   segment: {

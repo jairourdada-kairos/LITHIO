@@ -1,12 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Driver, PaymentMethod } from '../types';
-import { apiService, FeCoupon } from '../services/api';
+import { apiService, FeCoupon, TopupMethod } from '../services/api';
 import { formatBs, useBcvRate } from '../services/rates';
 
-/** Mínimo para pagar un viaje con diamantes (igual que en el servidor). */
+/** Mínimo para pagar un viaje con iones (igual que en el servidor). */
 export const MIN_DIAMOND_PAYMENT = 0.5;
+
+/** Lo que se elige en pantalla: Binance Pay no paga el viaje, lleva a recargar iones. */
+type PaymentChoice = PaymentMethod | 'binance_pay';
+
+// Orden fijo de los métodos: Iones, Efectivo, Pago Móvil y Binance Pay.
+const PAYMENT_OPTIONS: { key: PaymentChoice; label: string; icon: string; sub: string }[] = [
+  { key: 'diamantes', label: 'Diamantes', icon: 'Li⁺', sub: '' },
+  { key: 'efectivo', label: 'Efectivo', icon: '💵', sub: 'Al conductor' },
+  { key: 'pago_movil', label: 'Pago Móvil', icon: '📲', sub: 'Al conductor' },
+  { key: 'binance_pay', label: 'Binance Pay', icon: '🔶', sub: 'Recarga Li⁺' },
+];
 
 interface RequestRideModalProps {
   visible: boolean;
@@ -16,8 +27,12 @@ interface RequestRideModalProps {
   fareAmount: number;
   isScheduled: boolean;
   scheduledTime: string;
+  /** Tipo de la ruta: los pases de combo solo valen en rutas internas. */
+  routeScope?: 'interna' | 'externa';
   onClose: () => void;
   onConfirm: (paymentMethod: PaymentMethod, couponId?: number) => void;
+  /** Cierra la confirmación y abre la recarga de iones con ese método. */
+  onRecharge?: (method: TopupMethod) => void;
 }
 
 export const RequestRideModal: React.FC<RequestRideModalProps> = ({
@@ -28,11 +43,17 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   fareAmount,
   isScheduled,
   scheduledTime,
+  routeScope,
   onClose,
   onConfirm,
+  onRecharge,
 }) => {
   const bcv = useBcvRate();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentChoice>('efectivo');
+  const [passes, setPasses] = useState(0);
+  const [binanceAvailable, setBinanceAvailable] = useState(false);
+  // Mientras el usuario no elija, se propone el mejor método disponible.
+  const picked = useRef(false);
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
   const [couponId, setCouponId] = useState<number | undefined>(undefined);
   const [diamonds, setDiamonds] = useState<number | null>(null);
@@ -41,23 +62,31 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
     if (!visible) return;
     setCouponId(undefined);
     setDiamonds(null);
+    setPasses(0);
+    picked.current = false;
     apiService
       .getFeStore()
-      .then((store) => setCoupons(store.coupons.filter((c) => c.status === 'activo')))
+      .then((store) => {
+        setCoupons(store.coupons.filter((c) => c.status === 'activo'));
+        setPasses(store.ride_passes ?? 0);
+      })
       .catch(() => setCoupons([]));
     apiService
       .getWallet()
-      .then((wallet) => setDiamonds(wallet.balance))
+      .then((wallet) => {
+        setDiamonds(wallet.balance);
+        setBinanceAvailable(Boolean(wallet.binance_pay));
+      })
       .catch(() => setDiamonds(null));
   }, [visible]);
 
   const coupon = coupons.find((c) => c.id === couponId);
   const finalFare = coupon ? Math.round(fareAmount * (100 - coupon.percent)) / 100 : fareAmount;
 
-  // Diamantes: la tarifa debe ser de ◆ 0.50 o más y el saldo debe alcanzar.
+  // Iones: la tarifa debe ser de Li⁺ 0.50 o más y el saldo debe alcanzar.
   const diamondBlock =
     finalFare < MIN_DIAMOND_PAYMENT
-      ? `Mínimo ◆ ${MIN_DIAMOND_PAYMENT.toFixed(2)}`
+      ? `Mínimo Li⁺ ${MIN_DIAMOND_PAYMENT.toFixed(2)}`
       : diamonds === null
         ? 'Saldo no disponible'
         : diamonds < finalFare
@@ -68,6 +97,19 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   useEffect(() => {
     if (paymentMethod === 'diamantes' && diamondBlock) setPaymentMethod('efectivo');
   }, [paymentMethod, diamondBlock]);
+
+  const canUsePass = routeScope === 'interna' && passes > 0;
+  // Propuesta inicial: pase de combo, luego iones y, si no alcanzan, efectivo.
+  useEffect(() => {
+    if (!visible || picked.current) return;
+    setPaymentMethod(canUsePass ? 'pase' : diamondBlock ? 'efectivo' : 'diamantes');
+  }, [visible, canUsePass, diamondBlock]);
+
+  const pick = (choice: PaymentChoice) => {
+    picked.current = true;
+    setPaymentMethod(choice);
+    if (choice === 'pase') setCouponId(undefined); // Un pase no se combina con cupones.
+  };
 
   if (!driver) return null;
 
@@ -118,57 +160,61 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               )}
             </View>
 
-            {/* Métodos de Pago Locales */}
+            {/* Métodos de pago, en orden: Iones, Efectivo, Pago Móvil y Binance Pay. */}
             <Text style={styles.sectionHeading}>💳 Método de Pago:</Text>
-            <View style={styles.paymentOptions}>
-              {/* Efectivo */}
+            {canUsePass ? (
               <TouchableOpacity
-                style={[styles.paymentBtn, paymentMethod === 'efectivo' && styles.paymentBtnActive]}
-                onPress={() => setPaymentMethod('efectivo')}
-              >
-                <Text style={styles.paymentIcon}>💵</Text>
-                <Text style={[styles.paymentText, paymentMethod === 'efectivo' && styles.paymentTextActive]}>
-                  Efectivo
-                </Text>
-              </TouchableOpacity>
-
-              {/* Pago Móvil */}
-              <TouchableOpacity
-                style={[styles.paymentBtn, paymentMethod === 'pago_movil' && styles.paymentBtnActive]}
-                onPress={() => setPaymentMethod('pago_movil')}
-              >
-                <Text style={styles.paymentIcon}>📲</Text>
-                <Text style={[styles.paymentText, paymentMethod === 'pago_movil' && styles.paymentTextActive]}>
-                  Pago Móvil
-                </Text>
-              </TouchableOpacity>
-
-              {/* Diamantes de la billetera */}
-              <TouchableOpacity
-                style={[
-                  styles.paymentBtn,
-                  paymentMethod === 'diamantes' && styles.paymentBtnActive,
-                  diamondBlock ? styles.paymentBtnDisabled : null,
-                ]}
-                onPress={() => setPaymentMethod('diamantes')}
-                disabled={Boolean(diamondBlock)}
+                style={[styles.passBtn, paymentMethod === 'pase' && styles.paymentBtnActive]}
+                onPress={() => pick('pase')}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: paymentMethod === 'diamantes', disabled: Boolean(diamondBlock) }}
-                accessibilityHint={diamondBlock ?? undefined}
+                accessibilityState={{ selected: paymentMethod === 'pase' }}
               >
-                <Text style={[styles.paymentIcon, { color: theme.colors.diamond }]}>◆</Text>
-                <Text style={[styles.paymentText, paymentMethod === 'diamantes' && styles.paymentTextActive]}>
-                  Diamantes
-                </Text>
-                <Text style={styles.paymentSub}>
-                  {diamondBlock ?? `◆ ${(diamonds ?? 0).toFixed(2)}`}
-                </Text>
+                <Text style={styles.paymentIcon}>🎟️</Text>
+                <View style={styles.passText}>
+                  <Text style={[styles.paymentText, styles.passTitle, paymentMethod === 'pase' && styles.paymentTextActive]}>
+                    Usar un pase de combo
+                  </Text>
+                  <Text style={[styles.paymentSub, styles.passTitle]}>Te quedan {passes} · no gastas iones</Text>
+                </View>
               </TouchableOpacity>
+            ) : null}
+            <View style={styles.paymentOptions} accessibilityRole="radiogroup">
+              {PAYMENT_OPTIONS.map((option) => {
+                const blocked =
+                  option.key === 'diamantes' ? diamondBlock : option.key === 'binance_pay' && !binanceAvailable ? 'No disponible' : null;
+                const selected = paymentMethod === option.key;
+                const sub = option.key === 'diamantes' ? diamondBlock ?? `Li⁺ ${(diamonds ?? 0).toFixed(2)}` : blocked ?? option.sub;
+                return (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[styles.paymentBtn, selected && styles.paymentBtnActive, blocked ? styles.paymentBtnDisabled : null]}
+                    onPress={() => pick(option.key)}
+                    disabled={Boolean(blocked)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected, disabled: Boolean(blocked) }}
+                    accessibilityHint={blocked ?? undefined}
+                  >
+                    <Text style={[styles.paymentIcon, option.key === 'diamantes' && { color: theme.colors.diamond }]}>{option.icon}</Text>
+                    <Text style={[styles.paymentText, selected && styles.paymentTextActive]}>{option.label}</Text>
+                    <Text style={styles.paymentSub}>{sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {paymentMethod === 'diamantes' ? (
               <Text style={[styles.referenceHint, styles.diamondHint]}>
-                Se retienen ◆ {finalFare.toFixed(2)} de tu billetera y pasan al conductor al terminar el viaje. Si se cancela, te los devolvemos.
+                Se retienen Li⁺ {finalFare.toFixed(2)} de tu billetera y pasan al conductor al terminar el viaje. Si se cancela, te los devolvemos.
+              </Text>
+            ) : null}
+            {paymentMethod === 'pase' ? (
+              <Text style={[styles.referenceHint, styles.diamondHint]}>
+                Se aparta 1 pase y se gasta al terminar el viaje. Si se cancela, te lo devolvemos.
+              </Text>
+            ) : null}
+            {paymentMethod === 'binance_pay' ? (
+              <Text style={[styles.referenceHint, styles.diamondHint]}>
+                Con Binance Pay recargas iones (1 Li⁺ = 1 USD) y pagas el viaje con ellos. La recarga se acredita cuando el administrador verifica tu pago.
               </Text>
             ) : null}
 
@@ -191,7 +237,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               </View>
             )}
 
-            {coupons.length > 0 ? (
+            {coupons.length > 0 && paymentMethod !== 'pase' ? (
               <View style={styles.couponBox}>
                 <Text style={styles.referenceLabel}>Cupón de Fe</Text>
                 <View style={styles.couponRow}>
@@ -232,18 +278,26 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tarifa Estimada:</Text>
               <View style={styles.totalValues}>
-                <Text style={styles.totalAmount}>${finalFare.toFixed(2)} USD</Text>
-                {bcv ? <Text style={styles.totalBs}>{formatBs(finalFare, bcv)} · tasa BCV</Text> : null}
+                <Text style={styles.totalAmount}>
+                  {paymentMethod === 'pase' ? '1 pase de combo' : `$${finalFare.toFixed(2)} USD`}
+                </Text>
+                {bcv && paymentMethod !== 'pase' ? <Text style={styles.totalBs}>{formatBs(finalFare, bcv)} · tasa BCV</Text> : null}
               </View>
             </View>
 
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => onConfirm(paymentMethod, couponId)}
+              onPress={() =>
+                paymentMethod === 'binance_pay'
+                  ? onRecharge?.('binance_pay')
+                  : onConfirm(paymentMethod, paymentMethod === 'pase' ? undefined : couponId)
+              }
               activeOpacity={0.85}
             >
               <Text style={styles.confirmBtnText}>
-                🚀 Notificar y Solicitar a {driver.name.split(' ')[0]}
+                {paymentMethod === 'binance_pay'
+                  ? '🔶 Recargar con Binance Pay'
+                  : `🚀 Notificar y Solicitar a ${driver.name.split(' ')[0]}`}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -258,7 +312,8 @@ const styles = themed(() => ({
     alignItems: 'flex-end',
   },
   totalBs: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.medium,
+    fontVariant: ['tabular-nums'],
     fontSize: 12,
     color: theme.colors.textMuted,
     marginTop: 2,
@@ -430,11 +485,36 @@ const styles = themed(() => ({
   },
   paymentOptions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
-  paymentBtn: {
+  passBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 64,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+    backgroundColor: theme.colors.cardElevated,
+  },
+  passText: {
     flex: 1,
+    gap: 2,
+  },
+  passTitle: {
+    textAlign: 'left',
+  },
+  paymentBtn: {
+    // Dos por fila, todos del mismo tamaño.
+    flexBasis: '46%',
+    flexGrow: 1,
+    minHeight: 78,
+    justifyContent: 'center',
     backgroundColor: theme.colors.cardElevated,
     paddingVertical: 10,
     paddingHorizontal: 6,
@@ -466,7 +546,7 @@ const styles = themed(() => ({
   },
   paymentSub: {
     fontFamily: theme.fonts.mono,
-    fontSize: 10,
+    fontSize: 11,
     color: theme.colors.textMuted,
     textAlign: 'center',
   },

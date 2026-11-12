@@ -39,14 +39,14 @@ const PASSENGER_SLIDES: Slide[] = [
   {
     icon: 'award-outline',
     tint: 'diamond',
-    title: 'Diamantes y Fe',
-    body: 'Los diamantes (◆) son tu saldo: 1 ◆ = 1 USD para pagar viajes. El Fe es hierro de recompensa: lo ganas al viajar y al dejar reseñas útiles.',
+    title: 'Iones y Fe',
+    body: 'Los iones (Li⁺) son tu saldo: 1 Li⁺ = 1 USD para pagar viajes. El Fe es hierro de recompensa: lo ganas al viajar y al dejar reseñas útiles.',
   },
   {
     icon: 'people-outline',
     tint: 'secondary',
     title: 'Enlaces y Fondo Solidario',
-    body: 'Agrega amigos con tu código Li-XXXX para enviarles diamantes. Con "Donar" ayudas a pagar viajes de estudiantes que lo necesitan.',
+    body: 'Agrega amigos con tu código Li-XXXX para enviarles iones. Con "Donar" ayudas a pagar viajes de estudiantes que lo necesitan.',
   },
   {
     icon: 'droplet-outline',
@@ -78,8 +78,8 @@ const DRIVER_SLIDES: Slide[] = [
   {
     icon: 'credit-card-outline',
     tint: 'diamond',
-    title: 'Cobra en diamantes',
-    body: 'Los viajes pagados con ◆ se acreditan al completarlos. Puedes retirarlos o canjearlos en el taller aliado: aceite, cadena, lavado y más.',
+    title: 'Cobra en iones',
+    body: 'Los viajes pagados con Li⁺ se acreditan al completarlos. Puedes retirarlos o canjearlos en el taller aliado: aceite, cadena, lavado y más.',
   },
   {
     icon: 'star-outline',

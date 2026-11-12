@@ -17,6 +17,7 @@ import React, { useRef, useState } from 'react';
 import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 import Animated, { cubicBezier } from 'react-native-reanimated';
 import { theme } from '../../constants/theme';
+import { hapticTap } from '../../services/haptics';
 
 interface Props extends Omit<PressableProps, 'style'> {
   style?: StyleProp<ViewStyle>;
@@ -68,7 +69,7 @@ export const PressableScale: React.FC<Props> = ({
       };
     }
     if (variant === 'solid') {
-      const glow = hovered && !pressed ? `0 10px 28px ${accent}66` : `0 6px 20px ${accent}40`;
+      const glow = hovered && !pressed ? `0 10px 28px ${accent}66` : theme.fx.glowOf(accent);
       return {
         opacity: pressed ? 0.88 : 1,
         boxShadow: [ring, glow].filter(Boolean).join(', '),
@@ -87,6 +88,7 @@ export const PressableScale: React.FC<Props> = ({
         pointerDown.current = true;
         setFocusVisible(false);
         setPressed(true);
+        if (variant === 'solid') hapticTap();
         onPressIn?.(event);
       }}
       onPressOut={(event) => {

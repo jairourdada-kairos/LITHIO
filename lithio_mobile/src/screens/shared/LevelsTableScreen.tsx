@@ -227,7 +227,7 @@ const styles = themed(() => ({
   },
   legendText: {
     fontFamily: theme.fonts.regular,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.textSecondary,
   },
   grid: {
@@ -275,7 +275,7 @@ const styles = themed(() => ({
   },
   subTitle: {
     fontFamily: theme.fonts.medium,
-    fontSize: 12.5,
+    fontSize: 13,
     color: theme.colors.textMuted,
     marginTop: 4,
   },

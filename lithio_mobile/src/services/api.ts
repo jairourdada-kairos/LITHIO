@@ -55,6 +55,9 @@ export interface AdminApplication extends DriverApplication {
   cedula: string | null;
   career: string | null;
   semester: string | null;
+  occupation?: 'estudiante' | 'trabajador' | null;
+  institution?: string | null;
+  work_area?: string | null;
   license_number: string | null;
 }
 
@@ -123,6 +126,9 @@ export interface MyProfile {
   cedula: string | null;
   career: string | null;
   semester: string | null;
+  occupation?: 'estudiante' | 'trabajador' | null;
+  institution?: string | null;
+  work_area?: string | null;
   profile_updated_at: string | null;
   /** Si está, aún no se puede editar: fecha (UTC) desde la que se podrá. */
   next_edit_at: string | null;
@@ -154,6 +160,18 @@ export interface FeStore {
   store_discount: boolean;
   coupons: FeCoupon[];
   vouchers: GradeVoucher[];
+  /** Paquetes de pases de viaje que se compran con iones. */
+  combos: FeCombo[];
+  /** Pases de viaje disponibles (rutas internas). */
+  ride_passes: number;
+  diamonds: number;
+}
+
+export interface FeCombo {
+  id: string;
+  title: string;
+  passes: number;
+  price: number;
 }
 
 export interface AdminVoucher extends GradeVoucher {
@@ -196,6 +214,14 @@ export interface PagoMovilDestination {
   id_number: string | null;
 }
 
+/** Binance Pay de LITHIO, donde se pagan las recargas en USDT. */
+export interface BinancePayDestination {
+  pay_id: string;
+  url: string;
+}
+
+export type TopupMethod = 'pago_movil' | 'binance_pay';
+
 export interface WalletInfo {
   balance: number;
   points: number;
@@ -203,6 +229,8 @@ export interface WalletInfo {
   transactions: WalletTransaction[];
   fund: { donated: number; donors: number };
   pago_movil: PagoMovilDestination | null;
+  binance_pay: BinancePayDestination | null;
+  ride_passes: number;
 }
 
 export type BondType = 'nuevo' | 'iónico' | 'covalente';
@@ -612,15 +640,20 @@ export const apiService = {
     return postJson('/api/quiz/today', { option });
   },
 
-  async requestTopup(amount: number, reference: string): Promise<WalletTransaction> {
-    return postJson('/api/wallet/topups', { amount, reference });
+  async requestTopup(amount: number, reference: string, method: TopupMethod = 'pago_movil'): Promise<WalletTransaction> {
+    return postJson('/api/wallet/topups', { amount, reference, method });
+  },
+
+  /** Compra un combo con diamantes: los pases se acreditan al instante. */
+  async buyCombo(comboId: string): Promise<{ ride_passes: number; diamonds: number }> {
+    return postJson('/api/fe-store/combos', { combo_id: comboId });
   },
 
   async sendDiamonds(toCode: string, amount: number, note?: string): Promise<void> {
     await postJson('/api/wallet/transfers', { to_code: toCode, amount, note: note || undefined });
   },
 
-  /** Con diamantes se descuenta al instante; por Pago Móvil queda en revisión. */
+  /** Con iones se descuenta al instante; por Pago Móvil queda en revisión. */
   async donate(amount: number, method: 'diamantes' | 'pago_movil' = 'diamantes', reference?: string): Promise<WalletTransaction> {
     return postJson('/api/wallet/donations', { amount, method, reference });
   },

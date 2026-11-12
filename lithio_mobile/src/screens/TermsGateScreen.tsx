@@ -3,7 +3,7 @@
  *
  * Aparece al entrar si la cuenta se creó antes de los Términos o si cambiaron
  * desde la última vez que los aceptó. Sin aceptarlos el servidor tampoco deja
- * pedir viajes, conectarse como conductor ni mover diamantes.
+ * pedir viajes, conectarse como conductor ni mover iones.
  */
 
 import React, { useState } from 'react';
@@ -39,7 +39,7 @@ export const TermsGateScreen: React.FC<Props> = ({ accent, firstTime, onAccepted
   };
 
   return (
-    <ScrollView
+    <ScrollView showsVerticalScrollIndicator={false}
       style={styles.root}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}
     >
@@ -50,7 +50,7 @@ export const TermsGateScreen: React.FC<Props> = ({ accent, firstTime, onAccepted
       <Text style={styles.body}>
         Para seguir usando LITHIO necesitamos que leas y aceptes los Términos y Condiciones y la Política de
         privacidad. Explican qué puedes esperar de la app, tus responsabilidades como pasajero o conductor, cómo
-        funcionan los pagos y los diamantes, y qué hacemos con tus datos.
+        funcionan los pagos y los iones, y qué hacemos con tus datos.
       </Text>
 
       <View style={styles.links}>

@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Llave de subida de Play (nunca al repositorio)
+/credentials/
