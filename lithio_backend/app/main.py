@@ -68,7 +68,7 @@ from .schemas import (
 )
 from .seed import seed_database
 from . import wallet_service
-from .drivers import is_approved, require_approved_driver
+from .drivers import is_approved, require_approved_driver, visible_plate
 from .links_service import (
     MAX_REWARDED_RIDES_PER_PAIR_PER_DAY,
     PRIORITY_LEVEL,
@@ -226,7 +226,7 @@ def serialize_ride_for_socket(ride: Ride) -> dict:
         "driver_id": ride.driver_id,
         "passenger_name": ride.passenger.name if ride.passenger else None,
         "driver_name": ride.driver.name if ride.driver else None,
-        "driver_plate": profile.plate if profile else None,
+        "driver_plate": visible_plate(ride, profile),
         "driver_moto_brand_model": profile.moto_brand_model if profile else None,
         "driver_moto_color": profile.moto_color if profile else None,
         "driver_is_verified": bool(profile and profile.verification_status == "aprobado"),
@@ -246,7 +246,7 @@ def serialize_ride_for_socket(ride: Ride) -> dict:
 def _populate_ride_driver_meta(res: RideResponse, ride: Ride) -> RideResponse:
     """Completa placa, vehículo, estado verificado del conductor y si ya fue calificado."""
     profile = ride.driver.driver_profile if ride.driver else None
-    res.driver_plate = profile.plate if profile else None
+    res.driver_plate = visible_plate(ride, profile)
     res.driver_moto_brand_model = profile.moto_brand_model if profile else None
     res.driver_moto_color = profile.moto_color if profile else None
     res.driver_is_verified = bool(profile and profile.verification_status == "aprobado")
@@ -1087,7 +1087,6 @@ def list_drivers(db: Session = Depends(get_db), user: User = Depends(get_current
             avatar_url=dp.user.avatar_url,
             moto_brand_model=dp.moto_brand_model,
             moto_color=dp.moto_color,
-            vehicle_plate=dp.plate,
             is_verified=dp.verification_status == "aprobado",
             helmet_provided=dp.helmet_provided,
             # Un conductor con un viaje aceptado nunca aparece disponible.

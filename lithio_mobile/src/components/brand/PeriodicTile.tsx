@@ -31,9 +31,9 @@ export const PeriodicTile: React.FC<Props> = ({ size = 64, accent = theme.colors
       accessibilityRole="image"
       accessibilityLabel="Litio, número atómico 3"
     >
-      <Text style={[styles.number, { fontSize: Math.max(11, 11 * scale), top: 4 * scale, left: 6 * scale, color: accent }]}>3</Text>
-      <Text style={[styles.symbol, { fontSize: Math.max(11, 26 * scale) }]}>Li</Text>
-      <Text style={[styles.mass, { fontSize: Math.max(11, 11 * scale) }]}>6.94</Text>
+      <Text style={[styles.number, { fontSize: 10 * scale, top: 4 * scale, left: 6 * scale, color: accent }]}>3</Text>
+      <Text style={[styles.symbol, { fontSize: 26 * scale }]}>Li</Text>
+      <Text style={[styles.mass, { fontSize: 7.5 * scale }]}>6.94</Text>
     </View>
   );
 };

@@ -67,3 +67,14 @@ def application_payload(user: User, profile: DriverProfile) -> dict:
             "helmet_provided": profile.helmet_provided,
         },
     }
+
+
+# La placa del conductor solo se muestra cuando ya aceptó ese viaje: antes,
+# nadie (ni el directorio de conductores ni una solicitud pendiente) la ve.
+PLATE_VISIBLE_STATUSES = ("aceptado", "en_camino", "en_curso", "completado")
+
+
+def visible_plate(ride, profile: DriverProfile | None) -> str | None:
+    if not profile or getattr(ride, "status", None) not in PLATE_VISIBLE_STATUSES:
+        return None
+    return profile.plate

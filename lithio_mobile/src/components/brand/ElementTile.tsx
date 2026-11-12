@@ -22,9 +22,9 @@ export const ElementTile: React.FC<Props> = ({ z, symbol, name, size = 64, accen
       accessibilityRole="image"
       accessibilityLabel={`Nivel ${name || symbol}, número atómico ${z}`}
     >
-      <Text style={[styles.z, { fontSize: Math.max(11, 11 * scale), top: 5 * scale, left: 7 * scale, color: accent }]}>{z}</Text>
-      <Text style={[styles.symbol, { fontSize: Math.max(11, 26 * scale) }]}>{symbol}</Text>
-      {name ? <Text style={[styles.name, { fontSize: Math.max(11, 11 * scale) }]} numberOfLines={1}>{name}</Text> : null}
+      <Text style={[styles.z, { fontSize: 11 * scale, top: 5 * scale, left: 7 * scale, color: accent }]}>{z}</Text>
+      <Text style={[styles.symbol, { fontSize: 26 * scale }]}>{symbol}</Text>
+      {name ? <Text style={[styles.name, { fontSize: 8 * scale }]} numberOfLines={1}>{name}</Text> : null}
     </View>
   );
 };

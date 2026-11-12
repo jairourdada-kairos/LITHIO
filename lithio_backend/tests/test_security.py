@@ -109,39 +109,42 @@ def test_security_headers_block_clickjacking(client):
         assert response.headers["Strict-Transport-Security"] == "max-age=31536000"
 
 
-def test_driver_verified_badge_and_plate_exposed_in_rides_and_directory(client):
-    drivers = client.get("/api/drivers", headers=auth_headers(4)).json()
+def test_plate_hidden_until_driver_accepts_and_verified_badge(client):
+    drivers = client.get('/api/drivers', headers=auth_headers(4)).json()
     assert len(drivers) >= 1
-    first_driver = drivers[0]
-    assert first_driver["is_verified"] is True
-    assert first_driver["vehicle_plate"]
+    first_driver = next(d for d in drivers if d['user_id'] == 1)
+    assert first_driver['is_verified'] is True
+    # El directorio nunca expone la placa (ni con otro nombre).
+    assert not {'plate', 'vehicle_plate'} & first_driver.keys()
 
-    routes = client.get("/api/routes").json()
-    route = routes[0]
+    route = client.get('/api/routes').json()[0]
     ride_res = client.post(
-        "/api/rides",
+        '/api/rides',
         headers=auth_headers(4),
         json={
-            "driver_id": first_driver["user_id"],
-            "origin": route["origin"],
-            "destination": route["destination"],
-            "payment_method": "efectivo",
-            "fare_amount": route["fare_usd"],
+            'driver_id': 1,
+            'origin': route['origin'],
+            'destination': route['destination'],
+            'payment_method': 'efectivo',
+            'fare_amount': route['fare_usd'],
         },
     )
     assert ride_res.status_code == 200
     ride = ride_res.json()
-    assert ride["driver_plate"] == first_driver["vehicle_plate"]
-    assert ride["driver_is_verified"] is True
-    assert ride["driver_moto_brand_model"] == first_driver["moto_brand_model"]
-    assert ride["driver_moto_color"] == first_driver["moto_color"]
-    assert ride["has_review"] is False
-
-    active = client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()
-    assert active["driver_plate"] == first_driver["vehicle_plate"]
-    assert active["driver_is_verified"] is True
-    assert active["has_review"] is False
-
+    # Solicitud pendiente: vehículo y verificación sí, placa no.
+    assert ride['driver_plate'] is None
+    assert ride['driver_is_verified'] is True
+    assert ride['driver_moto_brand_model'] == first_driver['moto_brand_model']
+    assert ride['has_review'] is False
     detail = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(4)).json()
-    assert detail["driver"]["plate"] == first_driver["vehicle_plate"]
-    assert detail["driver"]["is_verified"] is True
+    assert detail['driver']['plate'] is None
+    assert detail['driver']['is_verified'] is True
+
+    accepted = client.put(f"/api/rides/{ride['id']}/status", json={'status': 'aceptado'}, headers=auth_headers(1))
+    assert accepted.status_code == 200
+    active = client.get('/api/rides/active/4?role=pasajero', headers=auth_headers(4)).json()
+    assert active['driver_plate']
+    assert active['driver_is_verified'] is True
+    detail = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(4)).json()
+    assert detail['driver']['plate'] == active['driver_plate']
+

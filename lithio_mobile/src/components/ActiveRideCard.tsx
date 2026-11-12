@@ -189,7 +189,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
         };
       case 'en_curso':
         return {
-          title: '🚀 Carrera en Curso',
+          title: 'Carrera en curso',
           desc: 'Viajando de forma segura hacia el destino.',
           badgeColor: theme.colors.secondary,
           step: 4
@@ -246,11 +246,11 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
     };
     const moto = [ride.driver_moto_brand_model, ride.driver_moto_color].filter(Boolean).join(' · ');
     const lines = [
-      `🏍️ Viaje en LITHIO #${ride.id}`,
-      `📍 Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
-      `👤 Conductor: ${ride.driver_name || 'Asignado'}${ride.driver_is_verified !== false ? ' (Verificado ✓)' : ''}`,
-      ride.driver_plate ? `🪪 Placa: ${ride.driver_plate}${moto ? ` (${moto})` : ''}` : moto ? `🏍️ Vehículo: ${moto}` : null,
-      `📌 Estado: ${statusLabels[ride.status] || ride.status}`,
+      `Viaje en LITHIO #${ride.id}`,
+      `Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
+      `Conductor: ${ride.driver_name || 'Asignado'}${ride.driver_is_verified === true ? ' (verificado)' : ''}`,
+      ride.driver_plate ? `Placa: ${ride.driver_plate}${moto ? ` (${moto})` : ''}` : moto ? `Vehículo: ${moto}` : null,
+      `Estado: ${statusLabels[ride.status] || ride.status}`,
     ].filter(Boolean);
     const message = lines.join('\n');
     try {
@@ -314,10 +314,10 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{isDriver ? '👤 Pasajero:' : '🏍️ Conductor:'}</Text>
+            <Text style={styles.infoLabel}>{isDriver ? 'Pasajero:' : 'Conductor:'}</Text>
             <View style={styles.driverMetaRight}>
               <Text style={styles.driverVal}>{isDriver ? ride.passenger_name : ride.driver_name}</Text>
-              {!isDriver && ride.driver_is_verified !== false ? (
+              {!isDriver && ride.driver_is_verified === true ? (
                 <View style={styles.verifiedBadge} accessibilityLabel="Conductor verificado">
                   <Icon name="checkmark-circle-2" size={12} color={theme.colors.primary} />
                   <Text style={styles.verifiedBadgeText}>Verificado</Text>
@@ -327,7 +327,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
           {(ride.driver_plate || ride.driver_moto_brand_model) ? (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>🪪 Vehículo:</Text>
+              <Text style={styles.infoLabel}>Vehículo:</Text>
               <View style={styles.driverMetaRight}>
                 {ride.driver_moto_brand_model ? (
                   <Text style={styles.infoVal}>
@@ -464,7 +464,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             {ride.status === 'completado' && (
               <View style={styles.completedNotice}>
                 <Text style={styles.completedNoticeText}>
-                  ✨ ¡Carrera completada con éxito! Ya estás disponible de nuevo.
+                  ¡Carrera completada! Ya estás disponible de nuevo.
                 </Text>
               </View>
             )}
@@ -482,7 +482,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
               ride.has_review ? (
                 <View style={styles.completedNotice}>
                   <Text style={styles.completedNoticeText}>
-                    ✨ ¡Gracias por calificar tu viaje!
+                    Gracias por calificar tu viaje.
                   </Text>
                 </View>
               ) : (

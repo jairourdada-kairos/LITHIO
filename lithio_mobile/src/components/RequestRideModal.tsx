@@ -183,19 +183,14 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               <View style={styles.driverDetails}>
                 <View style={styles.driverNameRow}>
                   <Text style={styles.driverName}>{driver.name}</Text>
-                  {driver.is_verified !== false ? (
+                  {driver.is_verified === true ? (
                     <View style={styles.verifiedPill}>
-                      <Text style={styles.verifiedPillText}>✓ Verificado</Text>
+                      <Text style={styles.verifiedPillText}>Verificado</Text>
                     </View>
                   ) : null}
                 </View>
                 <View style={styles.driverVehicleRow}>
                   <Text style={styles.driverMoto}>{driver.moto_brand_model} • {driver.moto_color}</Text>
-                  {driver.vehicle_plate || driver.plate ? (
-                    <View style={styles.platePill}>
-                      <Text style={styles.platePillText}>{driver.vehicle_plate || driver.plate}</Text>
-                    </View>
-                  ) : null}
                 </View>
                 <Text style={styles.driverRating}>⭐ {driver.rating_avg.toFixed(2)} ({driver.trips_count} carreras)</Text>
               </View>
@@ -369,8 +364,8 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                 {submitting
                   ? 'Solicitando viaje…'
                   : paymentMethod === 'binance_pay'
-                    ? '🔶 Recargar con Binance Pay'
-                    : `🚀 Notificar y Solicitar a ${driver.name.split(' ')[0]}`}
+                    ? 'Recargar con Binance Pay'
+                    : `Solicitar a ${driver.name.split(' ')[0]}`}
               </Text>
             </TouchableOpacity>
           </ScrollView>

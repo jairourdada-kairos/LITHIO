@@ -165,11 +165,11 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
     const driverFullName = [ride.driver.name, ride.driver.last_name].filter(Boolean).join(' ');
     const moto = [ride.driver.moto, ride.driver.moto_color].filter(Boolean).join(' · ');
     const lines = [
-      `🏍️ Viaje en LITHIO #${ride.id}`,
-      `📍 Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
-      `👤 Conductor: ${driverFullName}${ride.driver.is_verified !== false ? ' (Verificado ✓)' : ''}`,
-      ride.driver.plate ? `🪪 Placa: ${ride.driver.plate}${moto ? ` (${moto})` : ''}` : moto ? `🏍️ Vehículo: ${moto}` : null,
-      `📌 Estado: ${status.label}`,
+      `Viaje en LITHIO #${ride.id}`,
+      `Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
+      `Conductor: ${driverFullName}${ride.driver.is_verified === true ? ' (verificado)' : ''}`,
+      ride.driver.plate ? `Placa: ${ride.driver.plate}${moto ? ` (${moto})` : ''}` : moto ? `Vehículo: ${moto}` : null,
+      `Estado: ${status.label}`,
     ].filter(Boolean);
     const message = lines.join('\n');
     try {
@@ -208,7 +208,7 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
             <View style={styles.flex}>
               <View style={styles.personNameRow}>
                 <Text style={styles.strong}>{[other.name, other.last_name].filter(Boolean).join(' ')}</Text>
-                {ride.viewer_role !== 'conductor' && ride.driver.is_verified !== false ? (
+                {ride.viewer_role !== 'conductor' && ride.driver.is_verified === true ? (
                   <View style={styles.verifiedBadge} accessibilityLabel="Conductor verificado">
                     <Icon name="checkmark-circle-2" size={12} color={theme.colors.primary} />
                     <Text style={styles.verifiedBadgeText}>Verificado</Text>

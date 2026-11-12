@@ -17,7 +17,6 @@ export interface Driver {
   avatar_url?: string;
   moto_brand_model: string;
   moto_color: string;
-  vehicle_plate?: string | null;
   plate?: string | null;
   is_verified?: boolean;
   helmet_provided: boolean;

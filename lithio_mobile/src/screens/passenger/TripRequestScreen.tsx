@@ -471,8 +471,7 @@ const Stepper: React.FC<{ step: Step; onGoTo: (step: Step) => void }> = ({ step,
 };
 
 const DriverOption: React.FC<{ driver: Driver; topRated: boolean; onChoose: () => void }> = ({ driver, topRated, onChoose }) => {
-  const plate = driver.vehicle_plate || driver.plate;
-  const verified = driver.is_verified !== false;
+  const verified = driver.is_verified === true;
   return (
     <PressableScale variant="glass" style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
       <Avatar name={driver.name} uri={driver.avatar_url} size={48} ringColor={theme.colors.secondary} />
@@ -491,11 +490,6 @@ const DriverOption: React.FC<{ driver: Driver; topRated: boolean; onChoose: () =
           <Text style={styles.driverMoto} numberOfLines={1}>
             {driver.moto_brand_model} · {driver.moto_color}
           </Text>
-          {plate ? (
-            <View style={styles.plateChip} accessibilityLabel={`Placa ${plate}`}>
-              <Text style={styles.plateChipText}>{plate}</Text>
-            </View>
-          ) : null}
         </View>
         <View style={styles.driverMeta}>
           <Icon name="star" size={14} color={theme.colors.gold} />
