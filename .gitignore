@@ -54,3 +54,7 @@ lithio_backend/backups/
 # APK de la pagina de descarga (se baja de Expo con scripts/actualizar_descarga.ps1)
 lithio_descarga/*.apk
 lithio_descarga/apk.json
+
+# Herramientas locales de asistentes y videos pesados (no van al repositorio)
+.claude/skills/
+docs/video/
