@@ -1,6 +1,5 @@
 """Reacción del día: una pregunta de ciencia diaria que da Fe al acertar."""
 import random
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,11 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
-from ..config import VENEZUELA_TZ
 from ..database import get_db
 from ..links_service import QUIZ_BONUS_LEVEL, award_fe, user_z
 from ..models import QuizAnswer, User
 from ..quiz_questions import BANCOS
+from ..timeutil import venezuela_today
 
 router = APIRouter(prefix="/api/quiz", tags=["reacción del día"])
 
@@ -85,10 +84,6 @@ def reward_for(user: User) -> int:
     return FE_REWARD + (5 if user_z(user) >= QUIZ_BONUS_LEVEL else 0)
 
 
-def venezuela_today():
-    return datetime.now(VENEZUELA_TZ).date()
-
-
 def question_for(day) -> tuple:
     """Pregunta del día con las opciones barajadas: la respuesta no sigue un patrón."""
     question, options, correct, fact = QUESTIONS[day.toordinal() % len(QUESTIONS)]
@@ -111,7 +106,7 @@ def today(user: User = Depends(get_current_user), db: Session = Depends(get_db))
 @router.post("/today")
 def answer_today(data: AnswerIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     day = venezuela_today()
-    question, options, correct, fact = question_for(day)
+    _, _, correct, fact = question_for(day)
     is_correct = data.option == correct
     db.add(QuizAnswer(user_id=user.id, quiz_date=day, option_index=data.option, correct=is_correct))
     reward = reward_for(user)  # Antes de sumar: el bono depende del nivel actual

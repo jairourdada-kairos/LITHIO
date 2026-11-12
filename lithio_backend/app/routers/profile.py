@@ -14,6 +14,7 @@ from .. import auth as auth_module
 from ..auth import get_current_user, get_current_user_any_session
 from ..config import EVIDENCE_DIR, MEDIA_DIR, VENEZUELA_TZ
 from ..database import get_db
+from ..drivers import OPEN_RIDE_STATUSES
 from ..links_service import ELEMENTS, LEVEL_PERKS, level_for, threshold_for
 from ..models import DriverProfile, GradeVoucher, Link, Ride, User, WalletTransaction
 from ..wallet_service import as_diamonds
@@ -225,8 +226,6 @@ def update_profile(data: ProfileUpdateIn, user: User = Depends(get_current_user)
 
 
 # ---------------- Eliminar la cuenta ----------------
-
-OPEN_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 
 
 def _delete_evidence_file(directory, filename: str | None) -> None:

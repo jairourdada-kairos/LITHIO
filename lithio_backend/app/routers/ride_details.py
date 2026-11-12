@@ -6,7 +6,6 @@ puede adjuntar cualquiera de los dos participantes (p. ej. el conductor, si el
 pasajero le mandó la captura por WhatsApp) y el administrador lo revisa en el panel.
 """
 import json
-import re
 import secrets
 from ..rate_limit import rate_limit
 
@@ -24,6 +23,7 @@ from ..realtime import manager
 from .. import push_service
 from .profile import _detect_format, commit_or_discard, safe_evidence_path
 from ..timeutil import utcnow
+from ..validation import normalize_payment_reference, payment_reference_key
 
 router = APIRouter(prefix="/api/rides", tags=["historial"])
 
@@ -158,10 +158,11 @@ async def set_payment_reference(
         raise HTTPException(status_code=400, detail="Este viaje no se paga por Pago Móvil.")
     if ride.status in {"rechazado", "cancelado"}:
         raise HTTPException(status_code=400, detail="El viaje no se realizó; no hace falta referencia.")
-    reference = re.sub(r"\s+", "", body.reference).upper()
-    alnum = re.sub(r"[\s\-]+", "", reference)
-    if not re.fullmatch(r"[A-Z0-9-]{4,30}", reference) or len(alnum) < 4:
-        raise HTTPException(status_code=422, detail="Escribe la referencia que te dio el banco: de 4 a 30 números o letras.")
+    try:
+        reference = normalize_payment_reference(body.reference)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    alnum = payment_reference_key(reference)
     other_refs = (
         db.query(Ride.payment_reference)
         .filter(
@@ -173,7 +174,7 @@ async def set_payment_reference(
         .all()
     )
     for (stored,) in other_refs:
-        if stored and re.sub(r"[\s\-]+", "", stored).upper() == alnum:
+        if stored and payment_reference_key(stored) == alnum:
             raise HTTPException(status_code=409, detail="Esta referencia de Pago Móvil ya fue usada en otro viaje.")
 
     ride.payment_reference = reference

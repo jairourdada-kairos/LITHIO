@@ -143,7 +143,15 @@ def email_domain_allowed(email: str | None) -> bool:
     return not domains or (email or "").rsplit("@", 1)[-1].lower() in domains
 
 
-def require_allowed_email(email: str) -> str:
-    if not email_domain_allowed(email):
-        raise ValueError("LITHIO solo acepta cuentas reales de Gmail. Usa un correo que termine en @gmail.com.")
-    return email
+def payment_reference_key(reference: str | None) -> str:
+    """Clave alfanumérica canónica para comparar referencias de pago sin espacios ni guiones."""
+    return re.sub(r"[\s\-]+", "", (reference or "")).upper()
+
+
+def normalize_payment_reference(reference: str | None) -> str:
+    """Valida y limpia una referencia de Pago Móvil o Binance Pay (4 a 30 caracteres)."""
+    cleaned = re.sub(r"\s+", "", reference or "").upper()
+    alnum = payment_reference_key(cleaned)
+    if not re.fullmatch(r"[A-Z0-9-]{4,30}", cleaned) or len(alnum) < 4:
+        raise ValueError("Escribe la referencia que te dio el banco: de 4 a 30 números o letras.")
+    return cleaned

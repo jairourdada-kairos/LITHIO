@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from . import config, push_service
 from .database import SessionLocal
+from .drivers import OPEN_RIDE_STATUSES
 from .models import DriverProfile, Ride, StreakFreeze, User
 from .timeutil import utcnow
 
@@ -30,7 +31,6 @@ STREAK_RISK_WEEKDAYS = {3, 4}  # Jueves y viernes: todavía hay clases esa seman
 MIN_STREAK_TO_REMIND = 2
 FIRST_RIDE_WINDOW = (timedelta(days=3), timedelta(days=10))
 INACTIVE_WINDOW = (timedelta(days=14), timedelta(days=30))
-OPEN_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 FIRST_RUN_DELAY_SECONDS = 600
 CYCLE_SECONDS = 3600
 

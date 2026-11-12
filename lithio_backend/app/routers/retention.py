@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import push_service
 from ..auth import get_current_user, require_admin
 from ..database import get_db
-from ..drivers import require_approved_driver
+from ..drivers import BUSY_RIDE_STATUSES, VERIFICATION_STEPS, require_approved_driver
 from ..models import DemandEvent, DriverProfile, Ride, StreakFreeze, User
 from ..rate_limit import rate_limit
 from ..retention_service import local_time, streak_from, week_of
@@ -20,8 +20,8 @@ from .legal import require_current_terms
 
 router = APIRouter(prefix="/api", tags=["retention"])
 
-BUSY_STATUSES = ("aceptado", "en_camino", "en_curso")
-PENDING_APPLICATION_STATUSES = ("pendiente", "en_revision", "inspeccion")
+BUSY_STATUSES = BUSY_RIDE_STATUSES
+PENDING_APPLICATION_STATUSES = tuple(VERIFICATION_STEPS[:-1])
 DEMAND_DEDUP = timedelta(minutes=15)
 DEMAND_PUSH_GAP = timedelta(minutes=30)
 QUIET_HOURS = {22, 23, 0, 1, 2, 3, 4, 5}  # Hora de Venezuela: no despertar a los conductores

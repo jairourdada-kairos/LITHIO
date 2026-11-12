@@ -69,6 +69,10 @@ def application_payload(user: User, profile: DriverProfile) -> dict:
     }
 
 
+# Estados del ciclo de vida de un viaje compartidos entre módulos.
+OPEN_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
+BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
+
 # La placa del conductor solo se muestra cuando ya aceptó ese viaje: antes,
 # nadie (ni el directorio de conductores ni una solicitud pendiente) la ve.
 PLATE_VISIBLE_STATUSES = ("aceptado", "en_camino", "en_curso", "completado")

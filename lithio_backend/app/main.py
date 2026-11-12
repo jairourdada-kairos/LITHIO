@@ -66,9 +66,9 @@ from .schemas import (
     RideResponse, ReviewCreate, ReviewResponse,
     PassengerRegisterRequest, DriverRegisterRequest
 )
-from .seed import seed_database
+from .seed import ROUTE_CATALOG, seed_database
 from . import wallet_service
-from .drivers import is_approved, require_approved_driver, visible_plate
+from .drivers import BUSY_RIDE_STATUSES, OPEN_RIDE_STATUSES, is_approved, require_approved_driver, visible_plate
 from .links_service import (
     MAX_REWARDED_RIDES_PER_PAIR_PER_DAY,
     PRIORITY_LEVEL,
@@ -84,10 +84,8 @@ from . import retention_service
 from .routers import app_version, driver_applications, fe_store, legal, links, profile, quiz, rates, recovery, retention, ride_details, theme, wallet
 from .timeutil import utcnow
 
-ACTIVE_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
+ACTIVE_RIDE_STATUSES = OPEN_RIDE_STATUSES
 VENEZUELA_TZ = config.VENEZUELA_TZ
-# Estados en los que el conductor ya está ocupado con un pasajero.
-BUSY_RIDE_STATUSES = ("aceptado", "en_camino", "en_curso")
 
 
 @asynccontextmanager
@@ -254,6 +252,17 @@ def _populate_ride_driver_meta(res: RideResponse, ride: Ride) -> RideResponse:
     res.driver_is_verified = bool(profile and profile.verification_status == "aprobado")
     res.has_review = bool(ride.review)
     return res
+
+
+def _populate_ride_driver_payment(res: RideResponse, profile: DriverProfile | None) -> None:
+    """Completa los datos de cobro del conductor para viajes pagados por Pago Móvil."""
+    if not profile:
+        return
+    res.driver_mobile_payment_number = profile.mobile_payment_number
+    res.driver_mobile_payment_bank = profile.mobile_payment_bank
+    res.driver_mobile_payment_id = profile.mobile_payment_id
+    res.driver_bank_account_number = profile.bank_account_number
+    res.driver_binance_address = profile.binance_address
 
 
 # Estados en los que pasajero y conductor pueden llamarse.
@@ -505,88 +514,29 @@ def get_firebase_web_config():
 # -------------------------------------------------------------
 # RUTAS PREDEFINIDAS Y TARIFAS
 # -------------------------------------------------------------
+def _serialize_route(route: Route) -> dict:
+    return {
+        "id": route.id,
+        "origin": route.origin,
+        "destination": route.destination,
+        "fare_usd": route.fare_usd,
+        "estimated_minutes": route.estimated_minutes,
+        "popular": route.popular,
+        "tag": route.tag,
+        "scope": route.scope or "externa",
+    }
+
+
 @app.get("/api/routes")
 def get_preset_routes(db: Session = Depends(get_db)):
     """Retorna las rutas más solicitadas por la comunidad UNC, IVIC, San Antonio y Caracas."""
     routes = db.query(Route).all()
-    if routes:
-        return [
-            {
-                "id": route.id,
-                "origin": route.origin,
-                "destination": route.destination,
-                "fare_usd": route.fare_usd,
-                "estimated_minutes": route.estimated_minutes,
-                "popular": route.popular,
-                "tag": route.tag,
-                "scope": route.scope or "externa"
-            }
-            for route in routes
-        ]
-
-    seed_routes = [
-        {
-            "origin": "UNC",
-            "destination": "BIBLIOTECA",
-            "fare_usd": 1.50,
-            "estimated_minutes": 8,
-            "popular": True,
-            "tag": "Ruta corta estudiantil",
-            "scope": "interna"
-        },
-        {
-            "origin": "UNC",
-            "destination": "REDOMA DE SAN ANTONIO",
-            "fare_usd": 2.50,
-            "estimated_minutes": 12,
-            "popular": True,
-            "tag": "Ruta principal"
-        },
-        {
-            "origin": "UNC",
-            "destination": "RESTO DEL IVIC",
-            "fare_usd": 2.00,
-            "estimated_minutes": 10,
-            "popular": True,
-            "tag": "Conexión IVIC",
-            "scope": "interna"
-        },
-        {
-            "origin": "BIBLIOTECA",
-            "destination": "REDOMA DE SAN ANTONIO",
-            "fare_usd": 2.50,
-            "estimated_minutes": 12,
-            "popular": True,
-            "tag": "Ruta bibliotecaria"
-        },
-        {
-            "origin": "UNC",
-            "destination": "CARACAS",
-            "fare_usd": 6.00,
-            "estimated_minutes": 35,
-            "popular": True,
-            "tag": "Bajada a Caracas"
-        },
-        {
-            "origin": "BIBLIOTECA",
-            "destination": "CARACAS",
-            "fare_usd": 6.50,
-            "estimated_minutes": 38,
-            "popular": False,
-            "tag": "Ruta referencia"
-        }
-    ]
-
-    created = []
-    for item in seed_routes:
-        route = Route(**item)
-        db.add(route)
-        created.append(item)
-    db.commit()
-    return [
-        {"scope": "externa", **item, "id": index + 1}
-        for index, item in enumerate(created)
-    ]
+    if not routes:
+        for item in ROUTE_CATALOG:
+            db.add(Route(**item))
+        db.commit()
+        routes = db.query(Route).all()
+    return [_serialize_route(route) for route in routes]
 
 
 @app.post(
@@ -609,16 +559,7 @@ def create_route_admin(data: AdminRouteIn, db: Session = Depends(get_db)):
     db.add(route)
     db.commit()
     db.refresh(route)
-    return {
-        "id": route.id,
-        "origin": route.origin,
-        "destination": route.destination,
-        "fare_usd": route.fare_usd,
-        "estimated_minutes": route.estimated_minutes,
-        "popular": route.popular,
-        "tag": route.tag,
-        "scope": route.scope
-    }
+    return _serialize_route(route)
 
 
 @app.put(
@@ -646,16 +587,7 @@ def update_route_admin(route_id: int, data: AdminRouteUpdate, db: Session = Depe
 
     db.commit()
     db.refresh(route)
-    return {
-        "id": route.id,
-        "origin": route.origin,
-        "destination": route.destination,
-        "fare_usd": route.fare_usd,
-        "estimated_minutes": route.estimated_minutes,
-        "popular": route.popular,
-        "tag": route.tag,
-        "scope": route.scope
-    }
+    return _serialize_route(route)
 
 
 @app.delete("/api/admin/routes/{route_id}", dependencies=[Depends(require_admin)])
@@ -1276,13 +1208,8 @@ async def request_ride(
     resp.whatsapp_status = whatsapp_status
     # El pasajero puede llamar a su conductor desde que pide el viaje.
     resp.counterpart_phone = driver.phone
-    driver_profile = driver.driver_profile
-    if ride_data.payment_method == "pago_movil" and driver_profile:
-        resp.driver_mobile_payment_number = driver_profile.mobile_payment_number
-        resp.driver_mobile_payment_bank = driver_profile.mobile_payment_bank
-        resp.driver_mobile_payment_id = driver_profile.mobile_payment_id
-        resp.driver_bank_account_number = driver_profile.bank_account_number
-        resp.driver_binance_address = driver_profile.binance_address
+    if ride_data.payment_method == "pago_movil":
+        _populate_ride_driver_payment(resp, driver.driver_profile)
     return resp
 
 @app.get("/api/rides/driver/{driver_id}/pending", response_model=List[RideResponse])
@@ -1338,14 +1265,8 @@ def get_active_ride_for_user(
     if ride.status in CONTACT_RIDE_STATUSES or (ride.status == "solicitado" and is_passenger):
         counterpart = ride.driver if current_user.id == ride.passenger_id else ride.passenger
         res.counterpart_phone = counterpart.phone if counterpart else None
-    if current_user.id == ride.passenger_id and ride.status in {"aceptado", "en_camino", "en_curso"}:
-        profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
-        if profile:
-            res.driver_mobile_payment_number = profile.mobile_payment_number
-            res.driver_mobile_payment_bank = profile.mobile_payment_bank
-            res.driver_mobile_payment_id = profile.mobile_payment_id
-            res.driver_bank_account_number = profile.bank_account_number
-            res.driver_binance_address = profile.binance_address
+    if current_user.id == ride.passenger_id and ride.status in BUSY_RIDE_STATUSES:
+        _populate_ride_driver_payment(res, ride.driver.driver_profile if ride.driver else None)
     return res
 
 def participant_filter(user_id: int, role: str | None):

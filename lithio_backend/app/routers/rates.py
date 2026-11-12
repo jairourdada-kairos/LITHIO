@@ -9,7 +9,6 @@ import asyncio
 import json
 import logging
 import urllib.request
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -17,19 +16,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..auth import require_admin
-from ..config import VENEZUELA_TZ
 from ..database import get_db
 from ..models import ExchangeRate
-from ..timeutil import utcnow
+from ..timeutil import utcnow, venezuela_today
 
 router = APIRouter(prefix="/api", tags=["tasa-bcv"])
 logger = logging.getLogger(__name__)
 
 SOURCE_URL = "https://ve.dolarapi.com/v1/dolares/oficial"
-
-
-def venezuela_today():
-    return datetime.now(VENEZUELA_TZ).date()
 
 
 def fetch_official_rate() -> float:

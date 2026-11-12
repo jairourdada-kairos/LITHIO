@@ -1,4 +1,5 @@
 from .database import SessionLocal, engine, Base
+from .drivers import OPEN_RIDE_STATUSES
 from .models import User, DriverProfile, Ride, Review, Route, WorkshopReward, phone_fingerprint
 from .links_service import RIDE_FE, assign_friend_code, award_fe
 from sqlalchemy import inspect, text
@@ -214,7 +215,7 @@ def recompute_driver_stats(db):
 def sync_open_ride_rewards(db):
     """Los viajes aún sin terminar pagan la recompensa vigente (RIDE_FE)."""
     db.query(Ride).filter(
-        Ride.status.in_(("solicitado", "aceptado", "en_camino", "en_curso")),
+        Ride.status.in_(OPEN_RIDE_STATUSES),
         Ride.points_rewarded != RIDE_FE,
     ).update({"points_rewarded": RIDE_FE}, synchronize_session=False)
     db.commit()

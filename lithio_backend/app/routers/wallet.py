@@ -4,7 +4,6 @@ Fondo Solidario, retiros y canjes del taller aliado para conductores.
 Las recargas y las donaciones por Pago Móvil se pagan al Pago Móvil del
 administrador (los datos de su perfil de conductor), llevan la captura del
 pago y quedan en revisión hasta que el administrador las aprueba."""
-import re
 import secrets
 from ..rate_limit import rate_limit
 from typing import Literal, Optional
@@ -24,6 +23,7 @@ from ..drivers import require_approved_driver
 from ..links_service import are_linked
 from ..models import DriverProfile, User, WalletTransaction, WorkshopReward
 from ..realtime import manager
+from ..validation import normalize_payment_reference, payment_reference_key
 from .legal import require_current_terms
 from .. import push_service
 from .profile import _detect_format, commit_or_discard, safe_evidence_path
@@ -170,14 +170,11 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
 
 
 def _normalize_payment_reference(reference: str | None) -> str:
-    cleaned = re.sub(r"\s+", "", reference or "").upper()
-    alnum = re.sub(r"[\s\-]+", "", cleaned)
-    if not re.fullmatch(r"[A-Z0-9-]{4,30}", cleaned) or len(alnum) < 4:
-        raise HTTPException(
-            status_code=422,
-            detail="Escribe la referencia que te dio el banco: de 4 a 30 números o letras.",
-        )
-    return alnum
+    try:
+        cleaned = normalize_payment_reference(reference)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    return payment_reference_key(cleaned)
 
 
 def _ensure_unique_reference(db: Session, reference: str) -> str:
@@ -193,7 +190,7 @@ def _ensure_unique_reference(db: Session, reference: str) -> str:
         .all()
     )
     for (stored,) in existing:
-        if stored and re.sub(r"[\s\-]+", "", stored).upper() == normalized:
+        if stored and payment_reference_key(stored) == normalized:
             raise HTTPException(
                 status_code=409,
                 detail="Esta referencia de pago ya fue registrada.",
