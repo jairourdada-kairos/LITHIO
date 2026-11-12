@@ -37,6 +37,7 @@ export const DriverSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSocia
   const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const handleEmailLogin = async () => {
+    if (loading) return;
     const newErrors = {
       email: validateEmail(email),
       password: password ? undefined : 'Escribe tu contraseña',

@@ -41,13 +41,20 @@ export const LevelsTableScreen: React.FC<Props> = ({ accent, onBack }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     apiService
       .getLevels()
       .then((data) => {
+        if (cancelled) return;
         setElements(data.elements);
         setSelectedZ(data.current.z);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'No se pudo cargar la tabla.'));
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No se pudo cargar la tabla.');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const byZ = useMemo(() => new Map((elements || []).map((e) => [e.z, e])), [elements]);
@@ -89,7 +96,7 @@ export const LevelsTableScreen: React.FC<Props> = ({ accent, onBack }) => {
           <Text
             style={[
               styles.cellSymbol,
-              { fontSize: size * 0.36 },
+              { fontSize: Math.max(11, size * 0.36) },
               !element.unlocked && styles.lockedText,
               element.current && styles.onAccent,
             ]}
@@ -191,7 +198,7 @@ const styles = themed(() => ({
   error: {
     fontFamily: theme.fonts.regular,
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: theme.colors.error,
     textAlign: 'center',
     marginTop: 48,
   },
@@ -255,7 +262,7 @@ const styles = themed(() => ({
     top: 2,
     left: 4,
     fontFamily: theme.fonts.mono,
-    fontSize: 8,
+    fontSize: 11,
     color: theme.colors.textMuted,
   },
   cellSymbol: {

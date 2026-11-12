@@ -59,6 +59,7 @@ export const PassengerSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) 
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     const valid = validate();
     if (!acceptedTerms) setTermsError('Marca la casilla para crear tu cuenta.');
     if (!valid || !acceptedTerms) return;

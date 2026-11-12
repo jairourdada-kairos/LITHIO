@@ -71,6 +71,8 @@ export const AccountScreen: React.FC<Props> = ({
 }) => {
   const { mode, setMode } = useThemeMode();
   const [remindersChoice, setRemindersChoice] = useState<boolean | null>(null);
+  const [busyItem, setBusyItem] = useState<'push' | 'reminders' | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const accent = roleColors(role).accent;
   const level = summary?.level ?? FALLBACK_LEVEL;
   const progress = levelProgress(level);
@@ -84,23 +86,37 @@ export const AccountScreen: React.FC<Props> = ({
     ]);
 
   const manageNotifications = async () => {
-    const status = await getPushStatus();
-    if (status === 'granted') {
-      await registerForPush();
-      Alert.alert('Notificaciones activadas', 'Te avisaremos de tus viajes y de tu billetera aunque tengas la app cerrada.');
-    } else if (status === 'denied') {
-      Alert.alert('Notificaciones desactivadas', 'Las desactivaste antes. Actívalas en los ajustes del teléfono: Notificaciones → LITHIO.', [
-        { text: 'Ahora no', style: 'cancel' },
-        { text: 'Abrir ajustes', onPress: openNotificationSettings },
-      ]);
-    } else if (await registerForPush()) {
-      Alert.alert('Notificaciones activadas', 'Listo: te avisaremos de lo importante.');
+    if (busyItem) return;
+    setBusyItem('push');
+    setActionError(null);
+    try {
+      const status = await getPushStatus();
+      if (status === 'granted') {
+        await registerForPush();
+        Alert.alert('Notificaciones activadas', 'Te avisaremos de tus viajes y de tu billetera aunque tengas la app cerrada.');
+      } else if (status === 'denied') {
+        Alert.alert('Notificaciones desactivadas', 'Las desactivaste antes. Actívalas en los ajustes del teléfono: Notificaciones → LITHIO.', [
+          { text: 'Ahora no', style: 'cancel' },
+          { text: 'Abrir ajustes', onPress: openNotificationSettings },
+        ]);
+      } else if (await registerForPush()) {
+        Alert.alert('Notificaciones activadas', 'Listo: te avisaremos de lo importante.');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudieron actualizar las notificaciones.';
+      setActionError(msg);
+      Alert.alert('No se pudo cambiar', msg);
+    } finally {
+      setBusyItem(null);
     }
   };
 
   const remindersOn = remindersChoice ?? summary?.retention_push_enabled ?? true;
   const toggleReminders = () => {
+    if (busyItem) return;
     const next = !remindersOn;
+    setBusyItem('reminders');
+    setActionError(null);
     apiService
       .setRetentionPush(next)
       .then(() => {
@@ -112,7 +128,12 @@ export const AccountScreen: React.FC<Props> = ({
             : 'Ya no te los enviaremos. Los avisos de tus viajes y tu billetera siguen activos.',
         );
       })
-      .catch(() => Alert.alert('No se pudo cambiar', 'Revisa tu conexión e inténtalo de nuevo.'));
+      .catch((error) => {
+        const msg = error instanceof Error ? error.message : 'Revisa tu conexión e inténtalo de nuevo.';
+        setActionError(msg);
+        Alert.alert('No se pudo cambiar', msg);
+      })
+      .finally(() => setBusyItem(null));
   };
 
   const items: MenuItem[] = [
@@ -202,6 +223,8 @@ export const AccountScreen: React.FC<Props> = ({
           })}
         </View>
       </View>
+
+      {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
 
       <Reveal index={2} style={styles.menu}>
         {items.map((item, index) => (
@@ -448,5 +471,11 @@ const styles = themed(() => ({
     color: theme.colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 12,
+  },
+  errorText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: theme.colors.error,
+    textAlign: 'center',
   },
 }));

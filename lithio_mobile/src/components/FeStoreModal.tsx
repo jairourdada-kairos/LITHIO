@@ -41,22 +41,36 @@ const VOUCHER_STATUS: Record<GradeVoucher['status'], { label: string; color: () 
 export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChanged, variant = 'modal', reloadKey, onRecharge }) => {
   const [store, setStore] = useState<FeStore | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   // En una ref para que `load` no cambie en cada render del padre.
   const pointsChanged = useRef(onPointsChanged);
   pointsChanged.current = onPointsChanged;
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const data = await apiService.getFeStore();
+      if (!mountedRef.current) return;
       setStore(data);
+      setErrorMessage(null);
       pointsChanged.current(data.points);
     } catch (error) {
-      Alert.alert('No se pudo abrir la tienda', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      if (!mountedRef.current) return;
+      const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+      setErrorMessage(msg);
+      Alert.alert('No se pudo abrir la tienda', msg);
     }
   }, []);
 
@@ -68,27 +82,35 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
   const activeCoupons = store?.coupons.filter((c) => c.status === 'activo') ?? [];
   const pendingVoucher = store?.vouchers.some((v) => v.status === 'pendiente') ?? false;
 
-  const buy = (percent: number, cost: number) =>
+  const buy = (percent: number, cost: number) => {
+    if (busy !== null) return;
     Alert.alert(`Cupón −${percent}%`, `Usarás ${cost} Fe. Podrás aplicarlo al confirmar tu próximo viaje.`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Canjear',
         onPress: async () => {
+          if (busy !== null) return;
           setBusy(`c${percent}`);
+          setErrorMessage(null);
           try {
             await apiService.buyCoupon(percent);
             await load();
           } catch (error) {
-            Alert.alert('No se pudo canjear', error instanceof Error ? error.message : 'Intenta de nuevo.');
+            const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+            setErrorMessage(msg);
+            void load();
+            Alert.alert('No se pudo canjear', msg);
           } finally {
-            setBusy(null);
+            if (mountedRef.current) setBusy(null);
           }
         },
       },
     ]);
+  };
 
   const diamonds = store?.diamonds ?? 0;
   const buyCombo = (combo: FeCombo) => {
+    if (busy !== null) return;
     if (diamonds < combo.price) {
       Alert.alert(
         'Te faltan iones',
@@ -105,16 +127,21 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
         {
           text: 'Comprar',
           onPress: async () => {
+            if (busy !== null) return;
             setBusy(combo.id);
+            setErrorMessage(null);
             try {
               const result = await apiService.buyCombo(combo.id);
               await load();
               hapticSuccess();
               Alert.alert('¡Combo listo!', `Ya tienes ${result.ride_passes} pases. Úsalos al confirmar un viaje en rutas internas.`);
             } catch (error) {
-              Alert.alert('No se pudo comprar', error instanceof Error ? error.message : 'Intenta de nuevo.');
+              const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+              setErrorMessage(msg);
+              void load();
+              Alert.alert('No se pudo comprar', msg);
             } finally {
-              setBusy(null);
+              if (mountedRef.current) setBusy(null);
             }
           },
         },
@@ -123,13 +150,17 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
   };
 
   const sendVoucher = async () => {
+    if (busy !== null) return;
     if (subject.trim().length < 3 || !photo) {
+      setErrorMessage('Escribe la materia y adjunta la foto de tu nota.');
       Alert.alert('Faltan datos', 'Escribe la materia y adjunta la foto de tu nota.');
       return;
     }
     setBusy('voucher');
+    setErrorMessage(null);
     try {
       await apiService.requestGradeVoucher(subject.trim(), note.trim(), await photoFormValue(photo, 'nota.jpg'));
+      if (!mountedRef.current) return;
       setVoucherOpen(false);
       setSubject('');
       setNote('');
@@ -137,9 +168,12 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
       await load();
       Alert.alert('Vale enviado', 'El administrador revisará tu evidencia. Si no se aprueba, te devolvemos el Fe.');
     } catch (error) {
-      Alert.alert('No se pudo enviar', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+      if (mountedRef.current) setErrorMessage(msg);
+      void load();
+      Alert.alert('No se pudo enviar', msg);
     } finally {
-      setBusy(null);
+      if (mountedRef.current) setBusy(null);
     }
   };
 
@@ -184,6 +218,7 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
                   <Text style={styles.tileLabel}>Pases</Text>
                 </View>
               </View>
+              {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
               {(store.combos ?? []).length > 0 ? (
                 <>
                   <SectionLabel color={theme.colors.gold} style={styles.section}>COMBOS de viajes</SectionLabel>
@@ -609,5 +644,10 @@ const styles = themed(() => ({
   status: {
     fontFamily: theme.fonts.semibold,
     fontSize: 12,
+  },
+  errorText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: theme.colors.error,
   },
 }));

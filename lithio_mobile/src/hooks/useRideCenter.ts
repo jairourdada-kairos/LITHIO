@@ -39,7 +39,16 @@ export function useRideCenter(userId: number, role: SessionRole) {
   const [connected, setConnected] = useState(wsService.isConnected());
   const activeRef = useRef<Ride | null>(null);
   const updatingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const sessionRef = useRef({ userId, role });
   activeRef.current = activeRide;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -47,6 +56,13 @@ export function useRideCenter(userId: number, role: SessionRole) {
         apiService.getActiveRide(userId, role),
         role === 'conductor' ? apiService.getPendingRequests(userId) : Promise.resolve([]),
       ]);
+      if (
+        !mountedRef.current ||
+        sessionRef.current.userId !== userId ||
+        sessionRef.current.role !== role
+      ) {
+        return;
+      }
       setActiveRide(ride);
       setRequests(pending);
     } catch {
@@ -61,6 +77,13 @@ export function useRideCenter(userId: number, role: SessionRole) {
   );
 
   useEffect(() => {
+    if (sessionRef.current.userId !== userId || sessionRef.current.role !== role) {
+      sessionRef.current = { userId, role };
+      updatingRef.current = false;
+      setActiveRide(null);
+      setRequests([]);
+      setNotice(null);
+    }
     void refresh();
     wsService.connect();
 
@@ -141,6 +164,7 @@ export function useRideCenter(userId: number, role: SessionRole) {
       } finally {
         updatingRef.current = false;
       }
+      if (!mountedRef.current) return result;
       setRequests((prev) => prev.filter((r) => r.id !== ride.id));
       if (TERMINAL.includes(status)) {
         if (activeRef.current?.id === ride.id) setActiveRide(null);

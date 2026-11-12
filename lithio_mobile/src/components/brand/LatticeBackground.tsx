@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { themed } from '../../constants/theme';
+import { theme, themed } from '../../constants/theme';
 
 export const LatticeBackground: React.FC = () => {
   const { width } = useWindowDimensions();
@@ -29,15 +29,15 @@ const styles = themed(() => ({
     borderRadius: 9999,
   },
   haloPrimary: {
-    backgroundColor: 'rgba(69, 214, 197, 0.08)',
-    boxShadow: '0 0 160px 60px rgba(69, 214, 197, 0.08)',
+    backgroundColor: `${theme.colors.primary}14`,
+    boxShadow: `0 0 160px 60px ${theme.colors.primary}14`,
   },
   haloSecondary: {
-    backgroundColor: 'rgba(255, 118, 94, 0.06)',
-    boxShadow: '0 0 160px 60px rgba(255, 118, 94, 0.06)',
+    backgroundColor: `${theme.colors.secondary}0F`,
+    boxShadow: `0 0 160px 60px ${theme.colors.secondary}0F`,
   },
   haloDiamond: {
-    backgroundColor: 'rgba(127, 212, 255, 0.04)',
-    boxShadow: '0 0 140px 50px rgba(127, 212, 255, 0.04)',
+    backgroundColor: `${theme.colors.diamond}0A`,
+    boxShadow: `0 0 140px 50px ${theme.colors.diamond}0A`,
   },
 }));

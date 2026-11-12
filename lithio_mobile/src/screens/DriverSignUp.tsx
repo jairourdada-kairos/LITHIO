@@ -145,6 +145,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     const valid = validateStep2();
     if (!acceptedTerms) setTermsError('Marca la casilla para crear tu cuenta.');
     if (!valid || !acceptedTerms) return;
@@ -308,7 +309,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
           value={form.helmet_provided}
           onValueChange={(v) => updateField('helmet_provided', v)}
           trackColor={{ false: theme.colors.cardBorder, true: theme.colors.primary }}
-          thumbColor="#fff"
+          thumbColor={theme.colors.textPrimary}
         />
       </View>
 

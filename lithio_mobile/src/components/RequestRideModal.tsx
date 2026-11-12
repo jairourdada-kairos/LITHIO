@@ -30,7 +30,7 @@ interface RequestRideModalProps {
   /** Tipo de la ruta: los pases de combo solo valen en rutas internas. */
   routeScope?: 'interna' | 'externa';
   onClose: () => void;
-  onConfirm: (paymentMethod: PaymentMethod, couponId?: number) => void;
+  onConfirm: (paymentMethod: PaymentMethod, couponId?: number) => Promise<void> | void;
   /** Cierra la confirmación y abre la recarga de iones con ese método. */
   onRecharge?: (method: TopupMethod) => void;
 }
@@ -57,27 +57,41 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   const [coupons, setCoupons] = useState<FeCoupon[]>([]);
   const [couponId, setCouponId] = useState<number | undefined>(undefined);
   const [diamonds, setDiamonds] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
     setCouponId(undefined);
     setDiamonds(null);
     setPasses(0);
+    setSubmitting(false);
+    setError(null);
     picked.current = false;
     apiService
       .getFeStore()
       .then((store) => {
+        if (cancelled) return;
         setCoupons(store.coupons.filter((c) => c.status === 'activo'));
         setPasses(store.ride_passes ?? 0);
       })
-      .catch(() => setCoupons([]));
+      .catch(() => {
+        if (!cancelled) setCoupons([]);
+      });
     apiService
       .getWallet()
       .then((wallet) => {
+        if (cancelled) return;
         setDiamonds(wallet.balance);
         setBinanceAvailable(Boolean(wallet.binance_pay));
       })
-      .catch(() => setDiamonds(null));
+      .catch(() => {
+        if (!cancelled) setDiamonds(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [visible]);
 
   const coupon = coupons.find((c) => c.id === couponId);
@@ -106,9 +120,46 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
   }, [visible, canUsePass, diamondBlock]);
 
   const pick = (choice: PaymentChoice) => {
+    if (submitting) return;
     picked.current = true;
+    setError(null);
     setPaymentMethod(choice);
     if (choice === 'pase') setCouponId(undefined); // Un pase no se combina con cupones.
+  };
+
+  const handleConfirm = async () => {
+    if (submitting) return;
+    setError(null);
+    if (paymentMethod === 'binance_pay') {
+      onRecharge?.('binance_pay');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onConfirm(paymentMethod, paymentMethod === 'pase' ? undefined : couponId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo solicitar el viaje.');
+      apiService
+        .getFeStore()
+        .then((store) => {
+          const active = store.coupons.filter((c) => c.status === 'activo');
+          setCoupons(active);
+          setPasses(store.ride_passes ?? 0);
+          if (couponId && !active.some((c) => c.id === couponId)) {
+            setCouponId(undefined);
+          }
+        })
+        .catch(() => {});
+      apiService
+        .getWallet()
+        .then((wallet) => {
+          setDiamonds(wallet.balance);
+          setBinanceAvailable(Boolean(wallet.binance_pay));
+        })
+        .catch(() => {});
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!driver) return null;
@@ -120,7 +171,7 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
           {/* Encabezado */}
           <View style={styles.header}>
             <Text style={styles.title}>Confirmar Viaje</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} disabled={submitting} style={styles.closeBtn}>
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -247,9 +298,14 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
                       <TouchableOpacity
                         key={c.id}
                         style={[styles.couponChip, selected && styles.couponChipActive]}
-                        onPress={() => setCouponId(selected ? undefined : c.id)}
+                        onPress={() => {
+                          if (submitting) return;
+                          setError(null);
+                          setCouponId(selected ? undefined : c.id);
+                        }}
+                        disabled={submitting}
                         accessibilityRole="checkbox"
-                        accessibilityState={{ checked: selected }}
+                        accessibilityState={{ checked: selected, disabled: submitting }}
                       >
                         <Text style={[styles.couponChipText, selected && styles.couponChipTextActive]}>
                           {c.percent === 100 ? 'Gratis' : `−${c.percent}%`}
@@ -285,19 +341,22 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
               </View>
             </View>
 
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
             <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={() =>
-                paymentMethod === 'binance_pay'
-                  ? onRecharge?.('binance_pay')
-                  : onConfirm(paymentMethod, paymentMethod === 'pase' ? undefined : couponId)
-              }
+              style={[styles.confirmBtn, submitting && styles.paymentBtnDisabled]}
+              onPress={() => void handleConfirm()}
+              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityState={{ busy: submitting, disabled: submitting }}
               activeOpacity={0.85}
             >
               <Text style={styles.confirmBtnText}>
-                {paymentMethod === 'binance_pay'
-                  ? '🔶 Recargar con Binance Pay'
-                  : `🚀 Notificar y Solicitar a ${driver.name.split(' ')[0]}`}
+                {submitting
+                  ? 'Solicitando viaje…'
+                  : paymentMethod === 'binance_pay'
+                    ? '🔶 Recargar con Binance Pay'
+                    : `🚀 Notificar y Solicitar a ${driver.name.split(' ')[0]}`}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -364,7 +423,7 @@ const styles = themed(() => ({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'flex-end',
   },
   modalCard: {
@@ -526,7 +585,7 @@ const styles = themed(() => ({
   },
   paymentBtnActive: {
     borderColor: theme.colors.primary,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: theme.colors.primarySoft,
   },
   paymentBtnDisabled: {
     opacity: 0.6,
@@ -558,9 +617,9 @@ const styles = themed(() => ({
     gap: 4,
   },
   mobilePaymentCard: {
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    backgroundColor: theme.colors.primarySoft,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
+    borderColor: theme.colors.primaryLine,
     borderRadius: theme.radius.sm,
     padding: 12,
     marginBottom: 10,
@@ -607,13 +666,19 @@ const styles = themed(() => ({
   rewardBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    backgroundColor: theme.colors.goldSoft,
     padding: 12,
     borderRadius: theme.radius.sm,
     gap: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: `${theme.colors.gold}4D`,
+  },
+  errorText: {
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.error,
+    fontSize: 12,
+    marginBottom: 10,
   },
   rewardIcon: {
     fontFamily: theme.fonts.regular,

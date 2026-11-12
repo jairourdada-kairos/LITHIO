@@ -81,16 +81,39 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
   const [topupMethod, setTopupMethod] = useState<TopupMethod>('pago_movil');
 
   useEffect(() => {
+    let cancelled = false;
     setAmount('');
     setText('');
     setNote('');
     setRecipient(null);
     setError(undefined);
+    setBusy(false);
     setDonationMethod('diamantes');
     setReceiptUri(null);
     setTopupMethod(initialTopupMethod === 'binance_pay' && binancePay ? 'binance_pay' : 'pago_movil');
-    if (action === 'enviar') apiService.getLinks().then((info) => setLinks(info.links)).catch(() => setLinks([]));
-    if (action === 'taller') apiService.getWorkshop().then(setWorkshop).catch(() => setWorkshop([]));
+    if (action === 'enviar') {
+      apiService
+        .getLinks()
+        .then((info) => {
+          if (!cancelled) setLinks(info.links);
+        })
+        .catch(() => {
+          if (!cancelled) setLinks([]);
+        });
+    }
+    if (action === 'taller') {
+      apiService
+        .getWorkshop()
+        .then((items) => {
+          if (!cancelled) setWorkshop(items);
+        })
+        .catch(() => {
+          if (!cancelled) setWorkshop([]);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
     // Solo al abrir otra acción: no se reinicia el formulario mientras se escribe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action]);
@@ -122,6 +145,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
   };
 
   const submit = async () => {
+    if (busy) return;
     const value = Number(amount.replace(',', '.'));
     if (!(value > 0)) {
       setError('Escribe un monto mayor que cero.');
@@ -135,7 +159,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
     setError(undefined);
     try {
       if (action === 'recargar') {
-        if (text.trim().length < 4) throw new Error(byBinance ? 'Escribe el ID de la orden de Binance Pay.' : 'Escribe la referencia del Pago Móvil.');
+        if (text.replace(/[\s-]/g, '').length < 4) throw new Error(byBinance ? 'Escribe el ID de la orden de Binance Pay.' : 'Escribe la referencia del Pago Móvil.');
         if (!receiptUri) throw new Error(byBinance ? 'Adjunta la captura del pago en Binance.' : 'Adjunta la captura del Pago Móvil.');
         const tx = await apiService.requestTopup(value, text.trim(), byBinance ? 'binance_pay' : 'pago_movil');
         const sent = await sendReceipt(tx.id);
@@ -145,7 +169,7 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
         await apiService.sendDiamonds(recipient, value, note.trim());
         finish('Iones enviados', `Enviaste Li⁺ ${value.toFixed(2)}.`);
       } else if (action === 'donar' && donationMethod === 'pago_movil') {
-        if (text.trim().length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
+        if (text.replace(/[\s-]/g, '').length < 4) throw new Error('Escribe la referencia del Pago Móvil.');
         if (!receiptUri) throw new Error('Adjunta la captura del Pago Móvil.');
         const tx = await apiService.donate(value, 'pago_movil', text.trim());
         const sent = await sendReceipt(tx.id);
@@ -165,21 +189,30 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
     }
   };
 
-  const redeem = (item: WorkshopItem) =>
+  const redeem = (item: WorkshopItem) => {
+    if (busy) return;
     Alert.alert(item.title, `Pagarás Li⁺ ${item.cost.toFixed(2)} del saldo. ¿Confirmas?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Canjear',
         onPress: async () => {
+          if (busy) return;
+          setBusy(true);
+          setError(undefined);
           try {
             await apiService.redeemWorkshop(item.id);
             finish('Canje enviado', 'El administrador te confirmará la cita en el taller.');
           } catch (e) {
-            Alert.alert('No se pudo canjear', e instanceof Error ? e.message : 'Intenta de nuevo.');
+            const msg = e instanceof Error ? e.message : 'Intenta de nuevo.';
+            setError(msg);
+            Alert.alert('No se pudo canjear', msg);
+          } finally {
+            setBusy(false);
           }
         },
       },
     ]);
+  };
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -251,9 +284,10 @@ export const WalletActionSheet: React.FC<Props> = ({ action, balance, pagoMovil,
                     <Pressable
                       key={item.id}
                       onPress={() => redeem(item)}
-                      disabled={!affordable}
-                      style={({ pressed }) => [styles.option, !affordable && styles.dim, pressed && styles.pressed]}
+                      disabled={!affordable || busy}
+                      style={({ pressed }) => [styles.option, (!affordable || busy) && styles.dim, pressed && styles.pressed]}
                       accessibilityRole="button"
+                      accessibilityState={{ busy, disabled: !affordable || busy }}
                     >
                       <Icon name="settings-2-outline" size={22} color={theme.colors.secondary} />
                       <View style={styles.flex}>

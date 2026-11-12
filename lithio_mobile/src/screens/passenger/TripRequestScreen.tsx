@@ -12,7 +12,7 @@
  * y se abre en el paso 3.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { ReduceMotion, SlideInLeft, SlideInRight } from 'react-native-reanimated';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
@@ -137,13 +137,41 @@ export const TripRequestScreen: React.FC<Props> = ({
     .filter((d) => d.is_available)
     .sort((a, b) => b.rating_avg - a.rating_avg || b.trips_count - a.trips_count);
   const [driversAlerted, setDriversAlerted] = useState(false);
+  const choosingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noDriversNow = step === 'driver' && !scheduled && available.length === 0 && !driversError;
+
+  useEffect(() => {
+    return () => {
+      if (choosingTimerRef.current) clearTimeout(choosingTimerRef.current);
+    };
+  }, []);
 
   // Cuenta como demanda sin atender y avisa a los conductores fuera de servicio.
   useEffect(() => {
     if (!noDriversNow) return;
-    apiService.reportNoDrivers().then((result) => setDriversAlerted(result.drivers_notified > 0)).catch(() => {});
+    let cancelled = false;
+    apiService
+      .reportNoDrivers()
+      .then((result) => {
+        if (!cancelled) setDriversAlerted(result.drivers_notified > 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [noDriversNow]);
+
+  const chooseDriverOnce = (driver: Driver) => {
+    if (!route || choosingTimerRef.current) return;
+    choosingTimerRef.current = setTimeout(() => {
+      choosingTimerRef.current = null;
+    }, 600);
+    onChooseDriver(driver, {
+      route,
+      isScheduled: scheduled,
+      scheduledTime: scheduled && time ? `${dayKey} ${time}` : '',
+    });
+  };
 
   const scheduleReady = !scheduled || Boolean(time);
   const canContinue = Boolean(route) && scheduleReady;
@@ -381,13 +409,7 @@ export const TripRequestScreen: React.FC<Props> = ({
                     key={driver.user_id}
                     driver={driver}
                     topRated={index === 0 && available.length > 1 && driver.trips_count > 0}
-                    onChoose={() =>
-                      onChooseDriver(driver, {
-                        route,
-                        isScheduled: scheduled,
-                        scheduledTime: scheduled && time ? `${dayKey} ${time}` : '',
-                      })
-                    }
+                    onChoose={() => chooseDriverOnce(driver)}
                   />
                 ))
               )}

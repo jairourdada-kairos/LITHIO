@@ -6,7 +6,7 @@
  * volver y soporte del botón atrás de Android.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Alert, BackHandler, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme, themed } from '../constants/theme';
@@ -80,6 +80,13 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [tutorialChecked, setTutorialChecked] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
+  const reviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (reviewTimerRef.current) clearTimeout(reviewTimerRef.current);
+    };
+  }, []);
 
   const rides = useRideCenter(user.id, 'pasajero');
   const adminAlerts = useAdminAlerts(Boolean(summary?.is_admin));
@@ -109,13 +116,15 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void loadData();
     shouldShowTutorial(user.id, 'pasajero').then((show) => {
+      if (cancelled) return;
       setTutorialVisible(show);
       setTutorialChecked(true);
     });
     // El directorio y la billetera se actualizan en vivo.
-    return wsService.subscribe((msg) => {
+    const unsubscribe = wsService.subscribe((msg) => {
       if (msg.type === 'DRIVER_AVAILABILITY_CHANGED') {
         setDrivers((prev) => prev.map((d) => (d.user_id === msg.driver_id ? { ...d, is_available: msg.is_available } : d)));
       } else if (msg.type === 'WALLET_UPDATED') {
@@ -123,6 +132,10 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
         setReloadKey((key) => key + 1);
       }
     });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [loadData, loadSummary, user.id]);
 
   // Cada cambio de estado del viaje puede sumar Fe, mover iones o el historial.
@@ -225,7 +238,9 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
       setPending(null);
       setOverlay({ type: 'ride' });
     } catch (error) {
+      loadDrivers();
       Alert.alert('No se pudo solicitar el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      throw error;
     }
   };
 
@@ -286,14 +301,14 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
       setReloadKey((key) => key + 1);
       // Se espera a que cierre la hoja de la reseña: abrir otro Modal mientras uno se
       // cierra puede dejar la pantalla congelada o en blanco (sobre todo en iOS).
-      setTimeout(
-        () =>
-          Alert.alert(
-            '¡Gracias por tu reseña!',
-            result.points_earned ? `Sumaste +${result.points_earned} Fe. El conductor ya puede leerla.` : 'El conductor ya puede leerla.'
-          ),
-        350
-      );
+      if (reviewTimerRef.current) clearTimeout(reviewTimerRef.current);
+      reviewTimerRef.current = setTimeout(() => {
+        reviewTimerRef.current = null;
+        Alert.alert(
+          '¡Gracias por tu reseña!',
+          result.points_earned ? `Sumaste +${result.points_earned} Fe. El conductor ya puede leerla.` : 'El conductor ya puede leerla.'
+        );
+      }, 350);
     } catch (error) {
       Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }

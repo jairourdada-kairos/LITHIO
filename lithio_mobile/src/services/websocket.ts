@@ -50,6 +50,8 @@ class WebSocketService {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect = false;
+  private opening = false;
+  private connectionEpoch = 0;
   private attempts = 0;
   private connected = false;
 
@@ -64,25 +66,40 @@ class WebSocketService {
   }
 
   private async _open() {
-    if (!this.shouldReconnect) return;
+    if (!this.shouldReconnect || this.opening) return;
+    if (
+      this.socket &&
+      (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
 
+    this.opening = true;
+    const epoch = ++this.connectionEpoch;
     let token: string;
     try {
       token = await getFirebaseIdToken();
     } catch {
-      this.scheduleReconnect();
+      this.opening = false;
+      if (this.shouldReconnect && epoch === this.connectionEpoch) {
+        this.scheduleReconnect();
+      }
       return;
     }
 
-    if (!this.shouldReconnect) return;
+    this.opening = false;
+    if (!this.shouldReconnect || epoch !== this.connectionEpoch) return;
+
     const socket = new WebSocket(`${WS_BASE}/ws`);
     this.socket = socket;
 
     socket.onopen = () => {
+      if (this.socket !== socket) return;
       socket.send(JSON.stringify({ type: 'AUTH', token, session_id: getDeviceSession() }));
     };
 
     socket.onmessage = (event) => {
+      if (this.socket !== socket) return;
       let msg: WSMessage;
       try {
         msg = JSON.parse(event.data);
@@ -106,7 +123,7 @@ class WebSocketService {
         this.pongTimer = null;
         return;
       }
-      this.handlers.forEach((h) => h(msg));
+      [...this.handlers].forEach((h) => h(msg));
     };
 
     // El detalle del error llega en onclose; aquí no se registra nada para no
@@ -114,7 +131,8 @@ class WebSocketService {
     socket.onerror = () => {};
 
     socket.onclose = () => {
-      if (this.socket === socket) this.socket = null;
+      if (this.socket !== socket) return;
+      this.socket = null;
       this.stopHeartbeat();
       this.setConnected(false);
       this.scheduleReconnect();
@@ -152,7 +170,7 @@ class WebSocketService {
   private setConnected(value: boolean) {
     if (this.connected === value) return;
     this.connected = value;
-    this.statusHandlers.forEach((h) => h(value));
+    [...this.statusHandlers].forEach((h) => h(value));
   }
 
   isConnected() {
@@ -164,7 +182,9 @@ class WebSocketService {
    * Devuelve una función para desuscribirse.
    */
   subscribe(handler: MessageHandler): () => void {
-    this.handlers.push(handler);
+    if (!this.handlers.includes(handler)) {
+      this.handlers.push(handler);
+    }
     return () => {
       this.handlers = this.handlers.filter((h) => h !== handler);
     };
@@ -172,7 +192,9 @@ class WebSocketService {
 
   /** Avisa cuando la conexión en tiempo real se abre o se pierde. */
   onStatusChange(handler: StatusHandler): () => void {
-    this.statusHandlers.push(handler);
+    if (!this.statusHandlers.includes(handler)) {
+      this.statusHandlers.push(handler);
+    }
     return () => {
       this.statusHandlers = this.statusHandlers.filter((h) => h !== handler);
     };
@@ -183,14 +205,23 @@ class WebSocketService {
    */
   disconnect() {
     this.shouldReconnect = false;
+    this.opening = false;
+    this.connectionEpoch += 1;
     this.attempts = 0;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
     this.stopHeartbeat();
-    this.socket?.close();
+    const current = this.socket;
     this.socket = null;
+    if (current) {
+      current.onopen = null;
+      current.onmessage = null;
+      current.onerror = null;
+      current.onclose = null;
+      current.close();
+    }
     this.setConnected(false);
   }
 }

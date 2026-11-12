@@ -57,9 +57,21 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [showCedula, setShowCedula] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiService.getMyProfile().then(setProfile).catch(() => setProfile(null));
+    let cancelled = false;
+    apiService
+      .getMyProfile()
+      .then((data) => {
+        if (!cancelled) setProfile(data);
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const current = {
@@ -78,10 +90,13 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
     }
     setDraft(current);
     setErrors({});
+    setSubmitError(null);
     setEditing(true);
   };
 
   const save = () => {
+    if (saving) return;
+    setSubmitError(null);
     const nextErrors: Errors = {
       name: validatePersonName(draft.name, 'El nombre'),
       last_name: validatePersonName(draft.last_name, 'El apellido'),
@@ -109,7 +124,9 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
         {
           text: 'Guardar',
           onPress: async () => {
+            if (saving) return;
             setSaving(true);
+            setSubmitError(null);
             try {
               const updated = await apiService.updateMyProfile(changes);
               setProfile(updated);
@@ -125,7 +142,9 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                 changes.email ? `Desde ahora inicia sesión con ${updated.email}.` : 'Tus datos quedaron actualizados.'
               );
             } catch (error) {
-              Alert.alert('No se pudieron guardar tus datos', error instanceof Error ? error.message : 'Intenta de nuevo.');
+              const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+              setSubmitError(msg);
+              Alert.alert('No se pudieron guardar tus datos', msg);
             } finally {
               setSaving(false);
             }
@@ -137,6 +156,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
 
   const [deleting, setDeleting] = useState(false);
   const deleteAccount = () => {
+    if (deleting) return;
     Alert.alert(
       '¿Eliminar tu cuenta?',
       'Se borran tus datos personales y ya no podrás entrar con este correo. Tus Fe y tu nivel se pierden. Tus viajes quedan en el historial del otro participante como «Usuario eliminado». No se puede deshacer.',
@@ -146,13 +166,17 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
+            if (deleting) return;
             setDeleting(true);
+            setSubmitError(null);
             try {
               await apiService.deleteMyAccount();
               Alert.alert('Cuenta eliminada', 'Borramos tus datos. Gracias por usar LITHIO.');
               onAccountDeleted();
             } catch (error) {
-              Alert.alert('No se pudo eliminar la cuenta', error instanceof Error ? error.message : 'Intenta de nuevo.');
+              const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+              setSubmitError(msg);
+              Alert.alert('No se pudo eliminar la cuenta', msg);
             } finally {
               setDeleting(false);
             }
@@ -220,6 +244,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                 keyboardType="phone-pad"
                 placeholder="0414-1234567"
               />
+              {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
               <PrimaryButton label="Guardar cambios" onPress={save} loading={saving} accent={accent} />
               <Text style={styles.note}>Puedes cambiar estos datos una vez cada 7 días. La cédula no se edita; para corregirla, escribe al administrador.</Text>
             </View>
@@ -258,6 +283,7 @@ export const ProfileScreen: React.FC<Props> = ({ user, role, onBack, onUserChang
                   ? `Podrás editar tus datos de nuevo el ${formatWhen(profile.next_edit_at)}. Tu foto la puedes cambiar cuando quieras desde tu cuenta.`
                   : 'Puedes editar tu nombre, correo y teléfono una vez cada 7 días. Tu cédula, teléfono y datos de pago se guardan cifrados.'}
               </Text>
+              {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
               <View style={styles.dangerZone}>
                 <Pressable onPress={openTerms} style={styles.linkRow} accessibilityRole="link">
                   <Text style={[styles.edit, { color: accent }]}>Términos y Condiciones</Text>
@@ -368,5 +394,11 @@ const styles = themed(() => ({
     fontFamily: theme.fonts.bold,
     fontSize: 16,
     color: theme.colors.error,
+  },
+  errorText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: theme.colors.error,
+    textAlign: 'center',
   },
 }));

@@ -7,7 +7,7 @@
  * por Pago Móvil, o su conductor, pueden adjuntar o cambiar la captura del comprobante.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Image, ImageURISource, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,14 +60,32 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   const [receipt, setReceipt] = useState<ImageURISource | null>(null);
   const [uploading, setUploading] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const reviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (reviewTimerRef.current) clearTimeout(reviewTimerRef.current);
+    };
+  }, []);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       const detail = await apiService.getRideDetail(rideId);
+      const source = detail.has_receipt ? await apiService.rideReceiptSource(rideId) : null;
+      if (!mountedRef.current) return;
       setRide(detail);
-      setReceipt(detail.has_receipt ? await apiService.rideReceiptSource(rideId) : null);
+      setReceipt(source);
     } catch (error) {
-      Alert.alert('No se pudo abrir el viaje', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      if (!mountedRef.current) return;
+      const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+      setLoadError(msg);
+      Alert.alert('No se pudo abrir el viaje', msg);
     }
   }, [rideId]);
 
@@ -76,27 +94,38 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   }, [load]);
 
   const attachReceipt = async () => {
+    if (uploading) return;
     const uri = await pickDocumentPhoto();
     if (!uri) return;
     setUploading(true);
+    setReceiptError(null);
     try {
       await apiService.uploadRideReceipt(rideId, await photoFormValue(uri, 'comprobante.jpg'));
       await load();
+      if (!mountedRef.current) return;
       const other = ride?.viewer_role === 'conductor' ? 'el pasajero' : 'el conductor';
       Alert.alert('Comprobante guardado', `Quedó adjunto a este viaje; ${other} y el administrador pueden verlo.`);
     } catch (error) {
-      Alert.alert('No se pudo guardar el comprobante', error instanceof Error ? error.message : 'Intenta de nuevo.');
+      const msg = error instanceof Error ? error.message : 'Intenta de nuevo.';
+      if (mountedRef.current) setReceiptError(msg);
+      Alert.alert('No se pudo guardar el comprobante', msg);
     } finally {
-      setUploading(false);
+      if (mountedRef.current) setUploading(false);
     }
   };
 
   const submitReview = async (review: ReviewSubmission) => {
     try {
       await apiService.submitReview(ride!.passenger.id, review);
+      if (!mountedRef.current) return;
       setReviewing(false);
       await load();
-      setTimeout(() => Alert.alert('¡Gracias por tu reseña!', 'El conductor ya puede leerla.'), 350);
+      if (!mountedRef.current) return;
+      if (reviewTimerRef.current) clearTimeout(reviewTimerRef.current);
+      reviewTimerRef.current = setTimeout(() => {
+        reviewTimerRef.current = null;
+        Alert.alert('¡Gracias por tu reseña!', 'El conductor ya puede leerla.');
+      }, 350);
     } catch (error) {
       Alert.alert('No se pudo enviar la reseña', error instanceof Error ? error.message : 'Intenta de nuevo.');
     }
@@ -106,11 +135,24 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
     return (
       <View style={styles.root}>
         <ScreenHeader title="Detalle del viaje" onBack={onBack} />
-        <View style={styles.skeletons}>
-          <SkeletonCard lines={1} />
-          <SkeletonCard lines={3} />
-          <SkeletonCard />
-        </View>
+        {loadError ? (
+          <View style={styles.skeletons}>
+            <Text style={styles.errorText}>{loadError}</Text>
+            <Pressable
+              onPress={() => void load()}
+              style={({ pressed }) => [styles.attach, { borderColor: accent }, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.attachText, { color: accent }]}>Reintentar</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.skeletons}>
+            <SkeletonCard lines={1} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard />
+          </View>
+        )}
       </View>
     );
   }
@@ -183,6 +225,7 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
                   : 'Aún no adjuntaste la captura del pago.'}
               </Text>
             )}
+            {receiptError ? <Text style={styles.errorText}>{receiptError}</Text> : null}
             {ride.can_upload_receipt ? (
               <Pressable
                 onPress={attachReceipt}
@@ -498,5 +541,10 @@ const styles = themed(() => ({
     paddingVertical: 4,
     borderRadius: theme.radius.full,
     overflow: 'hidden',
+  },
+  errorText: {
+    fontFamily: theme.fonts.medium,
+    fontSize: 13,
+    color: theme.colors.error,
   },
 }));

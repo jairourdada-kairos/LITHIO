@@ -38,6 +38,7 @@ export const PassengerSignIn: React.FC<Props> = ({ onSuccess, onGoToSignUp, onSo
   const [recoveryVisible, setRecoveryVisible] = useState(false);
 
   const handleEmailLogin = async () => {
+    if (loading) return;
     const newErrors = {
       email: validateEmail(email),
       password: password ? undefined : 'Escribe tu contraseña',

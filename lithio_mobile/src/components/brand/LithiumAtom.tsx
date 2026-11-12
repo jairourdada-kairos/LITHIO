@@ -173,8 +173,8 @@ const styles = themed(() => ({
   nucleus: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 118, 94, 0.10)',
-    boxShadow: '0 0 28px rgba(255, 118, 94, 0.45)',
+    backgroundColor: theme.colors.secondarySoft,
+    boxShadow: `0 0 28px ${theme.colors.secondary}73`,
   },
   nucleon: {
     position: 'absolute',
@@ -183,18 +183,18 @@ const styles = themed(() => ({
     backgroundColor: theme.colors.secondary,
   },
   neutron: {
-    backgroundColor: '#5E7178',
+    backgroundColor: theme.colors.textMuted,
   },
   outerOrbit: {
     borderWidth: 2,
   },
   valence: {
     backgroundColor: theme.colors.secondary, // CAMBIA AQUÍ el color del electrón de valencia (el que viaja)
-    boxShadow: '0 0 14px rgba(255, 118, 94, 0.85)',
+    boxShadow: `0 0 14px ${theme.colors.secondary}D9`,
   },
   electron: {
     position: 'absolute',
     backgroundColor: theme.colors.primary,
-    boxShadow: '0 0 12px rgba(69, 214, 197, 0.9)',
+    boxShadow: `0 0 12px ${theme.colors.primary}E6`,
   },
 }));

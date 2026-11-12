@@ -15,7 +15,10 @@ export function useAdminAlerts(isAdmin: boolean) {
   const [notice, setNotice] = useState<RideNotice | null>(null);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      setNotice(null);
+      return;
+    }
     return wsService.subscribe((msg) => {
       if (msg.type === 'ADMIN_ALERT' && typeof msg.title === 'string') {
         setNotice({ title: msg.title, message: String(msg.body ?? ''), tone: 'info' });

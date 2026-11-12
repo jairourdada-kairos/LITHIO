@@ -53,7 +53,7 @@ const styles = themed(() => ({
     justifyContent: 'center',
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: theme.colors.glassBorderHover,
   },
   label: {
     fontFamily: theme.fonts.bold,

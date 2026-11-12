@@ -317,7 +317,7 @@ const styles = themed(() => ({
     top: 0,
     bottom: 0,
     left: 0,
-    backgroundImage: 'linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0) 100%)',
+    backgroundImage: theme.fx.sheen,
   },
   skeletonCard: {
     gap: 10,

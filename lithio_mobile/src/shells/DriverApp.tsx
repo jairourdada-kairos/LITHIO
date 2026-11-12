@@ -62,8 +62,14 @@ export const DriverApp: React.FC<Props> = ({ user: initialUser, onSignOut }) => 
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void loadSummary();
-    shouldShowTutorial(user.id, 'conductor').then(setTutorialVisible);
+    shouldShowTutorial(user.id, 'conductor').then((show) => {
+      if (!cancelled) setTutorialVisible(show);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadSummary, user.id]);
 
   const modals = (
@@ -209,6 +215,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   };
 
   const toggleAvailability = async () => {
+    if (toggling) return;
     setToggling(true);
     try {
       await apiService.toggleDriverAvailability(user.id, !isAvailable);
@@ -221,6 +228,7 @@ const ApprovedDriverApp: React.FC<ApprovedProps> = ({
   };
 
   const respond = async (ride: Ride, status: RideStatus) => {
+    if (busy) return;
     setBusy(true);
     try {
       await rides.updateStatus(ride, status);

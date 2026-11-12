@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Icon } from './ui/Icon';
@@ -34,34 +34,45 @@ const PagoMovilConfirm: React.FC<{ ride: Ride; onReferenceSaved?: (reference: st
   const [saving, setSaving] = useState(false);
   const [receiptSent, setReceiptSent] = useState(Boolean(ride.has_receipt));
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const save = async () => {
-    if (value.replace(/\s/g, '').length < 4) {
-      Alert.alert('Falta la referencia', 'Escribe el número de referencia que te dio tu banco (al menos 4 dígitos).');
+    if (saving) return;
+    if (value.replace(/[\s-]/g, '').length < 4) {
+      const msg = 'Escribe el número de referencia que te dio tu banco (al menos 4 caracteres).';
+      setError(msg);
+      Alert.alert('Falta la referencia', msg);
       return;
     }
     setSaving(true);
+    setError(null);
     try {
       const saved = await apiService.setPaymentReference(ride.id, value);
       onReferenceSaved?.(saved);
       setEditing(false);
       setValue('');
-    } catch (error) {
-      Alert.alert('No se pudo guardar la referencia', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Intenta de nuevo.';
+      setError(msg);
+      Alert.alert('No se pudo guardar la referencia', msg);
     } finally {
       setSaving(false);
     }
   };
 
   const attach = async () => {
+    if (uploading) return;
     const uri = await pickDocumentPhoto();
     if (!uri) return;
     setUploading(true);
+    setError(null);
     try {
       await apiService.uploadRideReceipt(ride.id, await photoFormValue(uri, 'comprobante.jpg'));
       setReceiptSent(true);
-    } catch (error) {
-      Alert.alert('No se pudo adjuntar la captura', error instanceof Error ? error.message : 'Intenta de nuevo.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Intenta de nuevo.';
+      setError(msg);
+      Alert.alert('No se pudo adjuntar la captura', msg);
     } finally {
       setUploading(false);
     }
@@ -81,14 +92,17 @@ const PagoMovilConfirm: React.FC<{ ride: Ride; onReferenceSaved?: (reference: st
               placeholder="Referencia, ej. 849201"
               placeholderTextColor={theme.colors.textMuted}
               value={value}
-              onChangeText={setValue}
-              keyboardType="number-pad"
+              onChangeText={(next) => {
+                setValue(next);
+                if (error) setError(null);
+              }}
+              autoCapitalize="characters"
               maxLength={30}
               returnKeyType="done"
-              onSubmitEditing={save}
+              onSubmitEditing={() => void save()}
               accessibilityLabel="Número de referencia del Pago Móvil"
             />
-            <TouchableOpacity style={styles.paySave} onPress={save} disabled={saving} accessibilityRole="button">
+            <TouchableOpacity style={styles.paySave} onPress={() => void save()} disabled={saving} accessibilityRole="button">
               {saving ? <ActivityIndicator color={theme.colors.onPrimary} /> : <Text style={styles.btnTextDark}>Guardar</Text>}
             </TouchableOpacity>
           </View>
@@ -96,12 +110,20 @@ const PagoMovilConfirm: React.FC<{ ride: Ride; onReferenceSaved?: (reference: st
       ) : (
         <View style={styles.infoRow}>
           <Text style={styles.paySaved}>Referencia {ride.payment_reference}</Text>
-          <TouchableOpacity onPress={() => setEditing(true)} accessibilityRole="button" hitSlop={10}>
+          <TouchableOpacity
+            onPress={() => {
+              setError(null);
+              setEditing(true);
+            }}
+            accessibilityRole="button"
+            hitSlop={10}
+          >
             <Text style={styles.payLinkText}>Corregir</Text>
           </TouchableOpacity>
         </View>
       )}
-      <TouchableOpacity style={styles.payLink} onPress={attach} disabled={uploading} accessibilityRole="button">
+      {error ? <Text style={styles.payError}>{error}</Text> : null}
+      <TouchableOpacity style={styles.payLink} onPress={() => void attach()} disabled={uploading} accessibilityRole="button">
         {uploading ? (
           <ActivityIndicator color={theme.colors.primary} />
         ) : (
@@ -125,6 +147,17 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
 }) => {
   const bcv = useBcvRate();
   const isDriver = role === 'conductor';
+  const [statusBusy, setStatusBusy] = useState(false);
+
+  useEffect(() => {
+    setStatusBusy(false);
+  }, [ride.id, ride.status]);
+
+  const handleStatusPress = (next: RideStatus) => {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    Promise.resolve(onUpdateStatus(next)).finally(() => setStatusBusy(false));
+  };
 
   // Texto y estilo según estado
   const getStatusDetails = () => {
@@ -314,13 +347,15 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
               <View style={styles.driverButtonsRow}>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.rowBtn, styles.btnSuccess]}
-                  onPress={() => onUpdateStatus('aceptado')}
+                  onPress={() => handleStatusPress('aceptado')}
+                  disabled={statusBusy}
                 >
                   <Text style={styles.btnTextWhite}>Aceptar Carrera</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.rowBtn, styles.btnDanger]}
-                  onPress={() => onUpdateStatus('rechazado')}
+                  onPress={() => handleStatusPress('rechazado')}
+                  disabled={statusBusy}
                 >
                   <Text style={styles.btnTextWhite}>Rechazar</Text>
                 </TouchableOpacity>
@@ -330,7 +365,8 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             {ride.status === 'aceptado' && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.btnPrimary]}
-                onPress={() => onUpdateStatus('en_camino')}
+                onPress={() => handleStatusPress('en_camino')}
+                disabled={statusBusy}
               >
                 <Text style={styles.btnTextDark}>Voy en camino al punto</Text>
               </TouchableOpacity>
@@ -339,7 +375,8 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             {ride.status === 'en_camino' && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.btnSecondary]}
-                onPress={() => onUpdateStatus('en_curso')}
+                onPress={() => handleStatusPress('en_curso')}
+                disabled={statusBusy}
               >
                 <Text style={styles.btnTextWhite}>Pasajero a bordo: Iniciar Carrera</Text>
               </TouchableOpacity>
@@ -348,7 +385,8 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             {ride.status === 'en_curso' && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.btnSuccess]}
-                onPress={() => onUpdateStatus('completado')}
+                onPress={() => handleStatusPress('completado')}
+                disabled={statusBusy}
               >
                 <Text style={styles.btnTextWhite}>Finalizar Carrera y Cobrar</Text>
               </TouchableOpacity>
@@ -363,7 +401,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
             )}
 
             {canCancel && (
-              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
+              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} disabled={statusBusy} accessibilityRole="button">
                 <Text style={styles.btnTextRed}>Cancelar viaje</Text>
               </TouchableOpacity>
             )}
@@ -379,7 +417,7 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 <Text style={styles.btnTextDark}>Calificar el viaje</Text>
               </TouchableOpacity>
             ) : canCancel ? (
-              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} accessibilityRole="button">
+              <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} disabled={statusBusy} accessibilityRole="button">
                 <Text style={styles.btnTextRed}>{ride.status === 'solicitado' ? '✕ Cancelar solicitud' : '✕ Cancelar viaje'}</Text>
               </TouchableOpacity>
             ) : ride.status === 'en_curso' ? (
@@ -585,6 +623,11 @@ const styles = themed(() => ({
     color: theme.colors.success,
     fontSize: 13,
   },
+  payError: {
+    fontFamily: theme.fonts.medium,
+    color: theme.colors.error,
+    fontSize: 12,
+  },
   payLink: {
     minHeight: 44,
     flexDirection: 'row',
@@ -637,7 +680,7 @@ const styles = themed(() => ({
     fontSize: 16,
   },
   completedNotice: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: `${theme.colors.success}26`,
     padding: 10,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
