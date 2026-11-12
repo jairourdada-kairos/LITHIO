@@ -148,3 +148,22 @@ def test_plate_hidden_until_driver_accepts_and_verified_badge(client):
     detail = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(4)).json()
     assert detail['driver']['plate'] == active['driver_plate']
 
+
+def test_web_app_blocks_sourcemaps_and_serves_js_bundles(tmp_path):
+    from fastapi.testclient import TestClient
+
+    (tmp_path / "index.html").write_text("<!doctype html><title>LITHIO</title>", encoding="utf-8")
+    js_dir = tmp_path / "_expo" / "static" / "js" / "web"
+    js_dir.mkdir(parents=True)
+    (js_dir / "entry-abc.js").write_text("console.info('ok');", encoding="utf-8")
+    (js_dir / "entry-abc.js.map").write_text('{"version":3,"sources":["App.tsx"]}', encoding="utf-8")
+
+    test_app = FastAPI()
+    test_app.mount("/app", main._FreshWebApp(directory=str(tmp_path), html=True), name="web_app")
+    web_client = TestClient(test_app)
+
+    assert web_client.get("/app/_expo/static/js/web/entry-abc.js").status_code == 200
+    assert web_client.get("/app/_expo/static/js/web/entry-abc.js.map").status_code == 404
+    assert web_client.get("/app/entry.MAP").status_code == 404
+
+

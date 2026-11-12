@@ -245,6 +245,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         onChangeText={(v) => updateField('moto_brand_model', v)}
         placeholder="Bera SBR 150"
         placeholderTextColor={theme.colors.textMuted}
+        maxLength={60}
       />
 
       <View style={styles.row}>
@@ -257,6 +258,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="Negro"
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="words"
+            maxLength={30}
           />
         </View>
         <View style={styles.halfField}>
@@ -268,6 +270,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="AB1C23D"
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="characters"
+            maxLength={10}
           />
           {errors.plate && <Text style={styles.errorText}>{errors.plate}</Text>}
         </View>
@@ -283,6 +286,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="Nº de licencia"
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="characters"
+            maxLength={20}
           />
           {errors.license_number && <Text style={styles.errorText}>{errors.license_number}</Text>}
         </View>
@@ -295,6 +299,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="2021"
             placeholderTextColor={theme.colors.textMuted}
             keyboardType="number-pad"
+            maxLength={4}
           />
           {errors.moto_year && <Text style={styles.errorText}>{errors.moto_year}</Text>}
         </View>
@@ -328,6 +333,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         placeholderTextColor={theme.colors.textMuted}
         autoCapitalize="none"
         autoCorrect={false}
+        maxLength={80}
       />
 
       <Text style={styles.label}>Número de Pago Móvil</Text>
@@ -338,6 +344,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         placeholder="0412-1234567"
         placeholderTextColor={theme.colors.textMuted}
         keyboardType="phone-pad"
+        maxLength={20}
       />
 
       <View style={styles.row}>
@@ -350,6 +357,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="Banco de Venezuela"
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="words"
+            maxLength={60}
           />
         </View>
         <View style={styles.halfField}>
@@ -361,6 +369,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
             placeholder="V-12345678"
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="characters"
+            maxLength={16}
           />
         </View>
       </View>
@@ -373,6 +382,7 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         placeholder="0105 0000 00 0000000000"
         placeholderTextColor={theme.colors.textMuted}
         keyboardType="numeric"
+        maxLength={24}
       />
 
       <TermsCheckbox
@@ -389,6 +399,8 @@ export const DriverSignUp: React.FC<Props> = ({ onSuccess, onBack, social }) => 
         <TouchableOpacity
           style={styles.btnSecondary}
           onPress={() => setStep(1)}
+          disabled={loading}
+          accessibilityRole="button"
           activeOpacity={0.8}
         >
           <Text style={styles.btnSecondaryText}>← Atrás</Text>

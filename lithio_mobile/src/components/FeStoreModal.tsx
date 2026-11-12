@@ -328,7 +328,12 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
                       onChangeText={setNote}
                       maxLength={200}
                     />
-                    <Pressable style={styles.photoPick} onPress={async () => setPhoto(await pickDocumentPhoto())}>
+                    <Pressable
+                      style={styles.photoPick}
+                      onPress={async () => setPhoto(await pickDocumentPhoto())}
+                      accessibilityRole="button"
+                      accessibilityLabel={photo ? 'Cambiar foto de la nota' : 'Adjuntar foto de la nota'}
+                    >
                       {photo ? (
                         <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
                       ) : (

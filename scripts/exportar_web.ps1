@@ -1,4 +1,4 @@
-# Prepara la versión web de LITHIO (la que abren los iPhone y las computadoras).
+﻿# Prepara la versión web de LITHIO (la que abren los iPhone y las computadoras).
 #
 # Compila la app en modo producción (más liviana y rápida que la de Expo en
 # desarrollo) en lithio_mobile\dist-web. El servidor la sirve en /app, en la
@@ -16,4 +16,5 @@ $env:EXPO_WEB_BASE_URL = '/app'
 $code = $LASTEXITCODE
 Remove-Item Env:EXPO_WEB_BASE_URL
 if ($code -ne 0) { Write-Host 'ERROR: no se pudo compilar la version web.' -ForegroundColor Red; exit 1 }
+Get-ChildItem -Path 'dist-web' -Recurse -Filter '*.map' -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Write-Host 'Version web lista: el servidor la muestra en /app.' -ForegroundColor Green

@@ -38,6 +38,7 @@ export const PressableScale: React.FC<Props> = ({
   variant = 'plain',
   accent = theme.colors.primary,
   children,
+  onPress,
   onPressIn,
   onPressOut,
   onHoverIn,
@@ -45,6 +46,7 @@ export const PressableScale: React.FC<Props> = ({
   onFocus,
   onBlur,
   disabled,
+  accessibilityState,
   ...rest
 }) => {
   const [pressed, setPressed] = useState(false);
@@ -81,10 +83,16 @@ export const PressableScale: React.FC<Props> = ({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled), ...accessibilityState }}
       disabled={disabled}
       style={containerStyle}
       pressRetentionOffset={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      onPress={(event) => {
+        if (disabled) return;
+        onPress?.(event);
+      }}
       onPressIn={(event) => {
+        if (disabled) return;
         pointerDown.current = true;
         setFocusVisible(false);
         setPressed(true);

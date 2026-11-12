@@ -356,7 +356,7 @@
   // internet de la PC del servidor); si no, usa la copia del servidor.
   fetch('apk.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (apk) {
     var dayMs = 86400000;
-    if (apk && apk.url && Date.parse(apk.expires) - Date.now() > dayMs) {
+    if (apk && typeof apk.url === 'string' && apk.url.startsWith('https://') && Date.parse(apk.expires) - Date.now() > dayMs) {
       document.querySelector('.cta').href = apk.url;
     }
   }).catch(function () {});

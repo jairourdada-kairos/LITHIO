@@ -29,7 +29,10 @@ export const PrimaryButton: React.FC<Props> = ({
   style,
 }) => (
   <PressableScale
-    onPress={onPress}
+    onPress={() => {
+      if (disabled || loading) return;
+      onPress();
+    }}
     disabled={disabled || loading}
     accessibilityLabel={label}
     accessibilityState={{ busy: loading, disabled: disabled || loading }}

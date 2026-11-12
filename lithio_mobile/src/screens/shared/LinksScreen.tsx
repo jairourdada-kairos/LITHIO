@@ -85,11 +85,13 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
     }
   };
 
-  const remove = (person: LinkPerson, wording: string) =>
+  const remove = (person: LinkPerson, wording: string) => {
+    if (busy !== null) return;
     Alert.alert(wording, `${person.name} dejará de estar en tus enlaces.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: wording, style: 'destructive', onPress: () => void run(`r${person.link_id}`, () => apiService.removeLink(person.link_id)) },
     ]);
+  };
 
   const shareCode = () => {
     if (!info?.my_code) return;
@@ -137,7 +139,13 @@ export const LinksScreen: React.FC<Props> = ({ accent, onBack }) => {
               <View key={person.link_id} style={styles.row}>
                 <Avatar name={person.name} uri={person.avatar_url} size={40} ringColor={accent} />
                 <Text style={[styles.name, styles.flex]}>{person.name}</Text>
-                <Pressable onPress={() => remove(person, 'Rechazar')} style={styles.iconBtn} accessibilityLabel={`Rechazar a ${person.name}`}>
+                <Pressable
+                  onPress={() => remove(person, 'Rechazar')}
+                  disabled={busy !== null}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rechazar a ${person.name}`}
+                >
                   <Icon name="close-outline" size={20} color={theme.colors.textSecondary} />
                 </Pressable>
                 <PressableScale variant="solid" accent={accent}

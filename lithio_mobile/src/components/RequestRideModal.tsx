@@ -171,7 +171,13 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
           {/* Encabezado */}
           <View style={styles.header}>
             <Text style={styles.title}>Confirmar Viaje</Text>
-            <TouchableOpacity onPress={onClose} disabled={submitting} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              disabled={submitting}
+              style={styles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+            >
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>

@@ -176,6 +176,8 @@ class _FreshWebApp(StaticFiles):
     """Sirve la web de la app pidiendo al navegador que revise si hay versión nueva (sin esto, muestra la vieja)."""
 
     async def get_response(self, path, scope):
+        if path.lower().endswith(".map"):
+            return PlainTextResponse("Not Found", status_code=404)
         response = await super().get_response(path, scope)
         if not path.startswith("_expo/static"):  # los archivos con hash en el nombre sí se pueden guardar
             response.headers["Cache-Control"] = "no-cache"

@@ -311,27 +311,33 @@ export const TripRequestScreen: React.FC<Props> = ({
               {scopeRoutes.map((base) => {
                 const r = oriented(base);
                 const selected = r.id === routeId;
+                const selectRoute = () => {
+                  if (!selected) hapticSelect();
+                  setRouteId(r.id);
+                };
                 return (
-                  <PressableScale variant="glass"
+                  <View
                     key={r.id}
-                    onPress={() => {
-                      if (!selected) hapticSelect();
-                      setRouteId(r.id);
-                    }}
                     style={[styles.routeRow, selected && styles.routeRowActive]}
-                    accessibilityLabel={`${r.origin} a ${r.destination}, ${r.fare_usd} dólares`}
-                    accessibilityState={{ selected }}
                   >
-                    <View style={styles.routeStops}>
-                      <View style={[styles.stopDot, { backgroundColor: theme.colors.primary }]} />
-                      <View style={styles.stopLine} />
-                      <View style={[styles.stopDot, { backgroundColor: theme.colors.secondary }]} />
-                    </View>
-                    <View style={styles.routeText}>
-                      <Text style={styles.routePlace} numberOfLines={2}>{placeName(r.origin)}</Text>
-                      <Text style={styles.routePlace} numberOfLines={2}>{placeName(r.destination)}</Text>
-                      <Text style={styles.routeMeta}>{r.tag || 'Ruta LITHIO'} · {r.estimated_minutes} min</Text>
-                    </View>
+                    <Pressable
+                      onPress={selectRoute}
+                      style={styles.routeMainHit}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${r.origin} a ${r.destination}, ${r.fare_usd} dólares`}
+                      accessibilityState={{ selected }}
+                    >
+                      <View style={styles.routeStops}>
+                        <View style={[styles.stopDot, { backgroundColor: theme.colors.primary }]} />
+                        <View style={styles.stopLine} />
+                        <View style={[styles.stopDot, { backgroundColor: theme.colors.secondary }]} />
+                      </View>
+                      <View style={styles.routeText}>
+                        <Text style={styles.routePlace} numberOfLines={2}>{placeName(r.origin)}</Text>
+                        <Text style={styles.routePlace} numberOfLines={2}>{placeName(r.destination)}</Text>
+                        <Text style={styles.routeMeta}>{r.tag || 'Ruta LITHIO'} · {r.estimated_minutes} min</Text>
+                      </View>
+                    </Pressable>
                     <Pressable
                       onPress={() => toggleFlip(r.id)}
                       style={styles.flipButton}
@@ -341,11 +347,16 @@ export const TripRequestScreen: React.FC<Props> = ({
                     >
                       <Icon name="swap-outline" size={18} color={theme.colors.primary} style={{ transform: [{ rotate: '90deg' }] }} />
                     </Pressable>
-                    <View style={styles.fareBox}>
+                    <Pressable
+                      onPress={selectRoute}
+                      style={styles.fareBox}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
                       <Text style={[styles.routeFare, selected && { color: theme.colors.primary }]}>${r.fare_usd.toFixed(2)}</Text>
                       {bcv ? <Text style={styles.routeBs}>{formatBs(r.fare_usd, bcv)}</Text> : null}
-                    </View>
-                  </PressableScale>
+                    </Pressable>
+                  </View>
                 );
               })}
             </View>
@@ -788,6 +799,12 @@ const styles = themed(() => ({
   routeRowActive: {
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.primarySoft,
+  },
+  routeMainHit: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   routeStops: {
     alignItems: 'center',

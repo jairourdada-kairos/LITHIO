@@ -41,14 +41,14 @@
             </div>
 
             <nav class="nav-menu">
-                <button class="nav-item active" data-section="dashboard">📊 Resumen</button>
-                <button class="nav-item" data-section="analytics">📈 Analítica</button>
-                <button class="nav-item" data-section="approvals">✅ Aprobaciones</button>
-                <button class="nav-item" data-section="drivers">🛵 Conductores</button>
-                <button class="nav-item" data-section="reviews">⭐ Reseñas</button>
-                <button class="nav-item" data-section="routes">🛣️ Rutas</button>
-                <button class="nav-item" data-section="rewards">🔧 Taller</button>
-                <button class="nav-item" data-section="profile">👤 Perfil</button>
+                <button type="button" class="nav-item active" data-section="dashboard">📊 Resumen</button>
+                <button type="button" class="nav-item" data-section="analytics">📈 Analítica</button>
+                <button type="button" class="nav-item" data-section="approvals">✅ Aprobaciones</button>
+                <button type="button" class="nav-item" data-section="drivers">🛵 Conductores</button>
+                <button type="button" class="nav-item" data-section="reviews">⭐ Reseñas</button>
+                <button type="button" class="nav-item" data-section="routes">🛣️ Rutas</button>
+                <button type="button" class="nav-item" data-section="rewards">🔧 Taller</button>
+                <button type="button" class="nav-item" data-section="profile">👤 Perfil</button>
             </nav>
         </aside>
 
@@ -150,7 +150,7 @@
                 <section class="content-card glass-panel section-panel" id="drivers">
                     <div class="card-header">
                         <h3>Conductores registrados</h3>
-                        <button class="primary-btn" id="add-driver-btn">+ Nuevo conductor</button>
+                        <button type="button" class="primary-btn" id="add-driver-btn">+ Nuevo conductor</button>
                     </div>
 
                     <div class="table-container">
@@ -186,7 +186,7 @@
                 <section class="content-card glass-panel section-panel" id="routes">
                     <div class="card-header">
                         <h3>Rutas y destinos</h3>
-                        <button class="primary-btn" id="add-route-btn">+ Nueva ruta</button>
+                        <button type="button" class="primary-btn" id="add-route-btn">+ Nueva ruta</button>
                     </div>
                     <div id="routes-list" class="mini-grid"></div>
                 </section>
@@ -194,7 +194,7 @@
                 <section class="content-card glass-panel section-panel" id="rewards">
                     <div class="card-header">
                         <h3>Taller aliado (se paga con diamantes)</h3>
-                        <button class="primary-btn" id="add-reward-btn">+ Nuevo servicio</button>
+                        <button type="button" class="primary-btn" id="add-reward-btn">+ Nuevo servicio</button>
                     </div>
                     <div id="rewards-list" class="mini-grid"></div>
                 </section>
@@ -239,7 +239,7 @@
         <div class="modal-card glass-panel">
             <div class="modal-header">
                 <h3 id="modal-title">Formulario</h3>
-                <button id="close-modal" class="close-btn">✕</button>
+                <button type="button" id="close-modal" class="close-btn" aria-label="Cerrar">✕</button>
             </div>
             <form id="entity-form" class="admin-form"></form>
         </div>

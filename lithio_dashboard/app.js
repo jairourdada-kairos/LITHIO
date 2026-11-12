@@ -383,7 +383,7 @@ function loadPrivateImages(container, selector, pathFor) {
       const response = await fetch(`${API_BASE_URL}${pathFor(img)}`, { headers: { Authorization: `Bearer ${await freshToken()}` } });
       if (response.ok) {
         img.src = URL.createObjectURL(await response.blob());
-        img.addEventListener('click', () => window.open(img.src, '_blank'));
+        img.addEventListener('click', () => window.open(img.src, '_blank', 'noopener,noreferrer'));
       } else {
         img.alt = 'No se pudo cargar la foto';
       }
@@ -409,8 +409,8 @@ function renderApprovals() {
         <p>Teléfono: ${escapeHtml(app.phone)} · ${escapeHtml(app.email)}</p>
         ${app.inspection_date ? `<p>Inspección: ${escapeHtml(app.inspection_date)}</p>` : ''}
         <div class="action-group">
-          ${next ? `<button class="small-btn" data-action="app-advance" data-id="${Number(app.user_id)}">${escapeHtml(next.label)}</button>` : ''}
-          <button class="small-btn danger" data-action="app-reject" data-id="${Number(app.user_id)}">Rechazar</button>
+          ${next ? `<button type="button" class="small-btn" data-action="app-advance" data-id="${Number(app.user_id)}">${escapeHtml(next.label)}</button>` : ''}
+          <button type="button" class="small-btn danger" data-action="app-reject" data-id="${Number(app.user_id)}">Rechazar</button>
         </div>
       </div>`;
   }).join('') : emptyNote('No hay postulaciones pendientes.');
@@ -426,8 +426,8 @@ function renderApprovals() {
         : (item.kind === 'recarga' || item.kind === 'donacion_pm' ? '<p class="empty-note">Sin captura del pago todavía.</p>' : '')}
       <p>${escapeHtml(new Date(item.created_at).toLocaleString('es-VE'))}</p>
       <div class="action-group">
-        <button class="small-btn" data-action="wallet-approve" data-id="${Number(item.id)}">${item.kind === 'recarga' ? 'Acreditar diamantes' : 'Aprobar'}</button>
-        <button class="small-btn danger" data-action="wallet-reject" data-id="${Number(item.id)}">Rechazar</button>
+        <button type="button" class="small-btn" data-action="wallet-approve" data-id="${Number(item.id)}">${item.kind === 'recarga' ? 'Acreditar diamantes' : 'Aprobar'}</button>
+        <button type="button" class="small-btn danger" data-action="wallet-reject" data-id="${Number(item.id)}">Rechazar</button>
       </div>
     </div>`).join('') : emptyNote('No hay movimientos esperando revisión.');
 
@@ -438,8 +438,8 @@ function renderApprovals() {
       <img class="evidence-img" data-voucher="${Number(voucher.id)}" alt="Foto de la nota">
       ${voucher.note ? `<p>${escapeHtml(voucher.note)}</p>` : ''}
       <div class="action-group">
-        <button class="small-btn" data-action="voucher-approve" data-id="${Number(voucher.id)}">Aprobar vale</button>
-        <button class="small-btn danger" data-action="voucher-reject" data-id="${Number(voucher.id)}">Rechazar</button>
+        <button type="button" class="small-btn" data-action="voucher-approve" data-id="${Number(voucher.id)}">Aprobar vale</button>
+        <button type="button" class="small-btn danger" data-action="voucher-reject" data-id="${Number(voucher.id)}">Rechazar</button>
       </div>
     </div>`).join('') : emptyNote('No hay vales por revisar.');
 
@@ -487,8 +487,8 @@ function renderDrivers() {
       </td>
       <td>
         <div class="action-group">
-          <button class="small-btn" data-action="edit-driver" data-id="${Number(driver.user_id)}">Editar</button>
-          <button class="small-btn danger" data-action="delete-driver" data-id="${Number(driver.user_id)}">Quitar</button>
+          <button type="button" class="small-btn" data-action="edit-driver" data-id="${Number(driver.user_id)}">Editar</button>
+          <button type="button" class="small-btn danger" data-action="delete-driver" data-id="${Number(driver.user_id)}">Quitar</button>
         </div>
       </td>
     </tr>
@@ -539,8 +539,8 @@ function renderRoutes() {
       <p>Tarifa: $${Number(route.fare_usd).toFixed(2)}</p>
       <p>Duración: ${Number(route.estimated_minutes)} min</p>
       <div class="action-group">
-        <button class="small-btn" data-action="edit-route" data-id="${Number(route.id)}">Editar</button>
-        <button class="small-btn danger" data-action="delete-route" data-id="${Number(route.id)}">Eliminar</button>
+        <button type="button" class="small-btn" data-action="edit-route" data-id="${Number(route.id)}">Editar</button>
+        <button type="button" class="small-btn danger" data-action="delete-route" data-id="${Number(route.id)}">Eliminar</button>
       </div>
     </div>
   `).join('');
@@ -554,8 +554,8 @@ function renderRewards() {
       <p>Precio: ◆ ${Number(reward.cost).toFixed(2)}</p>
       <p>${reward.is_active ? 'Visible en la app' : 'Oculto'}</p>
       <div class="action-group">
-        <button class="small-btn" data-action="edit-reward" data-id="${Number(reward.id)}">Editar</button>
-        <button class="small-btn danger" data-action="delete-reward" data-id="${Number(reward.id)}">Eliminar</button>
+        <button type="button" class="small-btn" data-action="edit-reward" data-id="${Number(reward.id)}">Editar</button>
+        <button type="button" class="small-btn danger" data-action="delete-reward" data-id="${Number(reward.id)}">Eliminar</button>
       </div>
     </div>
   `).join('');
@@ -717,27 +717,34 @@ function showError(error) {
   alert(error.message);
 }
 
+function runAction(button, promise) {
+  button.disabled = true;
+  promise.then(fetchData).catch(showError).finally(() => {
+    button.disabled = false;
+  });
+}
+
 function handleActions(event) {
   const button = event.target.closest('button');
-  if (!button) return;
+  if (!button || button.disabled) return;
 
   const action = button.dataset.action;
   const id = Number(button.dataset.id);
 
   if (action === 'delete-driver') {
     if (!confirm('¿Eliminar este conductor y su cuenta? No se puede deshacer.')) return;
-    requestAdmin(`/admin/drivers/${id}`, 'DELETE').then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/drivers/${id}`, 'DELETE'));
     return;
   }
 
   if (action === 'delete-route') {
-    requestAdmin(`/admin/routes/${id}`, 'DELETE').then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/routes/${id}`, 'DELETE'));
     return;
   }
 
   if (action === 'delete-reward') {
     if (!confirm('¿Eliminar este servicio del taller?')) return;
-    requestAdmin(`/admin/workshop/${id}`, 'DELETE').then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/workshop/${id}`, 'DELETE'));
     return;
   }
 
@@ -752,14 +759,14 @@ function handleActions(event) {
       body.inspection_date = date;
     }
     if (next.status === 'aprobado' && !confirm(`La cuenta de ${app.name} quedará activa como conductor. ¿Aprobar?`)) return;
-    requestAdmin(`/admin/driver-applications/${id}`, 'PUT', body).then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/driver-applications/${id}`, 'PUT', body));
     return;
   }
 
   if (action === 'app-reject') {
     const notes = prompt('Motivo del rechazo (lo verá el conductor):');
     if (!notes) return;
-    requestAdmin(`/admin/driver-applications/${id}`, 'PUT', { status: 'rechazado', notes }).then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/driver-applications/${id}`, 'PUT', { status: 'rechazado', notes }));
     return;
   }
 
@@ -767,8 +774,10 @@ function handleActions(event) {
     const approve = action === 'wallet-approve';
     const note = approve ? undefined : prompt('Motivo del rechazo:') ?? null;
     if (note === null) return;
-    requestAdmin(`/admin/wallet/transactions/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note: note || undefined })
-      .then(fetchData).catch(showError);
+    runAction(
+      button,
+      requestAdmin(`/admin/wallet/transactions/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note: note || undefined })
+    );
     return;
   }
 
@@ -776,8 +785,7 @@ function handleActions(event) {
     const approve = action === 'voucher-approve';
     const note = approve ? undefined : prompt('Motivo del rechazo (se devuelve el Fe):');
     if (!approve && !note) return;
-    requestAdmin(`/admin/vouchers/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note })
-      .then(fetchData).catch(showError);
+    runAction(button, requestAdmin(`/admin/vouchers/${id}`, 'PUT', { action: approve ? 'aprobar' : 'rechazar', note }));
     return;
   }
 
@@ -855,7 +863,21 @@ function bindEvents() {
     stopAlertPolling();
     adminToken = null;
     refreshToken = null;
+    tokenExpiresAt = 0;
     state.admin = null;
+    state.drivers = [];
+    state.applications = [];
+    state.wallet = [];
+    state.vouchers = [];
+    state.rideReceipts = [];
+    state.reviews = [];
+    applicationsList.innerHTML = '';
+    walletList.innerHTML = '';
+    vouchersList.innerHTML = '';
+    rideReceiptsList.innerHTML = '';
+    driversTableBody.innerHTML = '';
+    reviewsList.innerHTML = '';
+    closeModal();
     dashboardApp.classList.add('hidden');
     authGate.classList.remove('hidden');
     authStatus.textContent = '';

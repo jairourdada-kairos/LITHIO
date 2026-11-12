@@ -20,30 +20,46 @@ interface Props {
 
 export const TermsCheckbox: React.FC<Props> = ({ checked, onChange, error, accent = theme.colors.primary }) => (
   <View style={styles.wrap}>
-    <Pressable
-      style={styles.row}
-      onPress={() => onChange(!checked)}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel="Declaro ser mayor de 18 años y acepto los Términos y Condiciones y la Política de privacidad"
-    >
-      <Icon
-        name={checked ? 'checkmark-square-2' : 'square-outline'}
-        size={26}
-        color={checked ? accent : error ? theme.colors.error : theme.colors.textMuted}
-      />
-      <Text style={styles.text}>
+    <View style={styles.row}>
+      <Pressable
+        onPress={() => onChange(!checked)}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel="Declaro ser mayor de 18 años y acepto los Términos y Condiciones y la Política de privacidad"
+      >
+        <Icon
+          name={checked ? 'checkmark-square-2' : 'square-outline'}
+          size={26}
+          color={checked ? accent : error ? theme.colors.error : theme.colors.textMuted}
+        />
+      </Pressable>
+      <Text style={styles.text} onPress={() => onChange(!checked)}>
         Declaro ser mayor de 18 años y acepto los{' '}
-        <Text style={[styles.link, { color: accent }]} onPress={openTerms} accessibilityRole="link">
+        <Text
+          style={[styles.link, { color: accent }]}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            openTerms();
+          }}
+          accessibilityRole="link"
+        >
           Términos y Condiciones
         </Text>{' '}
         y la{' '}
-        <Text style={[styles.link, { color: accent }]} onPress={openPrivacy} accessibilityRole="link">
+        <Text
+          style={[styles.link, { color: accent }]}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            openPrivacy();
+          }}
+          accessibilityRole="link"
+        >
           Política de privacidad
         </Text>{' '}
         de LITHIO.
       </Text>
-    </Pressable>
+    </View>
     {error ? <Text style={styles.error}>{error}</Text> : null}
   </View>
 );
