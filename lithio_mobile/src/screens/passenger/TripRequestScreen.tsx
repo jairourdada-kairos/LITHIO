@@ -322,7 +322,7 @@ export const TripRequestScreen: React.FC<Props> = ({
                   >
                     <Pressable
                       onPress={selectRoute}
-                      style={styles.routeMainHit}
+                      style={({ pressed }) => [styles.routeMainHit, pressed && styles.routePressed]}
                       accessibilityRole="button"
                       accessibilityLabel={`${r.origin} a ${r.destination}, ${r.fare_usd} dólares`}
                       accessibilityState={{ selected }}
@@ -349,7 +349,7 @@ export const TripRequestScreen: React.FC<Props> = ({
                     </Pressable>
                     <Pressable
                       onPress={selectRoute}
-                      style={styles.fareBox}
+                      style={({ pressed }) => [styles.fareBox, pressed && styles.routePressed]}
                       accessibilityElementsHidden
                       importantForAccessibility="no-hide-descendants"
                     >
@@ -805,6 +805,10 @@ const styles = themed(() => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  // Respuesta al tocar la fila de ruta (antes la daba PressableScale sobre toda la fila).
+  routePressed: {
+    opacity: 0.7, // CAMBIA AQUÍ qué tanto se atenúa la ruta al tocarla
   },
   routeStops: {
     alignItems: 'center',
