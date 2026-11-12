@@ -8,9 +8,10 @@
   transacción de base de datos.
 """
 from datetime import datetime, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .config import VENEZUELA_TZ
@@ -29,7 +30,15 @@ WELCOME_BONUS_CENTS = 200
 
 
 def to_cents(amount: float) -> int:
-    cents = int((Decimal(str(amount)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if isinstance(amount, bool) or not isinstance(amount, (int, float, Decimal)):
+        raise HTTPException(status_code=400, detail="El monto debe ser mayor que cero.")
+    try:
+        dec = Decimal(str(amount))
+        if not dec.is_finite():
+            raise ValueError
+        cents = int((dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    except (InvalidOperation, ValueError, OverflowError):
+        raise HTTPException(status_code=400, detail="El monto debe ser mayor que cero.") from None
     if cents <= 0:
         raise HTTPException(status_code=400, detail="El monto debe ser mayor que cero.")
     return cents
@@ -56,14 +65,27 @@ def record(
     **fields,
 ) -> WalletTransaction:
     if amount_cents < 0:
-        if (user.diamonds_cents or 0) + amount_cents < 0:
+        cost = -amount_cents
+        spent = (
+            db.query(User)
+            .filter(User.id == user.id, func.coalesce(User.diamonds_cents, 0) >= cost)
+            .update(
+                {User.diamonds_cents: func.coalesce(User.diamonds_cents, 0) - cost},
+                synchronize_session=False,
+            )
+        )
+        db.refresh(user)
+        if not spent:
             raise HTTPException(
                 status_code=400,
                 detail=f"Saldo insuficiente. Tienes Li⁺ {as_diamonds(user.diamonds_cents or 0):.2f}.",
             )
-        user.diamonds_cents = (user.diamonds_cents or 0) + amount_cents
-    elif status == "aprobado":
-        user.diamonds_cents = (user.diamonds_cents or 0) + amount_cents
+    elif amount_cents > 0 and status == "aprobado":
+        db.query(User).filter(User.id == user.id).update(
+            {User.diamonds_cents: func.coalesce(User.diamonds_cents, 0) + amount_cents},
+            synchronize_session=False,
+        )
+        db.refresh(user)
 
     tx = WalletTransaction(user_id=user.id, kind=kind, amount_cents=amount_cents, status=status, **fields)
     db.add(tx)
@@ -78,24 +100,50 @@ def grant_welcome_bonus(db: Session, user: User) -> None:
 
 
 def approve(db: Session, tx: WalletTransaction) -> None:
-    if tx.status != "pendiente":
+    now = utcnow()
+    claimed = (
+        db.query(WalletTransaction)
+        .filter(WalletTransaction.id == tx.id, WalletTransaction.status == "pendiente")
+        .update(
+            {WalletTransaction.status: "aprobado", WalletTransaction.reviewed_at: now},
+            synchronize_session=False,
+        )
+    )
+    if not claimed:
         raise HTTPException(status_code=409, detail="Este movimiento ya fue procesado.")
     # Una donación por Pago Móvil va al Fondo Solidario, no al saldo de quien dona.
     if tx.amount_cents > 0 and tx.kind != "donacion_pm":
         user = lock_user(db, tx.user_id)
-        user.diamonds_cents = (user.diamonds_cents or 0) + tx.amount_cents
+        db.query(User).filter(User.id == user.id).update(
+            {User.diamonds_cents: func.coalesce(User.diamonds_cents, 0) + tx.amount_cents},
+            synchronize_session=False,
+        )
+        db.refresh(user)
     tx.status = "aprobado"
-    tx.reviewed_at = utcnow()
+    tx.reviewed_at = now
 
 
 def reject(db: Session, tx: WalletTransaction) -> None:
-    if tx.status != "pendiente":
+    now = utcnow()
+    claimed = (
+        db.query(WalletTransaction)
+        .filter(WalletTransaction.id == tx.id, WalletTransaction.status == "pendiente")
+        .update(
+            {WalletTransaction.status: "rechazado", WalletTransaction.reviewed_at: now},
+            synchronize_session=False,
+        )
+    )
+    if not claimed:
         raise HTTPException(status_code=409, detail="Este movimiento ya fue procesado.")
     if tx.amount_cents < 0:
         user = lock_user(db, tx.user_id)
-        user.diamonds_cents = (user.diamonds_cents or 0) - tx.amount_cents  # Devuelve lo retenido
+        db.query(User).filter(User.id == user.id).update(
+            {User.diamonds_cents: func.coalesce(User.diamonds_cents, 0) - tx.amount_cents},
+            synchronize_session=False,
+        )  # Devuelve lo retenido
+        db.refresh(user)
     tx.status = "rechazado"
-    tx.reviewed_at = utcnow()
+    tx.reviewed_at = now
 
 
 def outgoing_today_cents(db: Session, user_id: int) -> int:
@@ -136,9 +184,17 @@ def _held_payment(db: Session, ride: Ride) -> WalletTransaction | None:
 
 def hold_ride_pass(db: Session, passenger: User, ride: Ride) -> None:
     """Aparta un pase de combo al pedir el viaje; se gasta al completarlo."""
-    if (passenger.ride_passes or 0) < 1:
+    spent = (
+        db.query(User)
+        .filter(User.id == passenger.id, func.coalesce(User.ride_passes, 0) >= 1)
+        .update(
+            {User.ride_passes: func.coalesce(User.ride_passes, 0) - 1},
+            synchronize_session=False,
+        )
+    )
+    db.refresh(passenger)
+    if not spent:
         raise HTTPException(status_code=400, detail="No tienes pases de viaje. Compra un combo en la Tienda Fe.")
-    passenger.ride_passes -= 1
     record(
         db,
         passenger,
@@ -202,4 +258,8 @@ def refund_ride_payment(db: Session, ride: Ride) -> None:
     if used_pass:
         reject(db, used_pass)
         passenger = lock_user(db, ride.passenger_id)
-        passenger.ride_passes = (passenger.ride_passes or 0) + 1  # El pase vuelve al pasajero
+        db.query(User).filter(User.id == passenger.id).update(
+            {User.ride_passes: func.coalesce(User.ride_passes, 0) + 1},
+            synchronize_session=False,
+        )  # El pase vuelve al pasajero
+        db.refresh(passenger)

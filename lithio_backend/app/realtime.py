@@ -25,11 +25,11 @@ class ConnectionManager:
         self.sessions[websocket] = session_id
 
     def disconnect(self, user_id: int, websocket: WebSocket):
+        self.sessions.pop(websocket, None)
         connections = self.active_connections.get(user_id)
         if connections is None:
             return
         connections.discard(websocket)
-        self.sessions.pop(websocket, None)
         if not connections:
             del self.active_connections[user_id]
 
@@ -39,7 +39,7 @@ class ConnectionManager:
     async def _send(self, user_id: int, websocket: WebSocket, payload: str):
         try:
             await websocket.send_text(payload)
-        except (WebSocketDisconnect, RuntimeError, OSError):
+        except Exception:
             self.disconnect(user_id, websocket)
 
     async def send_personal_message(self, message: dict, user_id: int):
@@ -56,7 +56,7 @@ class ConnectionManager:
             await self._send(user_id, connection, payload)
             try:
                 await connection.close(code=4001, reason="Sesión iniciada en otro dispositivo")
-            except (RuntimeError, OSError):
+            except Exception:
                 pass
             self.disconnect(user_id, connection)
 

@@ -4,6 +4,7 @@ Fondo Solidario, retiros y canjes del taller aliado para conductores.
 Las recargas y las donaciones por Pago Móvil se pagan al Pago Móvil del
 administrador (los datos de su perfil de conductor), llevan la captura del
 pago y quedan en revisión hasta que el administrador las aprueba."""
+import re
 import secrets
 from ..rate_limit import rate_limit
 from typing import Literal, Optional
@@ -25,7 +26,7 @@ from ..models import DriverProfile, User, WalletTransaction, WorkshopReward
 from ..realtime import manager
 from .legal import require_current_terms
 from .. import push_service
-from .profile import _detect_format, commit_or_discard
+from .profile import _detect_format, commit_or_discard, safe_evidence_path
 
 RECEIPT_DIR = EVIDENCE_DIR / "wallet"
 MAX_RECEIPT_BYTES = 4 * 1024 * 1024
@@ -66,7 +67,7 @@ class TransactionOut(BaseModel):
 
 
 class AmountIn(BaseModel):
-    amount: float = Field(gt=0, le=500)
+    amount: float = Field(gt=0, le=1_000_000, allow_inf_nan=False)
 
 
 class TopupIn(AmountIn):
@@ -168,6 +169,38 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
     }
 
 
+def _normalize_payment_reference(reference: str | None) -> str:
+    cleaned = re.sub(r"\s+", "", reference or "").upper()
+    alnum = re.sub(r"[\s\-]+", "", cleaned)
+    if not re.fullmatch(r"[A-Z0-9-]{4,30}", cleaned) or len(alnum) < 4:
+        raise HTTPException(
+            status_code=422,
+            detail="Escribe la referencia que te dio el banco: de 4 a 30 números o letras.",
+        )
+    return alnum
+
+
+def _ensure_unique_reference(db: Session, reference: str) -> str:
+    """Impide reutilizar una misma referencia de Pago Móvil o Binance Pay."""
+    normalized = _normalize_payment_reference(reference)
+    existing = (
+        db.query(WalletTransaction.reference)
+        .filter(
+            WalletTransaction.kind.in_(("recarga", "donacion_pm")),
+            WalletTransaction.status != "rechazado",
+            WalletTransaction.reference.isnot(None),
+        )
+        .all()
+    )
+    for (stored,) in existing:
+        if stored and re.sub(r"[\s\-]+", "", stored).upper() == normalized:
+            raise HTTPException(
+                status_code=409,
+                detail="Esta referencia de pago ya fue registrada.",
+            )
+    return reference.strip()
+
+
 @router.post("/wallet/topups", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def request_topup(data: TopupIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
@@ -175,15 +208,16 @@ async def request_topup(data: TopupIn, user: User = Depends(get_current_user), d
         raise HTTPException(status_code=400, detail="La recarga máxima es de Li⁺ 500.")
     if data.method == "binance_pay" and not binance_pay_destination():
         raise HTTPException(status_code=400, detail="La recarga por Binance Pay no está disponible. Usa Pago Móvil.")
+    clean_ref = _ensure_unique_reference(db, data.reference)
     method_label = "Binance Pay" if data.method == "binance_pay" else "Pago Móvil"
     tx = wallet.record(
         db, user, "recarga", cents, status="pendiente",
-        reference=data.reference.strip(), note=f"{method_label} en revisión",
+        reference=clean_ref, note=f"{method_label} en revisión",
     )
     db.commit()
     await alert_admins(
         db, "recarga", "Recarga por aprobar",
-        f"{user.name} pidió una recarga de Li⁺ {data.amount:.2f} por {method_label} (ref. {data.reference.strip()}).", tx_id=tx.id,
+        f"{user.name} pidió una recarga de Li⁺ {data.amount:.2f} por {method_label} (ref. {clean_ref}).", tx_id=tx.id,
     )
     return serialize(db, tx)
 
@@ -227,16 +261,17 @@ async def donate(data: DonationIn, user: User = Depends(get_current_user), db: S
             raise HTTPException(status_code=400, detail="Escribe la referencia del Pago Móvil.")
         if cents > wallet.MAX_TOPUP_CENTS:
             raise HTTPException(status_code=400, detail="La donación máxima por Pago Móvil es de Li⁺ 500.")
+        clean_ref = _ensure_unique_reference(db, data.reference)
         # No suma al saldo de quien dona: va al Fondo Solidario cuando el administrador la confirma.
         tx = WalletTransaction(
             user_id=user.id, kind="donacion_pm", amount_cents=cents, status="pendiente",
-            reference=data.reference.strip(), note="Fondo Solidario LITHIO · Pago Móvil en revisión",
+            reference=clean_ref, note="Fondo Solidario LITHIO · Pago Móvil en revisión",
         )
         db.add(tx)
         db.commit()
         await alert_admins(
             db, "donacion_pm", "Donación por confirmar",
-            f"{user.name} donó Li⁺ {data.amount:.2f} por Pago Móvil (ref. {data.reference.strip()}).", tx_id=tx.id,
+            f"{user.name} donó Li⁺ {data.amount:.2f} por Pago Móvil (ref. {clean_ref}).", tx_id=tx.id,
         )
         return serialize(db, tx)
     donor = wallet.lock_user(db, user.id)
@@ -250,9 +285,12 @@ async def donate(data: DonationIn, user: User = Depends(get_current_user), db: S
 @router.post("/wallet/withdrawals", status_code=201, response_model=TransactionOut, dependencies=[Depends(require_current_terms), Depends(rate_limit("billetera", 20, 600))])
 async def request_withdrawal(data: WithdrawalIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_approved_driver(db, user)
+    cents = wallet.to_cents(data.amount)
+    if cents > wallet.MAX_TOPUP_CENTS:
+        raise HTTPException(status_code=400, detail="El retiro máximo por solicitud es de Li⁺ 500.")
     driver = wallet.lock_user(db, user.id)
     tx = wallet.record(
-        db, driver, "retiro", -wallet.to_cents(data.amount), status="pendiente",
+        db, driver, "retiro", -cents, status="pendiente",
         reference=data.destination.strip(), note="Retiro en revisión",
     )
     db.commit()
@@ -301,7 +339,9 @@ async def upload_wallet_receipt(
 ):
     """Captura del Pago Móvil de una recarga o donación en revisión."""
     tx = _own_receipt_tx(tx_id, user, db)
-    if tx.user_id != user.id or tx.kind not in RECEIPT_KINDS:
+    if tx.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Solo el titular puede adjuntar el comprobante.")
+    if tx.kind not in RECEIPT_KINDS:
         raise HTTPException(status_code=400, detail="Este movimiento no lleva comprobante.")
     if tx.status != "pendiente":
         raise HTTPException(status_code=409, detail="Este movimiento ya fue revisado.")
@@ -318,10 +358,9 @@ async def upload_wallet_receipt(
     old = tx.receipt_file
     tx.receipt_file = filename
     commit_or_discard(db, RECEIPT_DIR / filename)
-    if old:
-        old_path = (RECEIPT_DIR / old).resolve()
-        if old_path.parent == RECEIPT_DIR.resolve() and old_path.exists():
-            old_path.unlink()
+    old_path = safe_evidence_path(RECEIPT_DIR, old)
+    if old_path:
+        old_path.unlink(missing_ok=True)
     await alert_admins(
         db, "comprobante", "Comprobante recibido",
         f"{user.name} adjuntó la captura de su {KIND_LABELS[tx.kind].lower()}.", tx_id=tx.id,
@@ -332,8 +371,8 @@ async def upload_wallet_receipt(
 @router.get("/wallet/transactions/{tx_id}/receipt")
 def get_wallet_receipt(tx_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     tx = _own_receipt_tx(tx_id, user, db)
-    path = (RECEIPT_DIR / tx.receipt_file).resolve() if tx.receipt_file else None
-    if not path or path.parent != RECEIPT_DIR.resolve() or not path.exists():
+    path = safe_evidence_path(RECEIPT_DIR, tx.receipt_file)
+    if not path:
         raise HTTPException(status_code=404, detail="Este movimiento no tiene comprobante.")
     return FileResponse(path)
 

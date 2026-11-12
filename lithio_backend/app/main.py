@@ -442,7 +442,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except HTTPException:
-        await websocket.close(code=1008, reason="Sesión no válida")
+        try:
+            await websocket.close(code=1008, reason="Sesión no válida")
+        except (WebSocketDisconnect, RuntimeError, OSError):
+            pass
     finally:
         if user_id is not None:
             manager.disconnect(user_id, websocket)
@@ -1206,8 +1209,13 @@ async def request_ride(
     db.add(new_ride)
     db.flush()
     if coupon:
-        coupon.status = "usado"
-        coupon.ride_id = new_ride.id
+        claimed_coupon = (
+            db.query(Coupon)
+            .filter(Coupon.id == coupon.id, Coupon.user_id == passenger.id, Coupon.status == "activo")
+            .update({"status": "usado", "ride_id": new_ride.id}, synchronize_session=False)
+        )
+        if not claimed_coupon:
+            raise HTTPException(status_code=400, detail="Ese cupón no está disponible.")
     if new_ride.payment_method == "diamantes":
         # La tarifa queda retenida y se cobra al completar el viaje.
         wallet_service.hold_ride_payment(db, wallet_service.lock_user(db, passenger.id), new_ride)
@@ -1480,10 +1488,19 @@ async def update_ride_status(
         raise HTTPException(status_code=400, detail="La transición de estado no está permitida.")
 
     driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
+    if update.status == "aceptado" and not is_approved(driver_profile):
+        raise HTTPException(status_code=403, detail="Tu postulación de conductor debe estar aprobada.")
     if update.status == "aceptado" and driver_is_busy(db, ride.driver_id, exclude_ride_id=ride.id):
         raise HTTPException(status_code=409, detail="Ya tienes un viaje aceptado. Finalízalo antes de aceptar otro.")
 
     old_status = ride.status
+    claimed = (
+        db.query(Ride)
+        .filter(Ride.id == ride.id, Ride.status == old_status)
+        .update({Ride.status: update.status}, synchronize_session=False)
+    )
+    if not claimed:
+        raise HTTPException(status_code=400, detail="La transición de estado no está permitida.")
     ride.status = update.status
     log_status(ride, update.status)
     fe_awarded = 0

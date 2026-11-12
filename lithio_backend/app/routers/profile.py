@@ -36,10 +36,25 @@ _SIGNATURES = {
 
 
 def _detect_format(data: bytes) -> str | None:
+    if len(data) < 12:
+        return None
     for extension, matches in _SIGNATURES.items():
         if matches(data):
             return extension
     return None
+
+
+def safe_evidence_path(base_dir: Path, filename: str | None) -> Path | None:
+    """Resuelve un nombre de archivo dentro de base_dir impidiendo Path Traversal."""
+    if not filename or filename in {".", ".."} or "/" in filename or "\\" in filename:
+        return None
+    if Path(filename).name != filename:
+        return None
+    resolved_dir = base_dir.resolve()
+    path = (resolved_dir / filename).resolve()
+    if path.parent != resolved_dir or not path.is_file():
+        return None
+    return path
 
 
 def commit_or_discard(db: Session, written: Path) -> None:
@@ -56,9 +71,9 @@ def _delete_local_avatar(url: str | None) -> None:
     """Borra la foto anterior si la guardó LITHIO (no toca enlaces externos)."""
     if not url or not url.startswith("/media/avatars/"):
         return
-    path = (AVATAR_DIR / Path(url).name).resolve()
-    if path.parent == AVATAR_DIR.resolve() and path.exists():
-        path.unlink()
+    path = safe_evidence_path(AVATAR_DIR, url.removeprefix("/media/avatars/"))
+    if path:
+        path.unlink(missing_ok=True)
 
 
 @router.post("/users/me/avatar", dependencies=[Depends(rate_limit("fotos", 10, 600))])
@@ -215,11 +230,9 @@ OPEN_RIDE_STATUSES = ("solicitado", "aceptado", "en_camino", "en_curso")
 
 
 def _delete_evidence_file(directory, filename: str | None) -> None:
-    if not filename:
-        return
-    path = (directory / filename).resolve()
-    if path.parent == directory.resolve() and path.exists():
-        path.unlink()
+    path = safe_evidence_path(Path(directory), filename)
+    if path:
+        path.unlink(missing_ok=True)
 
 
 def erase_account(db: Session, user: User) -> None:

@@ -21,7 +21,7 @@ from ..database import get_db
 from ..models import Coupon, Ride, User
 from ..realtime import manager
 from .. import push_service
-from .profile import _detect_format, commit_or_discard
+from .profile import _detect_format, commit_or_discard, safe_evidence_path
 from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api/rides", tags=["historial"])
@@ -119,10 +119,9 @@ async def upload_receipt(
     ride.receipt_file = filename
     ride.receipt_uploaded_at = utcnow()
     commit_or_discard(db, RECEIPT_DIR / filename)
-    if old:
-        old_path = (RECEIPT_DIR / old).resolve()
-        if old_path.parent == RECEIPT_DIR.resolve() and old_path.exists():
-            old_path.unlink()
+    old_path = safe_evidence_path(RECEIPT_DIR, old)
+    if old_path:
+        old_path.unlink(missing_ok=True)
     other_id = ride.driver_id if user.id == ride.passenger_id else ride.passenger_id
     await manager.send_personal_message({"type": "RIDE_RECEIPT_UPLOADED", "ride_id": ride.id}, user_id=other_id)
     push_service.notify(
@@ -158,8 +157,22 @@ async def set_payment_reference(
     if ride.status in {"rechazado", "cancelado"}:
         raise HTTPException(status_code=400, detail="El viaje no se realizó; no hace falta referencia.")
     reference = re.sub(r"\s+", "", body.reference).upper()
-    if not re.fullmatch(r"[A-Z0-9-]{4,30}", reference):
+    alnum = re.sub(r"[\s\-]+", "", reference)
+    if not re.fullmatch(r"[A-Z0-9-]{4,30}", reference) or len(alnum) < 4:
         raise HTTPException(status_code=422, detail="Escribe la referencia que te dio el banco: de 4 a 30 números o letras.")
+    other_refs = (
+        db.query(Ride.payment_reference)
+        .filter(
+            Ride.id != ride.id,
+            Ride.payment_method == "pago_movil",
+            Ride.status.notin_(("rechazado", "cancelado")),
+            Ride.payment_reference.isnot(None),
+        )
+        .all()
+    )
+    for (stored,) in other_refs:
+        if stored and re.sub(r"[\s\-]+", "", stored).upper() == alnum:
+            raise HTTPException(status_code=409, detail="Esta referencia de Pago Móvil ya fue usada en otro viaje.")
 
     ride.payment_reference = reference
     db.commit()
@@ -178,8 +191,8 @@ async def set_payment_reference(
 @router.get("/{ride_id}/receipt")
 def get_receipt(ride_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ride = ride_for(ride_id, user, db)
-    path = (RECEIPT_DIR / ride.receipt_file).resolve() if ride.receipt_file else None
-    if not path or path.parent != RECEIPT_DIR.resolve() or not path.exists():
+    path = safe_evidence_path(RECEIPT_DIR, ride.receipt_file)
+    if not path:
         raise HTTPException(status_code=404, detail="Este viaje no tiene comprobante.")
     return FileResponse(path)
 

@@ -10,6 +10,8 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..admin_alerts import alert_admins
@@ -22,7 +24,7 @@ from .. import wallet_service
 from ..realtime import manager
 from .. import push_service
 from .legal import require_current_terms
-from .profile import _detect_format, commit_or_discard
+from .profile import _detect_format, commit_or_discard, safe_evidence_path
 from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["tienda-fe"])
@@ -55,11 +57,17 @@ def grant_level_perks(db: Session, user: User) -> None:
     """Entrega una sola vez los cupones de regalo de los niveles alcanzados."""
     z = user_z(user)
     granted = {g.z for g in db.query(PerkGrant).filter(PerkGrant.user_id == user.id)}
+    added = False
     for level, percent in GIFT_COUPONS.items():
         if level <= z and level not in granted:
             db.add(PerkGrant(user_id=user.id, z=level))
             db.add(Coupon(user_id=user.id, percent=percent, fe_cost=0))
-    db.commit()
+            added = True
+    if added:
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
 
 
 def _spend_fe(db: Session, user: User, cost: int) -> None:
@@ -129,7 +137,11 @@ def buy_combo(data: ComboIn, user: User = Depends(get_current_user), db: Session
     # Con la fila bloqueada: dos compras a la vez no pueden gastar el mismo saldo.
     buyer = wallet_service.lock_user(db, user.id)
     wallet_service.record(db, buyer, "combo", -wallet_service.to_cents(combo["price"]), note=combo["title"])
-    buyer.ride_passes = (buyer.ride_passes or 0) + combo["passes"]
+    db.query(User).filter(User.id == buyer.id).update(
+        {User.ride_passes: func.coalesce(User.ride_passes, 0) + combo["passes"]},
+        synchronize_session=False,
+    )
+    db.refresh(buyer)
     db.commit()
     return {
         "ride_passes": buyer.ride_passes,
@@ -202,8 +214,8 @@ def pending_vouchers(db: Session = Depends(get_db)):
 @router.get("/admin/vouchers/{voucher_id}/evidence", dependencies=[Depends(require_admin)])
 def voucher_evidence(voucher_id: int, db: Session = Depends(get_db)):
     voucher = db.get(GradeVoucher, voucher_id)
-    path = (EVIDENCE_DIR / voucher.evidence_file).resolve() if voucher else None
-    if not path or path.parent != EVIDENCE_DIR.resolve() or not path.exists():
+    path = safe_evidence_path(EVIDENCE_DIR, voucher.evidence_file) if voucher else None
+    if not path:
         raise HTTPException(status_code=404, detail="Evidencia no encontrada.")
     return FileResponse(path)
 
@@ -229,8 +241,10 @@ async def review_voucher(voucher_id: int, data: VoucherReviewIn, db: Session = D
     voucher.review_note = (data.note or "").strip() or None
     voucher.reviewed_at = utcnow()
     if voucher.status == "rechazado":
-        owner = db.get(User, voucher.user_id)
-        owner.points = (owner.points or 0) + voucher.fe_cost  # Se devuelve el Fe retenido
+        db.query(User).filter(User.id == voucher.user_id).update(
+            {User.points: func.coalesce(User.points, 0) + voucher.fe_cost},
+            synchronize_session=False,
+        )  # Se devuelve el Fe retenido
     db.commit()
     payload = voucher_payload(voucher)
     await manager.send_personal_message({"type": "VOUCHER_UPDATED", "voucher": payload}, user_id=voucher.user_id)
