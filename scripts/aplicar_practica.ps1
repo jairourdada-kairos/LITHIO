@@ -26,6 +26,18 @@ $allowed = @(
 )
 $appFiles = $allowed | Where-Object { $_ -like 'lithio_mobile/*' }
 
+# Archivos de DATOS del backend (preguntas, Fe, precios, listas). Son código Python que el
+# servidor ejecuta, así que antes de aplicarlos se muestran los cambios y se pide confirmación.
+$reviewed = @(
+  'lithio_backend/app/quiz_questions.py',
+  'lithio_backend/app/routers/quiz.py',
+  'lithio_backend/app/links_service.py',
+  'lithio_backend/app/routers/fe_store.py',
+  'lithio_backend/app/wallet_service.py',
+  'lithio_backend/app/validation.py',
+  'lithio_backend/app/seed.py'
+)
+
 Write-Host "==> Buscando cambios nuevos en la rama '$branch'" -ForegroundColor Cyan
 git fetch --quiet origin $branch
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: no existe la rama '$branch' en GitHub o no hay internet." -ForegroundColor Red; exit 1 }
@@ -35,8 +47,19 @@ $changed = @(git diff --name-only $base "origin/$branch")
 if ($changed.Count -eq 0) { Write-Host 'No hay cambios nuevos.' -ForegroundColor Yellow; exit 0 }
 
 $applied = @(); $skipped = @()
+$backendChanged = @($changed | Where-Object { $reviewed -contains $_ })
+$acceptBackend = $false
+if ($backendChanged.Count) {
+  Write-Host ''
+  Write-Host 'Cambios en archivos del backend (revisalos antes de aceptar):' -ForegroundColor Cyan
+  git --no-pager diff --color $base "origin/$branch" -- $backendChanged | Out-Host
+  $answer = Read-Host 'Aplicar estos cambios del backend y reiniciar el servidor? (S/N)'
+  $acceptBackend = $answer -match '^[sS]'
+}
 foreach ($f in $changed) {
-  if ($allowed -notcontains $f) { $skipped += "$f (no es un archivo de estilo)"; continue }
+  if ($reviewed -contains $f) {
+    if (-not $acceptBackend) { $skipped += "$f (no lo aceptaste)"; continue }
+  } elseif ($allowed -notcontains $f) { $skipped += "$f (no esta en la lista de archivos para practicar)"; continue }
   if (git status --porcelain -- $f) { $skipped += "$f (tiene cambios tuyos sin guardar en git)"; continue }
   git checkout "origin/$branch" -- $f
   if ($LASTEXITCODE -eq 0) { $applied += $f } else { $skipped += "$f (error al copiar)" }
@@ -45,6 +68,18 @@ foreach ($f in $changed) {
 Write-Host ''
 if ($applied.Count) { Write-Host 'Aplicados:' -ForegroundColor Green; $applied | ForEach-Object { Write-Host "  $_" } }
 if ($skipped.Count) { Write-Host 'Ignorados:' -ForegroundColor Yellow; $skipped | ForEach-Object { Write-Host "  $_" } }
+
+$appliedBackend = @($applied | Where-Object { $reviewed -contains $_ })
+if ($appliedBackend.Count) {
+  # Antes de reiniciar se comprueba que el Python este bien escrito; si no, se deshace.
+  & "$Root\lithio_backend\venv\Scripts\python.exe" -m py_compile @($appliedBackend | ForEach-Object { Join-Path $Root $_ })
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host 'ERROR: un archivo del backend tiene un error de escritura (coma, comilla o parentesis). Se deshacen esos cambios.' -ForegroundColor Red
+    git checkout HEAD -- $appliedBackend
+    exit 1
+  }
+  & (Join-Path $PSScriptRoot 'reiniciar_servidor.ps1')
+}
 
 if ($applied | Where-Object { $appFiles -contains $_ }) {
   Write-Host ''

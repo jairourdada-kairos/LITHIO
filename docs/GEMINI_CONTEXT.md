@@ -1,5 +1,7 @@
 # Contexto técnico del proyecto LITHIO para Claude o Gemini
 
+> Desactualizado (4 de noviembre). El resumen vigente está en `docs/RESUMEN_TECNICO_LITHIO.md`.
+
 Este documento describe el estado del código de LITHIO en el repositorio al momento de su creación. Sirve como contexto inicial para analizar, explicar o continuar el desarrollo; no sustituye la lectura del código cuando se vaya a modificar una función concreta.
 
 ## Instrucción inicial para el asistente
