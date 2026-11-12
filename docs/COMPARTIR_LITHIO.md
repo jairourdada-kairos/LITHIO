@@ -1,17 +1,15 @@
 # Textos para compartir LITHIO
 
-Cambia `LINK` por la dirección que muestra `iniciar_publico.bat` seguida de
-`/descargar` (ejemplo: `https://xxxx.trycloudflare.com/descargar`). La dirección
-cambia cada vez que se reinicia el túnel, así que revísala antes de enviar.
+Dirección oficial de descarga: `https://lithio-api-production.up.railway.app/descargar`
 
-Con el mensaje, manda también la imagen [`flyer_instalar_lithio.png`](flyer_instalar_lithio.png).
+Con el mensaje, manda también la imagen [`../lithio_descarga/flyer.png`](../lithio_descarga/flyer.png).
 
 ---
 
 ## Botón o mensaje corto (CTA)
 
 > 🛵 **Descarga LITHIO**, el moto-taxi de la universidad
-> 👉 LINK
+> 👉 https://lithio-api-production.up.railway.app/descargar
 > Android · gratis · se instala en 2 minutos
 
 ---
@@ -20,9 +18,9 @@ Con el mensaje, manda también la imagen [`flyer_instalar_lithio.png`](flyer_ins
 
 ```
 🛵 *LITHIO ya está disponible para Android*
-El moto-taxi de la universidad: pide tu viaje, paga con diamantes y gana Fe.
+El moto-taxi de la universidad: pide tu viaje, paga con Iones Li⁺ y gana Fe.
 
-📲 *Descárgalo aquí:* LINK
+📲 *Descárgalo aquí:* https://lithio-api-production.up.railway.app/descargar
 
 *Cómo instalarlo (2 min):*
 1️⃣ Toca *Descargar LITHIO*. Si Chrome avisa, toca *Descargar de todas formas*.
@@ -31,7 +29,7 @@ El moto-taxi de la universidad: pide tu viaje, paga con diamantes y gana Fe.
      toca *Configuración* → activa *Permitir desde esta fuente* → vuelve *atrás* → *Instalar*.
 4️⃣ Si sale *Play Protect* o *"App no segura"*:
      toca *Más detalles* → *Instalar de todas formas*. ⚠️ No toques "Aceptar".
-5️⃣ ¡Listo! Ábrela, entra con Google o tu correo y permite ubicación y notificaciones.
+5️⃣ ¡Listo! Ábrela, entra con Google o tu correo y activa las notificaciones.
 
 ℹ️ Los avisos salen porque aún no está en Play Store: es normal y es seguro si lo bajas de este link.
 🍏 ¿iPhone? Abre el mismo link en Safari y toca *Usa la versión web*.

@@ -35,4 +35,4 @@ Move-Item $tmp $Target -Force
   ConvertTo-Json | Set-Content (Join-Path $Root 'lithio_descarga\apk.json') -Encoding utf8
 $mb = [math]::Round((Get-Item $Target).Length / 1MB)
 Write-Host "LISTO: APK de $mb MB en la pagina de descarga." -ForegroundColor Green
-Write-Host 'Link para compartir: <direccion de iniciar_publico>/descargar' -ForegroundColor Green
+Write-Host 'Link para compartir: https://lithio-api-production.up.railway.app/descargar' -ForegroundColor Green

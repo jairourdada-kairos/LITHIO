@@ -1,5 +1,4 @@
-# Reinicia solo el servidor (el backend) para que tome los cambios hechos en los archivos .py.
-# El tunel publico de Cloudflare sigue encendido: el enlace NO cambia.
+# Reinicia solo el servidor local (el backend en localhost:8000) para que tome los cambios hechos en los archivos .py.
 
 $ErrorActionPreference = 'Continue'
 $Root = Split-Path -Parent $PSScriptRoot

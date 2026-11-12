@@ -32,7 +32,7 @@ propio servidor en http://localhost:8000/dashboard (no hace falta arrancarlo apa
 
 La app móvil queda en [lithio_mobile](../lithio_mobile). Para probarla con Expo Go
 en la misma Wi-Fi: doble clic en `iniciar_app.bat` (o `iniciar_todo.bat` para
-servidor + app). Para los APK fuera de la Wi-Fi: `iniciar_publico.bat`.
+servidor + app). En producción se conecta al servidor de Railway (`https://lithio-api-production.up.railway.app`).
 APK nuevo, actualizaciones y nube: ver [DESPLIEGUE.md](DESPLIEGUE.md).
 
 ## Estado recomendado

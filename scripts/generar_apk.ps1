@@ -2,8 +2,7 @@
 #
 # Uso: doble clic en generar_apk.bat.
 # La compilacion se hace en los servidores de Expo (EAS), no en esta PC.
-# El APK no lleva una direccion fija: al abrirse lee de Firebase la direccion
-# que publica iniciar_publico.bat (ver docs/DESPLIEGUE.md, seccion APK).
+# El APK usa el servidor en la nube (Railway) y lee de Firebase la direccion configurada.
 
 # 'Continue': en PowerShell 5.1, con 'Stop' los avisos de npx en stderr detienen el script.
 $ErrorActionPreference = 'Continue'

@@ -1,7 +1,7 @@
 @echo off
 title Servidor LITHIO (puerto 8000)
 echo ===================================================
-echo   Servidor de LITHIO en el puerto 8000 (iniciar_publico.bat da el link)
+echo   Servidor local de LITHIO en http://localhost:8000
 echo   Panel web: http://localhost:8000/dashboard
 echo   Deja esta ventana abierta mientras usas la app.
 echo ===================================================

@@ -4,9 +4,7 @@
 lithio_mobile/*
 !lithio_mobile/dist-web/
 !lithio_mobile/dist-web/**
-/app/
 .claude/
-lithio_skills.zip
 **/venv/
 **/__pycache__/
 **/.env

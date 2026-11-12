@@ -23,9 +23,9 @@ Guía de pasos para Jairo: https://claude.ai/artifact/1A4cDDzSztC5xcdg7J9QNi
 > Cada conductor pasa por verificación de documentos e inspección de la moto. Ves su nombre, su foto, su moto, su placa y sus reseñas antes de elegirlo, y puedes llamarlo desde la app.
 >
 > **Paga como prefieras**
-> • Diamantes: tu saldo dentro de LITHIO (1 ◆ = 1 USD).
+> • Iones Li⁺: tu saldo dentro de LITHIO (1 Li⁺ = 1 USD).
 > • Efectivo, Pago Móvil o Binance Pay.
-> • COMBOS de viajes internos: 5, 10, 20 o 30 viajes pagados con diamantes.
+> • COMBOS de viajes internos: 5, 10, 20 o 30 viajes pagados con Iones Li⁺.
 >
 > **Gana mientras viajas**
 > Suma Fe en cada viaje y reseña, sube de nivel como un elemento de la tabla periódica, mantén tu racha semanal y canjea cupones en la Tienda de Fe.

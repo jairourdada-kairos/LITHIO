@@ -4,8 +4,7 @@
 # desarrollo) en lithio_mobile\dist-web. El servidor la sirve en /app, en la
 # misma dirección que la API: un solo link para todos, sin depender de Expo.
 #
-# Lo llaman iniciar_publico.bat (si aún no existe) y publicar_actualizacion.bat
-# (después de cada cambio de la app). Tarda 1-2 minutos.
+# Lo llama publicar_actualizacion.bat después de cada cambio de la app (1-2 minutos).
 
 $ErrorActionPreference = 'Continue'
 Set-Location (Join-Path (Split-Path -Parent $PSScriptRoot) 'lithio_mobile')

@@ -14,7 +14,7 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 2. **Selección Directa de Conductores:** El estudiante visualiza su ruta y selecciona con un toque a su conductor preferido o conocido (con datos de su moto, placa, reputación y disponibilidad).
 3. **Doble Rol Integrado (Pasajero y Conductor):** En la misma app, el usuario puede alternar con un toque entre pedir una carrera o recibir solicitudes entrantes en su apartado de **Conductor**.
 4. **Recompensas Fe:** Acumulación de 15 Fe por viaje completado (pasajero y conductor) y 5 Fe por reseña útil. Tienda para canjear descuentos y beneficios de viaje.
-5. **Métodos de Pago:** Efectivo, Pago Móvil y Diamantes (◆, desde 0.50). La billetera tiene recargas, envíos, donaciones y retiros que revisa el administrador.
+5. **Métodos de Pago:** Efectivo, Pago Móvil, Binance Pay e Iones (Li⁺, desde 0.50). La billetera tiene recargas, envíos, donaciones y retiros que revisa el administrador.
 6. **Cobertura Estratégica:** Rectorado y Campus UNC, IVIC, San Antonio de los Altos, Los Teques y bajada por la Panamericana a Caracas (Plaza Venezuela / La Hoyada).
 
 ---
@@ -25,7 +25,7 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 |---|---|---|
 | **App Móvil** | React Native + Expo (TypeScript) | Render nativo fluido, pruebas instantáneas en teléfonos Android con Expo Go sin necesidad de Android Studio ni emuladores pesados. |
 | **Backend API** | FastAPI (Python 3.14) | Asíncrono, ultrarrápido, tipado estricto con Pydantic v2 y extensible para futuros modelos de Inteligencia Artificial. |
-| **Base de Datos** | SQLite (SQLAlchemy ORM) | Liviana, sin configuración de servidores externos, portable y lista para migrar a PostgreSQL / Supabase en producción. |
+| **Base de Datos** | PostgreSQL (Railway) / SQLite (local) | SQLAlchemy ORM: PostgreSQL en producción en la nube y SQLite liviano para desarrollo y pruebas locales. |
 | **Tiempo Real** | WebSockets | Canal de notificación directa para alertar al conductor al instante cuando un pasajero solicita una carrera. |
 
 ---
@@ -35,11 +35,11 @@ A diferencia de aplicaciones comerciales tradicionales que dependen de un rastre
 ```text
 hopeful-galileo/
 ├── *.bat                      # Doble clic: iniciar_servidor, iniciar_app, iniciar_todo,
-│                              # iniciar_publico, generar_apk, publicar_actualizacion, desplegar_nube
+│                              # generar_apk, publicar_actualizacion, desplegar_nube, respaldar_nube
 ├── scripts/                   # PowerShell que usan esos .bat
-├── docs/                      # DESPLIEGUE (nube, APK, Google, Facebook, WhatsApp),
-│                              # ORGANIZACION_PROYECTO y GEMINI_CONTEXT
-├── Dockerfile, railway.json   # Servidor en la nube (Railway)
+├── docs/                      # RESUMEN_TECNICO_LITHIO, DESPLIEGUE (nube, APK, Google, Facebook, WhatsApp)
+│                              # y ORGANIZACION_PROYECTO
+├── Dockerfile, .railway/      # Servidor en la nube (Railway)
 ├── lithio_backend/            # Servidor FastAPI
 │   ├── app/
 │   │   ├── main.py            # Viajes, registro, conductores, reseñas y WebSocket
@@ -60,7 +60,7 @@ hopeful-galileo/
     │   ├── components/        # Componentes (viaje, billetera, Liquid Glass…)
     │   ├── services/          # API, Firebase, sesión, notificaciones, actualizaciones
     │   └── constants/         # Tema visual
-    └── scripts/               # Generador de íconos
+    └── scripts/               # Construcción de Android Bundle (.aab)
 ```
 
 Guías: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) (nube, APK, actualizaciones, Google,

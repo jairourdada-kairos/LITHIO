@@ -62,7 +62,7 @@ usuarios, no copia nada (para no duplicar).
 ## 4. Desplegar el servidor
 
 1. En el mismo proyecto: **New → GitHub Repo →** `jairourdada-kairos/LITHIO`.
-   Railway detecta `railway.json` y construye con el `Dockerfile`.
+   Railway lee `.railway/railway.ts` y construye con el `Dockerfile`.
 2. En el servicio nuevo → **Settings → Volumes → Add Volume**, ruta de montaje
    **`/data`**. Ahí se guardan las fotos de perfil y las evidencias.
 3. **Variables** del servicio (Raw Editor, pega y completa):
@@ -127,12 +127,11 @@ un enlace para descargar el `.apk` e instalarlo en cualquier Android.
 
 ---
 
-# APK con notificaciones push (gratis, con la PC encendida)
+# APK con notificaciones push
 
-El APK recibe notificaciones aunque la app esté cerrada. No lleva una
-dirección fija: al abrirse lee de Firebase la dirección que publica
-`iniciar_publico.bat` en cada arranque. Funciona mientras esa ventana esté
-abierta en la PC.
+El APK recibe notificaciones aunque la app esté cerrada y se conecta al servidor
+en la nube (`https://lithio-api-production.up.railway.app`) o lee la dirección
+respaldada en Firestore (`config/server`).
 
 ## 1. Firebase para Android (una sola vez)
 
@@ -161,8 +160,6 @@ service cloud.firestore {
 }
 ```
 
-3. Abre `iniciar_publico.bat`: debe decir **"Dirección publicada para el APK"**.
-
 ## 3. Generar el APK
 
 Doble clic en **`generar_apk.bat`**. Te pedirá:
@@ -176,16 +173,15 @@ Al terminar (≈15 min) pone el APK nuevo en la página de descarga.
 
 ## 4. Compartir el APK: página de descarga
 
-El link para compartir es **`<dirección de iniciar_publico>/descargar`**, por
-ejemplo `https://xxxx.trycloudflare.com/descargar`. La página tiene el botón de
-descarga y la guía paso a paso, con los avisos de Android («Instalación
-bloqueada», Play Protect). Textos listos para WhatsApp en
+El link para compartir es **`https://lithio-api-production.up.railway.app/descargar`**.
+La página tiene el botón de descarga y la guía paso a paso, con los avisos de
+Android («Instalación bloqueada», Play Protect). Textos listos para WhatsApp en
 [`COMPARTIR_LITHIO.md`](COMPARTIR_LITHIO.md) y flyer en
-[`flyer_instalar_lithio.png`](flyer_instalar_lithio.png).
+[`../lithio_descarga/flyer.png`](../lithio_descarga/flyer.png).
 
 - El botón baja el APK de los servidores de Expo, que es más rápido, mientras
-  ese link siga vigente (14 días). Después usa la copia de esta PC
-  (`lithio_descarga/LITHIO.apk`, que no va a git).
+  ese link siga vigente (14 días). Después usa la copia guardada en el servidor
+  (`/data/LITHIO.apk` en Railway o `lithio_descarga/LITHIO.apk` en local).
 - `generar_apk.bat` actualiza la página solo. Para hacerlo a mano (por ejemplo,
   en otra PC): **`actualizar_descarga.bat`**.
 
@@ -212,18 +208,14 @@ una librería nativa, el ícono o el nombre. En ese caso sube `version` en
 
 # Versión web: iPhone y computadoras
 
-El mismo servidor sirve la app web en `/app`. Al abrir `iniciar_publico.bat`
-aparece la línea **LINK PARA TODOS**: esa dirección sirve en Android, iPhone y
-computadoras, sin instalar nada ni usar Expo.
+El mismo servidor sirve la app web en `https://lithio-api-production.up.railway.app/app`.
+Esa dirección sirve en Android, iPhone y computadoras, sin instalar nada ni usar Expo.
 
 - **Instalar en iPhone:** abrir el link en **Safari** → botón Compartir →
   **Agregar a inicio**. Queda con el ícono de LITHIO y a pantalla completa.
 - **Entrar con Google en iPhone:** solo desde Safari. En el ícono agregado a la
   pantalla de inicio, iOS no deja volver de la ventana de Google; ahí se entra
   con correo y contraseña.
-- **El link cambia** cada vez que se abre `iniciar_publico.bat` (túnel gratuito),
-  y el ícono agregado deja de abrir. Para un link fijo hay que pasar el servidor
-  a la nube (arriba).
 - **Actualizar la web:** `publicar_actualizacion.bat` la vuelve a compilar al
   final. Para compilarla sola: `scripts\exportar_web.ps1` (1-2 minutos).
 
@@ -236,8 +228,8 @@ computadoras, sin instalar nada ni usar Expo.
   cambiarlos, edita esos datos en tu perfil de conductor.
 - La persona escribe la referencia y adjunta la **captura**. En el panel
   (`/dashboard` → Aprobaciones) y en la app (Administrador) se ve la captura y
-  se pulsa **Acreditar diamantes** o **Rechazar**.
-- **◆ Acreditar diamantes** (panel) suma diamantes a mano con el código Li-XXXX
+  se pulsa **Acreditar Iones (Li⁺)** o **Rechazar**.
+- **Li⁺ Acreditar iones** (panel) suma Iones Li⁺ a mano con el código Li-XXXX
   de la persona, por ejemplo si te pagó por WhatsApp sin usar la app.
 - Cada solicitud nueva (recarga, donación, comprobante, retiro, taller, vale o
   conductor nuevo) llega al administrador como **aviso flotante** en la app y
@@ -434,9 +426,9 @@ El servidor publica:
   Eliminar mi cuenta**) y qué se borra.
 
 Para que muestren un correo de contacto, añade `CONTACT_EMAIL=tu@correo` al `.env` del
-servidor y reinícialo. Mientras el servidor esté en esta PC con el túnel, la dirección
-cambia en cada arranque; con el servidor en la nube (sección 4) queda fija, por ejemplo
-`https://TU-DOMINIO.up.railway.app/privacidad`.
+servidor (o en las variables de Railway): quedan fijas en
+`https://lithio-api-production.up.railway.app/privacidad` y
+`https://lithio-api-production.up.railway.app/eliminar-cuenta`.
 
 ---
 
