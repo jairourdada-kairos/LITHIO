@@ -107,3 +107,41 @@ def test_security_headers_block_clickjacking(client):
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
         assert response.headers["Strict-Transport-Security"] == "max-age=31536000"
+
+
+def test_driver_verified_badge_and_plate_exposed_in_rides_and_directory(client):
+    drivers = client.get("/api/drivers", headers=auth_headers(4)).json()
+    assert len(drivers) >= 1
+    first_driver = drivers[0]
+    assert first_driver["is_verified"] is True
+    assert first_driver["vehicle_plate"]
+
+    routes = client.get("/api/routes").json()
+    route = routes[0]
+    ride_res = client.post(
+        "/api/rides",
+        headers=auth_headers(4),
+        json={
+            "driver_id": first_driver["user_id"],
+            "origin": route["origin"],
+            "destination": route["destination"],
+            "payment_method": "efectivo",
+            "fare_amount": route["fare_usd"],
+        },
+    )
+    assert ride_res.status_code == 200
+    ride = ride_res.json()
+    assert ride["driver_plate"] == first_driver["vehicle_plate"]
+    assert ride["driver_is_verified"] is True
+    assert ride["driver_moto_brand_model"] == first_driver["moto_brand_model"]
+    assert ride["driver_moto_color"] == first_driver["moto_color"]
+    assert ride["has_review"] is False
+
+    active = client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()
+    assert active["driver_plate"] == first_driver["vehicle_plate"]
+    assert active["driver_is_verified"] is True
+    assert active["has_review"] is False
+
+    detail = client.get(f"/api/rides/{ride['id']}/detail", headers=auth_headers(4)).json()
+    assert detail["driver"]["plate"] == first_driver["vehicle_plate"]
+    assert detail["driver"]["is_verified"] is True

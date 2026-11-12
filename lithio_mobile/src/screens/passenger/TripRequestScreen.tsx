@@ -470,37 +470,53 @@ const Stepper: React.FC<{ step: Step; onGoTo: (step: Step) => void }> = ({ step,
   );
 };
 
-const DriverOption: React.FC<{ driver: Driver; topRated: boolean; onChoose: () => void }> = ({ driver, topRated, onChoose }) => (
-  <PressableScale variant="glass" style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
-    <Avatar name={driver.name} uri={driver.avatar_url} size={48} ringColor={theme.colors.secondary} />
-    <View style={styles.driverText}>
-      {topRated ? <Text style={styles.topRated}>Mejor calificado</Text> : null}
-      <View style={styles.driverNameRow}>
-        <Text style={styles.driverName} numberOfLines={1}>{driver.name}</Text>
-        <Icon name="checkmark-circle-2" size={15} color={theme.colors.primary} accessibilityLabel="Conductor verificado" />
+const DriverOption: React.FC<{ driver: Driver; topRated: boolean; onChoose: () => void }> = ({ driver, topRated, onChoose }) => {
+  const plate = driver.vehicle_plate || driver.plate;
+  const verified = driver.is_verified !== false;
+  return (
+    <PressableScale variant="glass" style={styles.driver} onPress={onChoose} accessibilityLabel={`Elegir a ${driver.name}`}>
+      <Avatar name={driver.name} uri={driver.avatar_url} size={48} ringColor={theme.colors.secondary} />
+      <View style={styles.driverText}>
+        {topRated ? <Text style={styles.topRated}>Mejor calificado</Text> : null}
+        <View style={styles.driverNameRow}>
+          <Text style={styles.driverName} numberOfLines={1}>{driver.name}</Text>
+          {verified ? (
+            <View style={styles.verifiedBadge} accessibilityLabel="Conductor verificado">
+              <Icon name="checkmark-circle-2" size={12} color={theme.colors.primary} />
+              <Text style={styles.verifiedBadgeText}>Verificado</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.driverVehicleRow}>
+          <Text style={styles.driverMoto} numberOfLines={1}>
+            {driver.moto_brand_model} · {driver.moto_color}
+          </Text>
+          {plate ? (
+            <View style={styles.plateChip} accessibilityLabel={`Placa ${plate}`}>
+              <Text style={styles.plateChipText}>{plate}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.driverMeta}>
+          <Icon name="star" size={14} color={theme.colors.gold} />
+          <Text style={styles.driverRating}>
+            {driver.trips_count > 0 ? driver.rating_avg.toFixed(2) : 'Nuevo'}
+          </Text>
+          <Text style={styles.driverTrips} numberOfLines={1}>· {driver.trips_count} viajes</Text>
+          {driver.helmet_provided ? (
+            <View style={styles.helmet}>
+              <Icon name="racing-helmet" size={12} color={theme.colors.primary} />
+              <Text style={styles.helmetText}>Casco</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
-      <Text style={styles.driverMoto} numberOfLines={1}>
-        {driver.moto_brand_model} · {driver.moto_color}
-      </Text>
-      <View style={styles.driverMeta}>
-        <Icon name="star" size={14} color={theme.colors.gold} />
-        <Text style={styles.driverRating}>
-          {driver.trips_count > 0 ? driver.rating_avg.toFixed(2) : 'Nuevo'}
-        </Text>
-        <Text style={styles.driverTrips} numberOfLines={1}>· {driver.trips_count} viajes</Text>
-        {driver.helmet_provided ? (
-          <View style={styles.helmet}>
-            <Icon name="racing-helmet" size={12} color={theme.colors.primary} />
-            <Text style={styles.helmetText}>Casco</Text>
-          </View>
-        ) : null}
+      <View style={styles.choose}>
+        <Text style={styles.chooseText}>Elegir</Text>
       </View>
-    </View>
-    <View style={styles.choose}>
-      <Text style={styles.chooseText}>Elegir</Text>
-    </View>
-  </PressableScale>
-);
+    </PressableScale>
+  );
+};
 
 const styles = themed(() => ({
   root: {
@@ -877,7 +893,8 @@ const styles = themed(() => ({
   driverNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   driverName: {
     flexShrink: 1,
@@ -885,10 +902,47 @@ const styles = themed(() => ({
     fontSize: 15,
     color: theme.colors.textPrimary,
   },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
+  verifiedBadgeText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 11,
+    color: theme.colors.primary,
+  },
+  driverVehicleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   driverMoto: {
+    flexShrink: 1,
     fontFamily: theme.fonts.regular,
     fontSize: 13,
     color: theme.colors.textSecondary,
+  },
+  plateChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+  },
+  plateChipText: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: 11,
+    color: theme.colors.textPrimary,
+    letterSpacing: 0.4,
   },
   driverMeta: {
     flexDirection: 'row',

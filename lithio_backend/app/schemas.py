@@ -275,6 +275,8 @@ class DriverCardItem(BaseModel):
     avatar_url: Optional[str] = None
     moto_brand_model: str
     moto_color: str
+    vehicle_plate: Optional[str] = None
+    is_verified: bool = True
     helmet_provided: bool
     is_available: bool
     rating_avg: float = 0.0
@@ -313,6 +315,11 @@ class RideResponse(BaseModel):
     created_at: datetime
     passenger_name: Optional[str] = None
     driver_name: Optional[str] = None
+    driver_plate: Optional[str] = None
+    driver_moto_brand_model: Optional[str] = None
+    driver_moto_color: Optional[str] = None
+    driver_is_verified: bool = True
+    has_review: bool = False
     whatsapp_status: Optional[str] = None
     driver_mobile_payment_number: Optional[str] = None
     driver_mobile_payment_bank: Optional[str] = None

@@ -81,6 +81,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const [aboutVisible, setAboutVisible] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
   const reviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const promptedReviewRidesRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     return () => {
@@ -140,10 +141,21 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
 
   // Cada cambio de estado del viaje puede sumar Fe, mover iones o el historial.
   const rideStatus = rides.activeRide?.status;
+  const activeRideId = rides.activeRide?.id;
+  const activeRideDriverName = rides.activeRide?.driver_name;
+  const activeRideHasReview = Boolean(rides.activeRide?.has_review);
   useEffect(() => {
     loadSummary();
     setReloadKey((key) => key + 1);
   }, [rideStatus, loadSummary]);
+
+  // Al pasar el viaje a "completado" sin reseña previa, abre automáticamente el modal una sola vez por viaje en la sesión.
+  useEffect(() => {
+    if (!activeRideId || rideStatus !== 'completado' || activeRideHasReview) return;
+    if (promptedReviewRidesRef.current.has(activeRideId)) return;
+    promptedReviewRidesRef.current.add(activeRideId);
+    setReviewTarget({ rideId: activeRideId, driverName: activeRideDriverName || 'tu conductor' });
+  }, [activeRideId, rideStatus, activeRideDriverName, activeRideHasReview]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -292,6 +304,7 @@ export const PassengerApp: React.FC<Props> = ({ user: initialUser, onSignOut }) 
   const submitReview = async (review: ReviewSubmission) => {
     try {
       const result = await apiService.submitReview(user.id, review);
+      promptedReviewRidesRef.current.add(review.ride_id);
       setReviewTarget(null);
       if (rides.activeRide?.id === review.ride_id) {
         rides.setActiveRide(null);

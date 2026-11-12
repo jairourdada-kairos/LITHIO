@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Image, ImageURISource, ActivityIndicator, Alert, Pressable } from 'react-native';
+import { View, Text, ScrollView, Image, ImageURISource, ActivityIndicator, Alert, Pressable, Share } from 'react-native';
 import { Icon } from '../../components/ui/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, themed } from '../../constants/theme';
@@ -161,6 +161,24 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
   const other = ride.viewer_role === 'conductor' ? ride.passenger : ride.driver;
   const fullFare = ride.coupon_percent ? ride.fare_amount / (1 - ride.coupon_percent / 100) : null;
 
+  const shareRideDetail = async () => {
+    const driverFullName = [ride.driver.name, ride.driver.last_name].filter(Boolean).join(' ');
+    const moto = [ride.driver.moto, ride.driver.moto_color].filter(Boolean).join(' · ');
+    const lines = [
+      `🏍️ Viaje en LITHIO #${ride.id}`,
+      `📍 Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
+      `👤 Conductor: ${driverFullName}${ride.driver.is_verified !== false ? ' (Verificado ✓)' : ''}`,
+      ride.driver.plate ? `🪪 Placa: ${ride.driver.plate}${moto ? ` (${moto})` : ''}` : moto ? `🏍️ Vehículo: ${moto}` : null,
+      `📌 Estado: ${status.label}`,
+    ].filter(Boolean);
+    const message = lines.join('\n');
+    try {
+      await Share.share({ title: `Viaje LITHIO #${ride.id}`, message });
+    } catch {
+      Alert.alert('Resumen del viaje', message);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <ScreenHeader title={`Viaje #${ride.id}`} onBack={onBack} />
@@ -188,16 +206,41 @@ export const RideDetailScreen: React.FC<Props> = ({ rideId, accent, onBack }) =>
           <View style={styles.personRow}>
             <Avatar name={other.name} uri={other.avatar_url} size={44} ringColor={accent} />
             <View style={styles.flex}>
-              <Text style={styles.strong}>{[other.name, other.last_name].filter(Boolean).join(' ')}</Text>
-              {ride.viewer_role !== 'conductor' && ride.driver.moto ? (
-                <Text style={styles.muted}>
-                  {ride.driver.moto}
-                  {ride.driver.moto_color ? ` · ${ride.driver.moto_color}` : ''}
-                  {ride.driver.plate ? ` · ${ride.driver.plate}` : ''}
-                </Text>
+              <View style={styles.personNameRow}>
+                <Text style={styles.strong}>{[other.name, other.last_name].filter(Boolean).join(' ')}</Text>
+                {ride.viewer_role !== 'conductor' && ride.driver.is_verified !== false ? (
+                  <View style={styles.verifiedBadge} accessibilityLabel="Conductor verificado">
+                    <Icon name="checkmark-circle-2" size={12} color={theme.colors.primary} />
+                    <Text style={styles.verifiedBadgeText}>Verificado</Text>
+                  </View>
+                ) : null}
+              </View>
+              {ride.viewer_role !== 'conductor' && (ride.driver.moto || ride.driver.plate) ? (
+                <View style={styles.vehicleRow}>
+                  {ride.driver.moto ? (
+                    <Text style={styles.muted}>
+                      {ride.driver.moto}
+                      {ride.driver.moto_color ? ` · ${ride.driver.moto_color}` : ''}
+                    </Text>
+                  ) : null}
+                  {ride.driver.plate ? (
+                    <View style={styles.plateChip} accessibilityLabel={`Placa ${ride.driver.plate}`}>
+                      <Text style={styles.plateChipText}>{ride.driver.plate}</Text>
+                    </View>
+                  ) : null}
+                </View>
               ) : null}
             </View>
           </View>
+          <Pressable
+            onPress={() => void shareRideDetail()}
+            style={({ pressed }) => [styles.attach, { borderColor: accent }, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Compartir resumen del viaje"
+          >
+            <Icon name="share-outline" size={18} color={accent} />
+            <Text style={[styles.attachText, { color: accent }]}>Compartir viaje</Text>
+          </Pressable>
         </Section>
 
         <Section title="Pago" receipt>
@@ -459,6 +502,49 @@ const styles = themed(() => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  personNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
+  verifiedBadgeText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 11,
+    color: theme.colors.primary,
+  },
+  vehicleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 3,
+  },
+  plateChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.bgDark,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+  },
+  plateChipText: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: 11,
+    color: theme.colors.textPrimary,
+    letterSpacing: 0.4,
   },
   row: {
     flexDirection: 'row',

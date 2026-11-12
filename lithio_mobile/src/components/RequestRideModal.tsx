@@ -181,8 +181,22 @@ export const RequestRideModal: React.FC<RequestRideModalProps> = ({
             <View style={styles.driverSummary}>
               <Text style={styles.driverAvatar}>🏍️</Text>
               <View style={styles.driverDetails}>
-                <Text style={styles.driverName}>{driver.name}</Text>
-                <Text style={styles.driverMoto}>{driver.moto_brand_model} • {driver.moto_color}</Text>
+                <View style={styles.driverNameRow}>
+                  <Text style={styles.driverName}>{driver.name}</Text>
+                  {driver.is_verified !== false ? (
+                    <View style={styles.verifiedPill}>
+                      <Text style={styles.verifiedPillText}>✓ Verificado</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.driverVehicleRow}>
+                  <Text style={styles.driverMoto}>{driver.moto_brand_model} • {driver.moto_color}</Text>
+                  {driver.vehicle_plate || driver.plate ? (
+                    <View style={styles.platePill}>
+                      <Text style={styles.platePillText}>{driver.vehicle_plate || driver.plate}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.driverRating}>⭐ {driver.rating_avg.toFixed(2)} ({driver.trips_count} carreras)</Text>
               </View>
             </View>
@@ -475,17 +489,57 @@ const styles = themed(() => ({
     fontSize: 32,
   },
   driverDetails: {
-    gap: 2,
+    flex: 1,
+    gap: 3,
+  },
+  driverNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   driverName: {
     fontFamily: theme.fonts.bold,
     fontSize: 15,
     color: theme.colors.textPrimary,
   },
+  verifiedPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
+  verifiedPillText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 11,
+    color: theme.colors.primary,
+  },
+  driverVehicleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   driverMoto: {
     fontFamily: theme.fonts.regular,
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  platePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.bgDark,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+  },
+  platePillText: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: 11,
+    color: theme.colors.textPrimary,
+    letterSpacing: 0.4,
   },
   driverRating: {
     fontFamily: theme.fonts.bold,

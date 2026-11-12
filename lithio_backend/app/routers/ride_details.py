@@ -78,6 +78,7 @@ def ride_detail(ride_id: int, user: User = Depends(get_current_user), db: Sessio
             "moto": profile.moto_brand_model if profile else None,
             "moto_color": profile.moto_color if profile else None,
             "plate": profile.plate if profile else None,
+            "is_verified": bool(profile and profile.verification_status == "aprobado"),
         },
         "review": {
             "rating": review.rating,

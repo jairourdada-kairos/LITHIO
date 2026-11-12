@@ -17,6 +17,9 @@ export interface Driver {
   avatar_url?: string;
   moto_brand_model: string;
   moto_color: string;
+  vehicle_plate?: string | null;
+  plate?: string | null;
+  is_verified?: boolean;
   helmet_provided: boolean;
   is_available: boolean;
   rating_avg: number;
@@ -52,6 +55,11 @@ export interface Ride {
   created_at: string;
   passenger_name?: string;
   driver_name?: string;
+  driver_plate?: string | null;
+  driver_moto_brand_model?: string | null;
+  driver_moto_color?: string | null;
+  driver_is_verified?: boolean;
+  has_review?: boolean;
   driver_mobile_payment_number?: string;
   driver_mobile_payment_bank?: string;
   driver_mobile_payment_id?: string;

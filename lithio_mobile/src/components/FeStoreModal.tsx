@@ -19,6 +19,7 @@ import { Reveal, SkeletonCard } from './ui/Motion';
 import { apiService, FeCombo, FeStore, GradeVoucher } from '../services/api';
 import { TAB_BAR_HEIGHT } from './nav/BottomTabBar';
 import { photoFormValue, pickDocumentPhoto } from '../services/avatar';
+import { WalletFeIntroModal } from './TutorialModal';
 
 interface Props {
   visible: boolean;
@@ -46,6 +47,7 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
   const [subject, setSubject] = useState('');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
+  const [introVisible, setIntroVisible] = useState(false);
   const mountedRef = useRef(true);
 
   // En una ref para que `load` no cambie en cada render del padre.
@@ -185,12 +187,21 @@ export const FeStoreModal: React.FC<Props> = ({ visible, onClose, onPointsChange
               {isScreen ? <ScreenTitle>Tienda de Fe</ScreenTitle> : <Text style={styles.title}>Tienda de Fe</Text>}
               <Text style={styles.muted}>Canjear no te baja de nivel: tu nivel cuenta todo el Fe que ganaste.</Text>
             </View>
+            <Pressable
+              onPress={() => setIntroVisible(true)}
+              style={styles.close}
+              accessibilityRole="button"
+              accessibilityLabel="Cómo funcionan los Iones Li⁺ y el Fe"
+            >
+              <Icon name="question-mark-circle-outline" size={20} color={theme.colors.gold} />
+            </Pressable>
             {!isScreen ? (
               <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Icon name="close-outline" size={20} color={theme.colors.textSecondary} />
               </Pressable>
             ) : null}
           </View>
+          <WalletFeIntroModal visible={introVisible} role="pasajero" onClose={() => setIntroVisible(false)} />
 
           {!store ? (
             <View style={styles.skeletons}>

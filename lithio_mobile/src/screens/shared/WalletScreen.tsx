@@ -15,6 +15,7 @@ import { CountUp, Reveal, Sheen, SkeletonCard } from '../../components/ui/Motion
 import { TAB_BAR_HEIGHT } from '../../components/nav/BottomTabBar';
 import { apiService, TopupMethod, WalletInfo, WalletTransaction } from '../../services/api';
 import { WalletActionSheet } from '../../components/WalletActionSheet';
+import { WalletFeIntroModal, shouldShowWalletFeIntro } from '../../components/TutorialModal';
 import { formatBs, useBcvRate } from '../../services/rates';
 import { photoFormValue, pickDocumentPhoto } from '../../services/avatar';
 import type { SessionRole } from '../../services/session';
@@ -61,6 +62,17 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, recharge }) => 
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [introVisible, setIntroVisible] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    shouldShowWalletFeIntro(role).then((show) => {
+      if (!cancelled && show) setIntroVisible(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -98,7 +110,19 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, recharge }) => 
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={theme.colors.diamond} />}
     >
-      <ScreenTitle>Billetera</ScreenTitle>
+      <View style={styles.headerRow}>
+        <ScreenTitle>Billetera</ScreenTitle>
+        <PressableScale
+          variant="glass"
+          style={styles.helpBtn}
+          onPress={() => setIntroVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Cómo funcionan los Iones Li⁺ y el Fe"
+        >
+          <Icon name="question-mark-circle-outline" size={18} color={theme.colors.diamond} />
+          <Text style={styles.helpBtnText}>¿Cómo funcionan Li⁺ y Fe?</Text>
+        </PressableScale>
+      </View>
 
       <Reveal index={1} style={styles.balanceCard}>
         <OrbitDecor color={theme.colors.diamond} />
@@ -194,6 +218,7 @@ export const WalletScreen: React.FC<Props> = ({ role, reloadKey, recharge }) => 
       }}
       onDone={load}
     />
+    <WalletFeIntroModal visible={introVisible} role={role} onClose={() => setIntroVisible(false)} />
     </>
   );
 };
@@ -261,6 +286,30 @@ const styles = themed(() => ({
     paddingHorizontal: 20,
     paddingTop: 12,
     gap: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  helpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  helpBtnText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
   flex: {
     flex: 1,

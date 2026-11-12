@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, Linking, TextInput, ActivityIndicator, Alert, Share } from 'react-native';
 import { theme, themed } from '../constants/theme';
 import { Icon } from './ui/Icon';
 import { Breathe, Celebrate } from './ui/Motion';
@@ -233,6 +233,33 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
     ? ['aceptado', 'en_camino', 'en_curso'].includes(ride.status)
     : ['solicitado', 'aceptado', 'en_camino'].includes(ride.status);
 
+  const canShare = ['solicitado', 'aceptado', 'en_camino', 'en_curso', 'completado'].includes(ride.status);
+  const shareRide = async () => {
+    const statusLabels: Record<RideStatus, string> = {
+      solicitado: 'Solicitado (esperando confirmación)',
+      aceptado: 'Aceptado por el conductor',
+      en_camino: 'Conductor en camino al punto',
+      en_curso: 'Carrera en curso',
+      completado: 'Completado',
+      cancelado: 'Cancelado',
+      rechazado: 'Rechazado',
+    };
+    const moto = [ride.driver_moto_brand_model, ride.driver_moto_color].filter(Boolean).join(' · ');
+    const lines = [
+      `🏍️ Viaje en LITHIO #${ride.id}`,
+      `📍 Ruta: ${placeName(ride.origin)} → ${placeName(ride.destination)}`,
+      `👤 Conductor: ${ride.driver_name || 'Asignado'}${ride.driver_is_verified !== false ? ' (Verificado ✓)' : ''}`,
+      ride.driver_plate ? `🪪 Placa: ${ride.driver_plate}${moto ? ` (${moto})` : ''}` : moto ? `🏍️ Vehículo: ${moto}` : null,
+      `📌 Estado: ${statusLabels[ride.status] || ride.status}`,
+    ].filter(Boolean);
+    const message = lines.join('\n');
+    try {
+      await Share.share({ title: `Viaje LITHIO #${ride.id}`, message });
+    } catch {
+      Alert.alert('Resumen del viaje', message);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Banner de Estado */}
@@ -288,8 +315,34 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{isDriver ? '👤 Pasajero:' : '🏍️ Conductor:'}</Text>
-            <Text style={styles.driverVal}>{isDriver ? ride.passenger_name : ride.driver_name}</Text>
+            <View style={styles.driverMetaRight}>
+              <Text style={styles.driverVal}>{isDriver ? ride.passenger_name : ride.driver_name}</Text>
+              {!isDriver && ride.driver_is_verified !== false ? (
+                <View style={styles.verifiedBadge} accessibilityLabel="Conductor verificado">
+                  <Icon name="checkmark-circle-2" size={12} color={theme.colors.primary} />
+                  <Text style={styles.verifiedBadgeText}>Verificado</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
+          {(ride.driver_plate || ride.driver_moto_brand_model) ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>🪪 Vehículo:</Text>
+              <View style={styles.driverMetaRight}>
+                {ride.driver_moto_brand_model ? (
+                  <Text style={styles.infoVal}>
+                    {ride.driver_moto_brand_model}
+                    {ride.driver_moto_color ? ` · ${ride.driver_moto_color}` : ''}
+                  </Text>
+                ) : null}
+                {ride.driver_plate ? (
+                  <View style={styles.plateChip} accessibilityLabel={`Placa ${ride.driver_plate}`}>
+                    <Text style={styles.plateChipText}>{ride.driver_plate}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {!isDriver && ride.payment_method === 'pago_movil' && ride.driver_mobile_payment_number && !hidePayment && (
@@ -336,6 +389,22 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
                 <Text style={styles.callHint} numberOfLines={1}>{phone}</Text>
               </View>
               <Icon name="chevron-right-outline" size={20} color={theme.colors.textMuted} />
+            </PressableScale>
+          </View>
+        ) : null}
+
+        {canShare ? (
+          <View style={styles.contactBox}>
+            <PressableScale
+              variant="glass"
+              accent={isDriver ? theme.colors.secondary : theme.colors.primary}
+              style={styles.shareBtn}
+              onPress={() => void shareRide()}
+              accessibilityRole="button"
+              accessibilityLabel="Compartir viaje con un contacto"
+            >
+              <Icon name="share-outline" size={18} color={isDriver ? theme.colors.secondary : theme.colors.primary} />
+              <Text style={styles.shareBtnText}>Compartir viaje con un contacto</Text>
             </PressableScale>
           </View>
         ) : null}
@@ -410,12 +479,20 @@ export const ActiveRideCard: React.FC<ActiveRideCardProps> = ({
           /* Acciones para el Pasajero */
           <View style={styles.actionsBox}>
             {ride.status === 'completado' ? (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.btnGold]}
-                onPress={onOpenReview}
-              >
-                <Text style={styles.btnTextDark}>Calificar el viaje</Text>
-              </TouchableOpacity>
+              ride.has_review ? (
+                <View style={styles.completedNotice}>
+                  <Text style={styles.completedNoticeText}>
+                    ✨ ¡Gracias por calificar tu viaje!
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.btnGold]}
+                  onPress={onOpenReview}
+                >
+                  <Text style={styles.btnTextDark}>Calificar el viaje</Text>
+                </TouchableOpacity>
+              )
             ) : canCancel ? (
               <TouchableOpacity style={[styles.actionBtn, styles.btnOutline]} onPress={onCancel} disabled={statusBusy} accessibilityRole="button">
                 <Text style={styles.btnTextRed}>{ride.status === 'solicitado' ? '✕ Cancelar solicitud' : '✕ Cancelar viaje'}</Text>
@@ -512,6 +589,61 @@ const styles = themed(() => ({
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     fontSize: 13,
+  },
+  driverMetaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 6,
+    flexShrink: 1,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryLine,
+  },
+  verifiedBadgeText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 11,
+    color: theme.colors.primary,
+  },
+  plateChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.bgDark,
+    borderWidth: 1,
+    borderColor: theme.colors.cardBorder,
+  },
+  plateChipText: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: 11,
+    color: theme.colors.textPrimary,
+    letterSpacing: 0.4,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassBg,
+  },
+  shareBtnText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize: 13,
+    color: theme.colors.textPrimary,
   },
   actionsBox: {
     gap: 8,

@@ -91,7 +91,7 @@ export interface RideDetail {
   fe_rewarded: number;
   timeline: RideTimelineEntry[];
   passenger: RidePerson;
-  driver: RidePerson & { moto: string | null; moto_color: string | null; plate: string | null };
+  driver: RidePerson & { moto: string | null; moto_color: string | null; plate: string | null; is_verified?: boolean };
   review: { rating: number; comment: string | null; badges: string[]; created_at: string | null } | null;
   /** El pasajero aún puede calificar este viaje (completado y sin reseña). */
   can_review: boolean;

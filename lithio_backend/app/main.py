@@ -219,12 +219,18 @@ from .realtime import manager  # noqa: E402  (gestor compartido de WebSockets)
 
 def serialize_ride_for_socket(ride: Ride) -> dict:
     """Resumen del viaje que viaja por WebSocket (sin datos de pago)."""
+    profile = ride.driver.driver_profile if ride.driver else None
     return {
         "id": ride.id,
         "passenger_id": ride.passenger_id,
         "driver_id": ride.driver_id,
         "passenger_name": ride.passenger.name if ride.passenger else None,
         "driver_name": ride.driver.name if ride.driver else None,
+        "driver_plate": profile.plate if profile else None,
+        "driver_moto_brand_model": profile.moto_brand_model if profile else None,
+        "driver_moto_color": profile.moto_color if profile else None,
+        "driver_is_verified": bool(profile and profile.verification_status == "aprobado"),
+        "has_review": bool(ride.review),
         "origin": ride.origin,
         "destination": ride.destination,
         "is_scheduled": ride.is_scheduled,
@@ -235,6 +241,17 @@ def serialize_ride_for_socket(ride: Ride) -> dict:
         "points_rewarded": ride.points_rewarded,
         "created_at": ride.created_at.isoformat() if ride.created_at else None,
     }
+
+
+def _populate_ride_driver_meta(res: RideResponse, ride: Ride) -> RideResponse:
+    """Completa placa, vehículo, estado verificado del conductor y si ya fue calificado."""
+    profile = ride.driver.driver_profile if ride.driver else None
+    res.driver_plate = profile.plate if profile else None
+    res.driver_moto_brand_model = profile.moto_brand_model if profile else None
+    res.driver_moto_color = profile.moto_color if profile else None
+    res.driver_is_verified = bool(profile and profile.verification_status == "aprobado")
+    res.has_review = bool(ride.review)
+    return res
 
 
 # Estados en los que pasajero y conductor pueden llamarse.
@@ -1070,6 +1087,8 @@ def list_drivers(db: Session = Depends(get_db), user: User = Depends(get_current
             avatar_url=dp.user.avatar_url,
             moto_brand_model=dp.moto_brand_model,
             moto_color=dp.moto_color,
+            vehicle_plate=dp.plate,
+            is_verified=dp.verification_status == "aprobado",
             helmet_provided=dp.helmet_provided,
             # Un conductor con un viaje aceptado nunca aparece disponible.
             is_available=dp.is_available and dp.user_id not in busy_driver_ids,
@@ -1250,7 +1269,7 @@ async def request_ride(
         user_id=ride_data.driver_id
     )
 
-    resp = RideResponse.model_validate(new_ride)
+    resp = _populate_ride_driver_meta(RideResponse.model_validate(new_ride), new_ride)
     resp.passenger_name = passenger.name
     resp.driver_name = driver.name
     resp.whatsapp_status = whatsapp_status
@@ -1285,7 +1304,7 @@ def get_pending_rides_for_driver(
     rides.sort(key=lambda r: user_z(r.passenger) < PRIORITY_LEVEL)
     results = []
     for r in rides:
-        res = RideResponse.model_validate(r)
+        res = _populate_ride_driver_meta(RideResponse.model_validate(r), r)
         res.passenger_name = r.passenger.name
         res.driver_name = r.driver.name
         results.append(res)
@@ -1309,7 +1328,7 @@ def get_active_ride_for_user(
     if not ride:
         raise HTTPException(status_code=404, detail="No hay viaje activo")
 
-    res = RideResponse.model_validate(ride)
+    res = _populate_ride_driver_meta(RideResponse.model_validate(ride), ride)
     res.passenger_name = ride.passenger.name
     res.driver_name = ride.driver.name
     # Con el viaje aceptado, cada uno ve el teléfono del otro para poder llamarlo. El pasajero
@@ -1365,7 +1384,7 @@ def list_my_rides(
 
     results = []
     for ride in query.order_by(Ride.id.desc()).limit(50).all():
-        item = RideResponse.model_validate(ride)
+        item = _populate_ride_driver_meta(RideResponse.model_validate(ride), ride)
         item.passenger_name = ride.passenger.name
         item.driver_name = ride.driver.name
         # La referencia y el comprobante se consultan en el detalle del viaje.

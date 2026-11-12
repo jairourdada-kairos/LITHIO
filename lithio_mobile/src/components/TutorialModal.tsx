@@ -89,11 +89,41 @@ const DRIVER_SLIDES: Slide[] = [
   },
 ];
 
+export const WALLET_FE_SLIDES: Slide[] = [
+  {
+    icon: 'credit-card-outline',
+    tint: 'diamond',
+    title: '1. Iones (Li⁺): tu saldo',
+    body: '1 Li⁺ equivale siempre a 1 USD a tasa BCV del día. Recargas por Pago Móvil o Binance Pay, pagas viajes sin efectivo y tu saldo se protege hasta llegar al destino.',
+  },
+  {
+    icon: 'award-outline',
+    tint: 'gold',
+    title: '2. Hierro (Fe): tu recompensa',
+    body: 'Ganas Fe al completar viajes, calificar conductores y responder la Reacción del día. Tu Fe histórico te sube de elemento en la tabla periódica y canjearlo nunca baja tu nivel.',
+  },
+  {
+    icon: 'shopping-bag-outline',
+    tint: 'primary',
+    title: '3. Tienda Fe, Combos y Enlaces',
+    body: 'Usa tu Fe para canjear cupones de −25 % y −50 % o el vale «Pasar con 20». Con tus Iones (Li⁺) compra combos de pases internos, envía saldo a tus enlaces Li-XXXX o retira tus ganancias.',
+  },
+];
+
 const storageKey = (userId: number, role: SessionRole) => `lithio.tutorial.${role}.${userId}`;
+const walletIntroKey = (role: SessionRole) => `lithio.walletFeIntro.v1.${role}`;
 
 export async function shouldShowTutorial(userId: number, role: SessionRole): Promise<boolean> {
   try {
     return (await AsyncStorage.getItem(storageKey(userId, role))) !== 'visto';
+  } catch {
+    return false;
+  }
+}
+
+export async function shouldShowWalletFeIntro(role: SessionRole): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(walletIntroKey(role))) !== 'visto';
   } catch {
     return false;
   }
@@ -106,6 +136,12 @@ interface Props {
   onClose: () => void;
 }
 
+interface WalletFeIntroProps {
+  visible: boolean;
+  role?: SessionRole;
+  onClose: () => void;
+}
+
 export const TutorialModal: React.FC<Props> = (props) => (
   <Modal visible={props.visible} animationType="fade" onRequestClose={props.onClose} statusBarTranslucent>
     <SafeAreaProvider>
@@ -114,17 +150,39 @@ export const TutorialModal: React.FC<Props> = (props) => (
   </Modal>
 );
 
-const TutorialContent: React.FC<Props> = ({ role, userId, onClose }) => {
+export const WalletFeIntroModal: React.FC<WalletFeIntroProps> = ({ visible, role = 'pasajero', onClose }) => (
+  <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <SafeAreaProvider>
+      <TutorialContent
+        visible={visible}
+        role={role}
+        userId={0}
+        customSlides={WALLET_FE_SLIDES}
+        customStorageKey={walletIntroKey(role)}
+        onClose={onClose}
+      />
+    </SafeAreaProvider>
+  </Modal>
+);
+
+const TutorialContent: React.FC<Props & { customSlides?: Slide[]; customStorageKey?: string }> = ({
+  role,
+  userId,
+  customSlides,
+  customStorageKey,
+  onClose,
+}) => {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scroller = useRef<ScrollViewInstance>(null);
   const [page, setPage] = useState(0);
-  const slides = role === 'conductor' ? DRIVER_SLIDES : PASSENGER_SLIDES;
+  const slides = customSlides ?? (role === 'conductor' ? DRIVER_SLIDES : PASSENGER_SLIDES);
   const accent = role === 'conductor' ? theme.colors.secondary : theme.colors.primary;
   const last = page === slides.length - 1;
 
   const finish = () => {
-    AsyncStorage.setItem(storageKey(userId, role), 'visto').catch(() => {});
+    const key = customStorageKey ?? storageKey(userId, role);
+    AsyncStorage.setItem(key, 'visto').catch(() => {});
     onClose();
   };
 
