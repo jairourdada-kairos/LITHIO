@@ -54,7 +54,7 @@ hopeful-galileo/
 │   │   ├── tema_app.py       Tema remoto (colores y escala de letra) que la app aplica sin APK
 │   │   ├── legal/            terminos.html, privacidad.html, eliminar-cuenta.html (se sirven en /terminos, etc.)
 │   │   └── seed.py, quiz_questions.py   Datos semilla y preguntas por carrera de la UNC
-│   ├── tests/                17 archivos pytest (236 pruebas, todas pasan)
+│   ├── tests/                18 archivos pytest (255 pruebas, todas pasan al 100%)
 │   ├── lithio.db             SQLite local; en la nube, PostgreSQL (psycopg)
 │   └── media/ backups/ logs/ evidence/   Archivos generados (no versionar)
 ├── lithio_dashboard/         Panel web estático (index.html, app.js, style.css)
@@ -101,13 +101,18 @@ hopeful-galileo/
 8. **Expo cambió:** lee la documentación de la versión 58 (https://docs.expo.dev/versions/v58.0.0/) antes de escribir código.
 
 ## 6. Estado actual
-- **Rama:** `fase-1/backend-seguridad` (la principal es `master`). Hay unos 100 archivos modificados sin commit (pulido visual, marca, renombre a iones, endurecimiento del backend). Conviene hacer commit pronto.
-- **Verificado:** tsc sin errores; 236 pruebas del backend pasan; la última OTA y la web /app están publicadas; el servidor local está reiniciado con los cambios.
-- **Último trabajo (11 de noviembre):** logo átomo 2+1 (dentro de la app y en los assets), sello `LiSeal`, transición de la pestaña activa, adornos en la tarjeta del conductor, avatar con electrón de valencia, recibo troquelado en el detalle del viaje, color de error separado del coral, acrónimo en inglés retirado de la portada y "Diamantes" renombrados a "Iones (Li⁺)" en la app, el servidor y los textos legales.
+- **Rama:** `auditoria/antigravity` (con commits limpios por fase para revertir cualquier cambio en un paso).
+- **Verificado:** `npx tsc --noEmit` sin errores; 18 archivos `pytest` con 255 pruebas del backend que pasan al 100%.
+- **Auditoría y endurecimiento (Fases 1 y 2):** blindaje contra BOLA/IDOR, operaciones atómicas de saldo en centavos sobre SQLite (`lithio.db`), rechazo `409 Conflict` ante referencias de Pago Móvil repetidas (normalizadas sin guiones ni espacios), validación de cabeceras mágicas (magic bytes) y protección contra Path Traversal en comprobantes/avatares, limpieza de listeners/timers en WebSockets y hooks (`useRideCenter`, `useAdminAlerts`), prevención de doble clic en acciones financieras/viajes y visualización de errores con `theme.colors.error`.
+- **Funciones de producto completadas hoy (Fase 3):**
+  1. **Insignia de conductor verificado con placa visible** en selección de conductor, confirmación, tarjeta de viaje activo (`ActiveRideCard`) y detalle del viaje (`RideDetailScreen`).
+  2. **Compartir viaje en curso con un contacto** mediante `Share.share` nativo de `react-native` (100% compatible con OTA, sin módulos nativos nuevos).
+  3. **Calificación automática justo al terminar el viaje** abriendo `ReviewModal` en cuanto el viaje pasa a `"completado"` sin reseña previa (una sola vez por sesión sin duplicarse).
+  4. **Introducción de 3 pasos sobre saldo (Iones Li⁺) y Fe** (`WalletFeIntroModal`), mostrada en el primer ingreso a la billetera y accesible desde el botón de ayuda `?` en `WalletScreen` y `FeStoreModal`.
+- **Trabajo visual previo (11 de noviembre):** logo átomo 2+1 (dentro de la app y en los assets), sello `LiSeal`, transición de la pestaña activa, adornos en la tarjeta del conductor, avatar con electrón de valencia, recibo troquelado en el detalle del viaje, color de error separado del coral, acrónimo en inglés retirado de la portada y "Diamantes" renombrados a "Iones (Li⁺)" en la app, el servidor y los textos legales.
 
 ## 7. Pendiente y deuda conocida
-- **APK nueva:** necesaria para que el ícono y el splash del teléfono muestren el átomo 2+1 (`scripts\generar_apk.ps1`, sin cambiar la versión 1.0.0).
-- **Ideas de producto aún no hechas:** insignia de conductor verificado con la placa visible en cada viaje, compartir el viaje en curso con un contacto, introducción de 3 pasos sobre saldo y Fe, y calificación justo al terminar el viaje (antes de hacerlas, comprobar qué existe ya).
+- **APK nueva:** único pendiente para que el ícono y el splash nativos del teléfono muestren el átomo 2+1 (`scripts\generar_apk.ps1`, sin cambiar la versión 1.0.0).
 - **Pruebas:** no hay pruebas automáticas de la app móvil; la verificación es tsc más una revisión manual en la web y en el teléfono.
 - **Comentarios:** algunos comentarios de código todavía dicen "diamantes" (es intencional donde se refieren al valor `diamantes` de la base de datos).
 - `GEMINI_CONTEXT.md`, `auditoria-2026-11-08.md` y los `PENDIENTE_*.md` en `docs/` son históricos: contrástalos con el código.
