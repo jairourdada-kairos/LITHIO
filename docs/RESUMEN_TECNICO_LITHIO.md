@@ -1,4 +1,4 @@
-# LITHIO: resumen técnico (estado al 11 de noviembre de 2026)
+# LITHIO: resumen técnico (estado al 12 de noviembre de 2026)
 
 > Contexto para un asistente de IA (Gemini o Claude). Sustituye a `GEMINI_CONTEXT.md` (4 de noviembre), que quedó desactualizado. Léelo antes de tocar código.
 
@@ -55,12 +55,12 @@ hopeful-galileo/
 │   │   ├── legal/            terminos.html, privacidad.html, eliminar-cuenta.html (se sirven en /terminos, etc.)
 │   │   └── seed.py, quiz_questions.py   Datos semilla y preguntas por carrera de la UNC
 │   ├── tests/                18 archivos pytest (255 pruebas, todas pasan al 100%)
-│   ├── lithio.db             SQLite local; en la nube, PostgreSQL (psycopg)
+│   ├── lithio.db             SQLite solo para desarrollo local (producción: PostgreSQL en Railway)
 │   └── media/ backups/ logs/ evidence/   Archivos generados (no versionar)
 ├── lithio_dashboard/         Panel web estático (index.html, app.js, style.css)
 ├── lithio_descarga/          Página de descarga del APK (index, flyer, apk.json)
 ├── scripts/                  PowerShell: publicar_actualizacion, reiniciar_servidor, generar_apk, exportar_web,
-│                             iniciar_publico (túnel Cloudflare), desplegar_nube, aplicar_practica…
+│                             iniciar_publico (túnel Cloudflare: RETIRADO, no usar), desplegar_nube, aplicar_practica…
 ├── *.bat                     Accesos directos a esos scripts (iniciar_servidor.bat, iniciar_todo.bat…)
 ├── Dockerfile, docker-entrypoint.sh, railway.json   Despliegue en la nube (Railway, healthcheck /health)
 └── docs/                     Guías, auditorías, marca/, legal/, play_store/, pendientes de diseño
@@ -75,7 +75,7 @@ hopeful-galileo/
 | Notificaciones | expo-notifications + Expo Push |
 | Fuentes | Space Grotesk (títulos y botones), Manrope (texto y cifras tabulares), Space Mono, Eva Icons |
 | Backend | Python 3.14, FastAPI 0.141, Uvicorn 0.53, SQLAlchemy 2.0, Pydantic 2.13, websockets 17, cryptography 50 |
-| Base de datos | SQLite local (`lithio.db`) y PostgreSQL en la nube |
+| Base de datos | PostgreSQL en Railway (producción); SQLite (`lithio.db`) solo en desarrollo y pruebas |
 | Tamaño | Móvil: unas 20 800 líneas en 96 archivos. Backend: unas 7 000 líneas en 40 archivos, más 3 350 de pruebas |
 
 ## 4. API (resumen por grupos)
@@ -97,12 +97,12 @@ hopeful-galileo/
 4. **No se cambian los nombres de rutas ni el valor `diamantes` en la base de datos:** las pruebas dependen de ellos.
 5. **Los textos legales** (`app/legal/*.html`) se modifican solo con aprobación del dueño. Cada flujo de registro o de pago exige aceptar los TyC.
 6. **Verificación antes de publicar:** `npx tsc --noEmit` en `lithio_mobile` y `venv\Scripts\python.exe -m pytest -q` en `lithio_backend`.
-7. **Publicar:** `scripts\publicar_actualizacion.ps1 -Message "…"` (OTA + web). Para que el backend tome cambios en `.py`: `scripts\reiniciar_servidor.ps1`.
+7. **Publicar:** `scripts\publicar_actualizacion.ps1 -Message "…"` (OTA + exporta la web) y luego `npx @railway/cli up --service lithio-api --detach` desde la raíz, para llevar el servidor y la web a producción. `scripts\reiniciar_servidor.ps1` solo reinicia el servidor LOCAL de desarrollo. Nunca enciendas `iniciar_publico.bat`: dividiría los datos entre la PC y la nube.
 8. **Expo cambió:** lee la documentación de la versión 58 (https://docs.expo.dev/versions/v58.0.0/) antes de escribir código.
 
 ## 6. Estado actual
-- **Rama:** `auditoria/antigravity` (con commits limpios por fase para revertir cualquier cambio en un paso).
-- **Verificado:** `npx tsc --noEmit` sin errores; 18 archivos `pytest` con 255 pruebas del backend que pasan al 100%.
+- **Rama:** `fase-1/backend-seguridad` (incluye `auditoria/antigravity` y `auditoria/f12-y-limpieza`), subida a GitHub. Para cambios grandes, crea una rama nueva desde ella.
+- **Verificado:** `npx tsc --noEmit` sin errores; 18 archivos `pytest` con 256 pruebas del backend que pasan al 100%.
 - **Auditoría y endurecimiento (Fases 1 y 2):** blindaje contra BOLA/IDOR, operaciones atómicas de saldo en centavos sobre SQLite (`lithio.db`), rechazo `409 Conflict` ante referencias de Pago Móvil repetidas (normalizadas sin guiones ni espacios), validación de cabeceras mágicas (magic bytes) y protección contra Path Traversal en comprobantes/avatares, limpieza de listeners/timers en WebSockets y hooks (`useRideCenter`, `useAdminAlerts`), prevención de doble clic en acciones financieras/viajes y visualización de errores con `theme.colors.error`.
 - **Funciones de producto completadas hoy (Fase 3):**
   1. **Insignia de conductor verificado** en la selección de conductor, la confirmación, la tarjeta del viaje activo (`ActiveRideCard`) y el detalle del viaje (`RideDetailScreen`). La **placa** solo se envía cuando el conductor ya aceptó el viaje (`drivers.visible_plate`); el directorio de conductores nunca la expone. Sin emojis en la interfaz.
@@ -111,7 +111,18 @@ hopeful-galileo/
   4. **Introducción de 3 pasos sobre saldo (Iones Li⁺) y Fe** (`WalletFeIntroModal`), mostrada en el primer ingreso a la billetera y accesible desde el botón de ayuda `?` en `WalletScreen` y `FeStoreModal`.
 - **Trabajo visual previo (11 de noviembre):** logo átomo 2+1 (dentro de la app y en los assets), sello `LiSeal`, transición de la pestaña activa, adornos en la tarjeta del conductor, avatar con electrón de valencia, recibo troquelado en el detalle del viaje, color de error separado del coral, acrónimo en inglés retirado de la portada y "Diamantes" renombrados a "Iones (Li⁺)" en la app, el servidor y los textos legales.
 
+## 6 bis. Infraestructura de producción (desde el 12 de noviembre de 2026)
+- **Servidor 24/7:** Railway, proyecto `lithio`, servicio `lithio-api` (Docker, 1 réplica, región sfo). Dirección fija: https://lithio-api-production.up.railway.app (`/app` web, `/dashboard` panel, `/descargar`, `/health`).
+- **Base de datos:** PostgreSQL de Railway (datos copiados desde `lithio.db` el 12/11). **Disco** `lithio-api-volume` en `/data`: `media/` (avatares), `evidence/` (comprobantes), `logs/`.
+- **Cómo encuentran los teléfonos el servidor:** la dirección está publicada en Firestore (`app.publish_address`) y en `lithio_mobile/.env` (`EXPO_PUBLIC_API_URL`).
+- **Secretos:** solo en las variables de Railway y en `lithio_backend/.env` local. Nunca los leas ni los imprimas.
+- **Limitaciones de diseño:** el gestor de WebSockets, el límite de peticiones y el recordatorio de retención viven en la memoria de un solo proceso. No subas el número de réplicas sin antes moverlos a Redis.
+
 ## 7. Pendiente y deuda conocida
+- **`railway.json` (config as code) deja de funcionar el 1 de diciembre de 2026:** migrar con `railway config migrate`.
+- **El enlace del APK en `lithio_descarga/apk.json` vence el 25 de noviembre de 2026:** generar la APK nueva antes de esa fecha.
+- **Copias de seguridad:** activar los respaldos del volumen de Postgres en Railway y guardar copias periódicas fuera de Railway.
+- **Plan de Railway:** confirmar que el plan Hobby está activo (el de prueba limita los discos a 500 MB y se pausa al acabar).
 - **APK nueva:** único pendiente para que el ícono y el splash nativos del teléfono muestren el átomo 2+1 (`scripts\generar_apk.ps1`, sin cambiar la versión 1.0.0).
 - **Pruebas:** no hay pruebas automáticas de la app móvil; la verificación es tsc más una revisión manual en la web y en el teléfono.
 - **Comentarios:** algunos comentarios de código todavía dicen "diamantes" (es intencional donde se refieren al valor `diamantes` de la base de datos).
