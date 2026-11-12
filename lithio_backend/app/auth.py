@@ -62,7 +62,7 @@ def _get_firebase_app():
     project_id = os.getenv("FIREBASE_PROJECT_ID")
     # En la nube no hay archivos: el JSON de la cuenta de servicio va completo
     # en FIREBASE_SERVICE_ACCOUNT_JSON. En local se puede usar la ruta al archivo.
-    credentials_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+    credentials_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").lstrip("﻿").strip()  # PowerShell puede anteponer un BOM
     credentials_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
     if not project_id or not (credentials_json or credentials_path):
         raise HTTPException(
