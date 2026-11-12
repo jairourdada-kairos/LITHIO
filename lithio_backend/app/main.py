@@ -188,12 +188,16 @@ app.mount("/app", _FreshWebApp(directory=web_app_dir, html=True, check_dir=False
 # lo baja de Expo scripts/actualizar_descarga.ps1 (también al final de generar_apk).
 download_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_descarga"))
 APK_NAME = "LITHIO.apk"
+# En la nube el APK vive en el disco permanente (/data/descarga/LITHIO.apk): el enlace
+# de Expo vence a los 14 días y el .apk no entra en la imagen de Docker.
+APK_PATH = os.getenv("APK_PATH", "").strip()
 
 
 @app.api_route(f"/descargar/{APK_NAME}", methods=["GET", "HEAD"], include_in_schema=False)
 def download_apk():
-    path = os.path.join(download_dir, APK_NAME)
-    if not os.path.isfile(path):
+    candidates = [p for p in (APK_PATH, os.path.join(download_dir, APK_NAME)) if p]
+    path = next((p for p in candidates if os.path.isfile(p)), None)
+    if not path:
         raise HTTPException(status_code=404, detail="El instalador aún no está disponible.")
     # Con este tipo, Android lo reconoce como app y ofrece instalarla al terminar.
     return FileResponse(path, media_type="application/vnd.android.package-archive", filename=APK_NAME)

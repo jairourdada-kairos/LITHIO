@@ -606,6 +606,21 @@ def test_download_page_serves_the_apk_as_an_android_app(client, tmp_path, monkey
     assert client.head("/descargar/LITHIO.apk").headers["content-length"] == "7"
 
 
+def test_download_prefers_apk_on_persistent_disk(client, tmp_path, monkeypatch):
+    from app import main
+
+    empty = tmp_path / "pagina"
+    empty.mkdir()
+    monkeypatch.setattr(main, "download_dir", str(empty))
+    stored = tmp_path / "data" / "LITHIO.apk"
+    stored.parent.mkdir()
+    stored.write_bytes(b"PK\x03\x04nube!")
+    monkeypatch.setattr(main, "APK_PATH", str(stored))
+    response = client.get("/descargar/LITHIO.apk")
+    assert response.status_code == 200
+    assert response.content == b"PK\x03\x04nube!"
+
+
 def finished_ride_id(client):
     from tests.test_api import request_ride, set_ride_status
 
