@@ -60,10 +60,11 @@ hopeful-galileo/
 ├── lithio_dashboard/         Panel web estático (index.html, app.js, style.css)
 ├── lithio_descarga/          Página de descarga del APK (index, flyer, apk.json)
 ├── scripts/                  PowerShell: publicar_actualizacion, reiniciar_servidor, generar_apk, exportar_web,
-│                             iniciar_publico (túnel Cloudflare: RETIRADO, no usar), desplegar_nube, aplicar_practica…
-├── *.bat                     Accesos directos a esos scripts (iniciar_servidor.bat, iniciar_todo.bat…)
-├── Dockerfile, docker-entrypoint.sh, railway.json   Despliegue en la nube (Railway, healthcheck /health)
-└── docs/                     Guías, auditorías, marca/, legal/, play_store/, pendientes de diseño
+│                             desplegar_nube, respaldar_nube, aplicar_config_railway, aplicar_practica…
+├── *.bat                     Accesos directos a esos scripts (iniciar_servidor.bat, iniciar_todo.bat, respaldar_nube.bat…)
+├── Dockerfile, docker-entrypoint.sh   Despliegue en la nube (Railway, healthcheck /health)
+├── .railway/railway.ts       Configuración de Railway como código (servicio lithio-api y disco /data)
+└── docs/                     Guías, marca/, legal/, play_store/ e historico/ (auditorías y pendientes viejos)
 ```
 
 ## 3. Stack y versiones
@@ -97,7 +98,7 @@ hopeful-galileo/
 4. **No se cambian los nombres de rutas ni el valor `diamantes` en la base de datos:** las pruebas dependen de ellos.
 5. **Los textos legales** (`app/legal/*.html`) se modifican solo con aprobación del dueño. Cada flujo de registro o de pago exige aceptar los TyC.
 6. **Verificación antes de publicar:** `npx tsc --noEmit` en `lithio_mobile` y `venv\Scripts\python.exe -m pytest -q` en `lithio_backend`.
-7. **Publicar:** `scripts\publicar_actualizacion.ps1 -Message "…"` (OTA + exporta la web) y luego `npx @railway/cli up --service lithio-api --detach` desde la raíz, para llevar el servidor y la web a producción. `scripts\reiniciar_servidor.ps1` solo reinicia el servidor LOCAL de desarrollo. Nunca enciendas `iniciar_publico.bat`: dividiría los datos entre la PC y la nube.
+7. **Publicar:** `scripts\publicar_actualizacion.ps1 -Message "…"` (OTA + exporta la web) y luego `npx @railway/cli up --service lithio-api --detach` desde la raíz, para llevar el servidor y la web a producción. `scripts\reiniciar_servidor.ps1` solo reinicia el servidor LOCAL de desarrollo. El túnel de Cloudflare (`iniciar_publico`) se retiró: no lo recrees, dividiría los datos entre la PC y la nube.
 8. **Expo cambió:** lee la documentación de la versión 58 (https://docs.expo.dev/versions/v58.0.0/) antes de escribir código.
 
 ## 6. Estado actual
@@ -119,12 +120,17 @@ hopeful-galileo/
 - **Limitaciones de diseño:** el gestor de WebSockets, el límite de peticiones y el recordatorio de retención viven en la memoria de un solo proceso. No subas el número de réplicas sin antes moverlos a Redis.
 
 ## 7. Pendiente y deuda conocida
-- **`railway.json` (config as code) deja de funcionar el 1 de diciembre de 2026:** migrar con `railway config migrate`.
-- **El enlace del APK en `lithio_descarga/apk.json` vence el 25 de noviembre de 2026:** generar la APK nueva antes de esa fecha.
-- **Copias de seguridad:** activar los respaldos del volumen de Postgres en Railway y guardar copias periódicas fuera de Railway.
+- **Copias de seguridad:** `respaldar_nube.bat` guarda la base en `lithio_backend\backups\nube\`, pero es manual. Falta activar los respaldos automáticos del volumen de Postgres en Railway o correr ese script con regularidad.
+- **Inicio de sesión con Google y Facebook en la web:** el dominio de Railway ya está autorizado en Firebase, pero falta probarlo con una cuenta real.
 - **Plan de Railway:** confirmar que el plan Hobby está activo (el de prueba limita los discos a 500 MB y se pausa al acabar).
 - **APK nueva:** único pendiente para que el ícono y el splash nativos del teléfono muestren el átomo 2+1 (`scripts\generar_apk.ps1`, sin cambiar la versión 1.0.0).
 - **Pruebas:** no hay pruebas automáticas de la app móvil; la verificación es tsc más una revisión manual en la web y en el teléfono.
 - **Comentarios:** algunos comentarios de código todavía dicen "diamantes" (es intencional donde se refieren al valor `diamantes` de la base de datos).
-- `GEMINI_CONTEXT.md`, `auditoria-2026-11-08.md` y los `PENDIENTE_*.md` en `docs/` son históricos: contrástalos con el código.
+- `GEMINI_CONTEXT.md`, `auditoria-2026-11-08.md` y los `PENDIENTE_*.md` están en `docs/historico/`: contrástalos con el código.
+
+### Resuelto el 12 de noviembre de 2026
+- **Configuración de Railway:** `railway.json` se migró a `.railway/railway.ts`, con el disco `/data` declarado. Ya no le afecta el cierre del 1 de diciembre.
+- **Descarga del APK:** `/descargar/LITHIO.apk` sirve el archivo desde el disco de Railway (`APK_PATH=/data/LITHIO.apk`). El vencimiento del enlace de Expo en `apk.json` (25 de noviembre) solo afecta al respaldo de emergencia.
+- **Túnel de Cloudflare:** retirado del repositorio y de los orígenes de confianza de la app y del servidor.
+- **Comprobantes de prueba:** `pytest` ya escribe en una carpeta temporal, y se borraron los 682 comprobantes falsos del disco de Railway y los 696 locales.
 - Los secretos viven en `lithio_backend/.env`, `lithio_mobile/credentials/` y `google-services.json`. No los copies a prompts ni a servicios externos.
