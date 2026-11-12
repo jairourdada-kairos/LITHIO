@@ -16,7 +16,7 @@ from ..quiz_questions import BANCOS
 
 router = APIRouter(prefix="/api/quiz", tags=["reacción del día"])
 
-FE_REWARD = 10
+FE_REWARD = 10  # AQUÍ se cambia cuánta Fe gana quien acierta la pregunta del día
 
 # (pregunta, opciones, índice correcto, dato curioso)
 GENERAL = [

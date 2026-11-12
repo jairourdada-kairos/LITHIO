@@ -1,4 +1,4 @@
-"""Tienda de Fe: cupones de descuento y vale «Pasar con 20».
+"""Tienda de Fe: cupones de descuento, vale «Pasar con 20» y COMBOS de viajes con iones.
 
 El Fe gastado sale de `points` (saldo canjeable); `fe_lifetime` no baja,
 así que canjear nunca hace perder nivel.
@@ -18,6 +18,7 @@ from ..config import EVIDENCE_DIR
 from ..database import get_db
 from ..links_service import GIFT_COUPONS, STORE_DISCOUNT_LEVEL, user_z
 from ..models import Coupon, GradeVoucher, PerkGrant, User
+from .. import wallet_service
 from ..realtime import manager
 from .. import push_service
 from .legal import require_current_terms
@@ -26,9 +27,23 @@ from ..timeutil import utcnow
 
 router = APIRouter(prefix="/api", tags=["tienda-fe"])
 
+# AQUÍ se cambian los precios de la tienda de Fe. Formato {porcentaje de descuento: costo en Fe}.
+# Para AÑADIR un cupón agrega otro par (por ejemplo 75: 450); para ELIMINARLO, bórralo.
 COUPON_PRICES = {25: 150, 50: 300}
-VOUCHER_COST = 500
+VOUCHER_COST = 500  # AQUÍ se cambia cuánta Fe cuesta el vale de la tienda
 MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
+
+# COMBOS: paquetes de pases de viaje que se compran con iones y se acreditan al instante.
+# Cada pase paga un viaje en una ruta INTERNA (dentro del IVIC); el conductor cobra la tarifa
+# completa en iones y la diferencia la pone LITHIO como promoción.
+# AQUÍ se pueden EDITAR (título, pases y precio en iones), AÑADIR (copia una línea) o ELIMINAR.
+# No cambies el "id" de un combo ya publicado.
+COMBOS = [
+    {"id": "combo-5", "title": "5 viajes internos", "passes": 5, "price": 6.0},
+    {"id": "combo-10", "title": "10 viajes internos", "passes": 10, "price": 10.0},
+    {"id": "combo-20", "title": "20 viajes internos", "passes": 20, "price": 20.0},
+    {"id": "combo-30", "title": "30 viajes internos", "passes": 30, "price": 30.0},
+]
 
 
 def price(user: User, base: int) -> int:
@@ -95,6 +110,30 @@ def store(user: User = Depends(get_current_user), db: Session = Depends(get_db))
         "store_discount": user_z(user) >= STORE_DISCOUNT_LEVEL,
         "coupons": [coupon_payload(c) for c in coupons],
         "vouchers": [voucher_payload(v) for v in vouchers],
+        "combos": COMBOS,
+        "ride_passes": user.ride_passes or 0,
+        "diamonds": wallet_service.as_diamonds(user.diamonds_cents or 0),
+    }
+
+
+class ComboIn(BaseModel):
+    combo_id: str
+
+
+@router.post("/fe-store/combos", dependencies=[Depends(require_current_terms), Depends(rate_limit("tienda", 10, 600))])
+def buy_combo(data: ComboIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Compra un combo con diamantes: los pases quedan acreditados en el mismo momento."""
+    combo = next((c for c in COMBOS if c["id"] == data.combo_id), None)
+    if not combo:
+        raise HTTPException(status_code=404, detail="Ese combo ya no está disponible.")
+    # Con la fila bloqueada: dos compras a la vez no pueden gastar el mismo saldo.
+    buyer = wallet_service.lock_user(db, user.id)
+    wallet_service.record(db, buyer, "combo", -wallet_service.to_cents(combo["price"]), note=combo["title"])
+    buyer.ride_passes = (buyer.ride_passes or 0) + combo["passes"]
+    db.commit()
+    return {
+        "ride_passes": buyer.ride_passes,
+        "diamonds": wallet_service.as_diamonds(buyer.diamonds_cents or 0),
     }
 
 

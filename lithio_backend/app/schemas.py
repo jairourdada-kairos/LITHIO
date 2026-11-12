@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator, model_validator
+from typing import Literal, Optional
 from datetime import datetime
 
 from . import config, validation
@@ -21,8 +21,13 @@ class RegistrationFields(BaseModel):
     last_name: str = Field(description="Apellidos")
     cedula: str = Field(description="Cédula de identidad, p. ej. V-12345678")
     email: EmailStr
-    career: str = Field(description="Carrera universitaria")
-    semester: str = Field(description="1 a 12, Egresado o Personal / Docente")
+    # Estudiante (carrera y semestre) o trabajador (institución y área). Las versiones
+    # anteriores de la app no envían "occupation": siguen con carrera libre y semestre.
+    occupation: Optional[str] = Field(default=None, description="estudiante o trabajador")
+    institution: Optional[str] = Field(default=None, max_length=40, description="UNC, IVIC...")
+    work_area: Optional[str] = Field(default=None, max_length=60, description="Área del trabajador")
+    career: Optional[str] = Field(default=None, max_length=80, description="Carrera universitaria")
+    semester: Optional[str] = Field(default=None, max_length=30, description="1 a 12 o Egresado")
     phone: str = Field(description="Celular venezolano")
     avatar_url: Optional[str] = Field(default=None, max_length=500)
     # Versión de los Términos y la Política de privacidad que la persona aceptó al
@@ -59,15 +64,39 @@ class RegistrationFields(BaseModel):
         # El dominio (solo Gmail, salvo Facebook) se revisa al registrar, con la identidad de Firebase.
         return value.strip().lower()
 
-    @field_validator("career")
-    @classmethod
-    def _career(cls, value: str) -> str:
-        return validation.normalize_career(value)
-
-    @field_validator("semester")
-    @classmethod
-    def _semester(cls, value: str) -> str:
-        return validation.normalize_semester(value)
+    @model_validator(mode="after")
+    def _occupation_fields(self):
+        """Cada perfil trae solo sus datos: carrera y semestre, o institución y área."""
+        if self.occupation is None:  # App anterior: carrera en texto libre.
+            if not self.career or not self.semester:
+                raise ValueError("Indica tu carrera y tu semestre.")
+            self.career = validation.normalize_career(self.career)
+            self.semester = validation.normalize_semester(self.semester)
+            self.institution = self.work_area = None
+            return self
+        self.occupation = validation.pick_option(
+            self.occupation, validation.OCCUPATIONS, "Elige si eres estudiante o trabajador."
+        )
+        if self.occupation == "estudiante":
+            self.institution = validation.pick_option(
+                self.institution or next(iter(validation.CAREERS)), validation.CAREERS, "Elige tu universidad."
+            )
+            self.career = validation.pick_option(
+                self.career, validation.CAREERS[self.institution], "Elige tu carrera de la lista."
+            )
+            self.semester = validation.pick_option(
+                self.semester, validation.STUDENT_SEMESTERS, "Selecciona un semestre del 1 al 12 o Egresado."
+            )
+            self.work_area = None
+        else:
+            self.institution = validation.pick_option(
+                self.institution, validation.WORK_AREAS, "Elige la institución donde trabajas."
+            )
+            self.work_area = validation.pick_option(
+                self.work_area, validation.WORK_AREAS[self.institution], "Elige tu área de trabajo de la lista."
+            )
+            self.career = self.semester = None
+        return self
 
     @field_validator("phone")
     @classmethod
@@ -110,6 +139,9 @@ class UserResponse(UserBase):
     cedula: Optional[str] = None
     career: Optional[str] = None
     semester: Optional[str] = None
+    occupation: Optional[str] = None
+    institution: Optional[str] = None
+    work_area: Optional[str] = None
 
     @field_validator("cedula")
     @classmethod
@@ -167,6 +199,7 @@ class AdminRouteIn(BaseModel):
     estimated_minutes: int = Field(default=10, ge=1, le=600)
     popular: bool = True
     tag: Optional[str] = Field(default=None, max_length=60)
+    scope: Literal["interna", "externa"] = "externa"
 
 
 class AdminRouteUpdate(BaseModel):
@@ -176,6 +209,7 @@ class AdminRouteUpdate(BaseModel):
     estimated_minutes: Optional[int] = Field(default=None, ge=1, le=600)
     popular: Optional[bool] = None
     tag: Optional[str] = Field(default=None, max_length=60)
+    scope: Optional[Literal["interna", "externa"]] = None
 
 
 class AdminDriverUpdate(BaseModel):
@@ -226,6 +260,7 @@ class AdminRouteResponse(BaseModel):
     estimated_minutes: int
     popular: bool
     tag: Optional[str] = None
+    scope: Literal["interna", "externa"] = "externa"
 
 class SwitchRoleRequest(BaseModel):
     new_role: str  # 'pasajero' o 'conductor'
@@ -249,12 +284,12 @@ class DriverCardItem(BaseModel):
 # --- VIAJES ---
 class RideCreate(BaseModel):
     driver_id: int
-    origin: str
-    destination: str
+    origin: str = Field(max_length=120)
+    destination: str = Field(max_length=120)
     is_scheduled: bool = False
-    scheduled_time: Optional[str] = None
-    payment_method: str = "efectivo"  # 'efectivo', 'pago_movil', 'puntos'
-    payment_reference: Optional[str] = None
+    scheduled_time: Optional[str] = Field(default=None, max_length=20)
+    payment_method: str = Field(default="efectivo", max_length=20)  # 'diamantes', 'efectivo', 'pago_movil', 'pase'
+    payment_reference: Optional[str] = Field(default=None, max_length=40)
     fare_amount: float = 3.0
     coupon_id: Optional[int] = None
 

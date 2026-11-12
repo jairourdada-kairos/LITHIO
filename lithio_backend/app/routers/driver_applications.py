@@ -48,6 +48,9 @@ def list_applications(status: Optional[str] = None, db: Session = Depends(get_db
             "cedula": profile.user.cedula,
             "career": profile.user.career,
             "semester": profile.user.semester,
+            "occupation": profile.user.occupation,
+            "institution": profile.user.institution,
+            "work_area": profile.user.work_area,
             "license_number": profile.license_number,
         })
         result.append(item)

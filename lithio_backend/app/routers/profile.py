@@ -155,6 +155,9 @@ def profile_payload(user: User) -> dict:
         "cedula": format_cedula(user.cedula) if user.cedula else None,
         "career": user.career,
         "semester": user.semester,
+        "occupation": user.occupation,
+        "institution": user.institution,
+        "work_area": user.work_area,
         "profile_updated_at": user.profile_updated_at.isoformat() if user.profile_updated_at else None,
         "next_edit_at": next_edit.isoformat() if next_edit and next_edit > utcnow() else None,
     }
@@ -238,7 +241,7 @@ def erase_account(db: Session, user: User) -> None:
     if (user.diamonds_cents or 0) > 0:
         raise HTTPException(
             status_code=409,
-            detail=f"Hay ◆ {as_diamonds(user.diamonds_cents):.2f} en la billetera. Retíralos o dónalos antes de eliminar la cuenta.",
+            detail=f"Hay Li⁺ {as_diamonds(user.diamonds_cents):.2f} en la billetera. Retíralos o dónalos antes de eliminar la cuenta.",
         )
     if db.query(WalletTransaction.id).filter(WalletTransaction.user_id == user.id, WalletTransaction.status == "pendiente").first():
         raise HTTPException(status_code=409, detail="Hay un movimiento de la billetera en revisión. Espera a que se resuelva.")
@@ -277,6 +280,9 @@ def erase_account(db: Session, user: User) -> None:
     user.cedula_hash = None
     user.career = None
     user.semester = None
+    user.occupation = None
+    user.institution = None
+    user.work_area = None
     user.avatar_url = None
     user.firebase_uid = None
     user.push_token = None

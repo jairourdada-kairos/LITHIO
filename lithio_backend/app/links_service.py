@@ -150,8 +150,8 @@ def bond_type(rides: int) -> str:
 
 
 # Fe que gana cada uno (pasajero y conductor) por viaje completado, y el pasajero por reseña útil.
-RIDE_FE = 15
-REVIEW_FE = 5
+RIDE_FE = 15  # AQUÍ se cambia la Fe que se gana por cada viaje completado
+REVIEW_FE = 5  # AQUÍ se cambia la Fe que se gana por dejar una reseña
 # Contra viajes "de mentira" entre amigos para juntar Fe: el mismo pasajero con
 # el mismo conductor gana Fe en a lo sumo estos viajes al día (el viaje sí se completa).
 MAX_REWARDED_RIDES_PER_PAIR_PER_DAY = 3

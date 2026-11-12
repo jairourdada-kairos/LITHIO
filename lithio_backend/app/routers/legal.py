@@ -3,7 +3,7 @@ eliminación de la cuenta (las dos últimas también las pide Google Play).
 
 Cada usuario acepta una versión (config.LEGAL_VERSION): al registrarse o,
 si el texto cambió, en la pantalla que la app muestra al entrar. El servidor
-guarda la versión y la fecha, y no deja pedir viajes ni mover diamantes sin
+guarda la versión y la fecha, y no deja pedir viajes ni mover iones sin
 aceptar la vigente.
 
 El correo de contacto sale de CONTACT_EMAIL (en el .env); sin él, las páginas
@@ -35,7 +35,7 @@ def record_acceptance(user: User, version: str) -> None:
 
 
 def require_current_terms(user: User = Depends(get_current_user)) -> User:
-    """Para pedir viajes, atenderlos o mover diamantes hay que aceptar los Términos vigentes."""
+    """Para pedir viajes, atenderlos o mover iones hay que aceptar los Términos vigentes."""
     if user.terms_version != config.LEGAL_VERSION:
         raise HTTPException(
             status_code=403,

@@ -29,7 +29,7 @@ COLORES_OSCURO = {
     # "primary": "#45D6C5",       # AQUÍ el color principal (turquesa): botones, íconos y textos resaltados
     # "secondary": "#FF765E",     # AQUÍ el color secundario (coral): lo del conductor
     # "gold": "#FFC857",          # AQUÍ el dorado de la Fe
-    # "diamond": "#7FD4FF",       # AQUÍ el azul de los diamantes
+    # "diamond": "#8EE6DA",       # AQUÍ el color de los iones Li⁺ (saldo)
     # "success": "#34D399",       # AQUÍ el verde de éxito
     # "error": "#FF6B6B",         # AQUÍ el rojo de errores
     # "warning": "#FF9F4A",       # AQUÍ el naranja de avisos

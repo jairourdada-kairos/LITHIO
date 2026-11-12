@@ -23,6 +23,9 @@ class User(Base):
     phone_hash = Column(String(64), nullable=True, index=True)  # Índice ciego: recuperar la cuenta con el teléfono
     career = Column(String, nullable=True)  # Carrera universitaria
     semester = Column(String, nullable=True)
+    occupation = Column(String, nullable=True)  # 'estudiante' o 'trabajador' (cuentas viejas: vacío)
+    institution = Column(String, nullable=True)  # UNC, IVIC...
+    work_area = Column(String, nullable=True)  # Área del trabajador
     role = Column(String, default="pasajero")  # 'pasajero', 'conductor', 'ambos'
     avatar_url = Column(String, nullable=True)
     points = Column(Integer, default=100)  # Bono de bienvenida de 100 puntos
@@ -40,8 +43,10 @@ class User(Base):
     terms_accepted_at = Column(DateTime, nullable=True)
     xp_level = Column(String, default="Pasajero Novato")
     firebase_uid = Column(String, nullable=True, unique=True)  # UID de Firebase Auth
-    # Billetera: 1 diamante = 1 USD, guardado en centavos para no perder precisión.
+    # Billetera: 1 ion = 1 USD, guardado en centavos para no perder precisión.
     diamonds_cents = Column(Integer, default=0, nullable=False)
+    # Pases de viaje comprados en COMBOS de la Tienda Fe (solo rutas internas).
+    ride_passes = Column(Integer, default=0, nullable=False, server_default="0")
     # Fe ganado en total (no baja al canjear): define el nivel por elemento químico.
     fe_lifetime = Column(Integer, default=0, nullable=False)
     friend_code = Column(String(12), nullable=True, unique=True, index=True)  # Código de enlace, p. ej. Li-4F7Q
@@ -96,6 +101,8 @@ class Route(Base):
     estimated_minutes = Column(Integer, default=10)
     popular = Column(Boolean, default=True)
     tag = Column(String, nullable=True)
+    # 'interna' = dentro del IVIC; 'externa' = del IVIC hacia afuera.
+    scope = Column(String, nullable=False, default="externa", server_default="externa")
 
 
 class Ride(Base):
@@ -110,7 +117,7 @@ class Ride(Base):
     scheduled_time = Column(String, nullable=True)  # Formato "YYYY-MM-DD HH:MM" si es programado
     status = Column(String, default="solicitado")  
     # Estados: 'solicitado', 'aceptado', 'en_camino', 'en_curso', 'completado', 'cancelado'
-    payment_method = Column(String, default="efectivo")  # 'efectivo', 'pago_movil', 'puntos'
+    payment_method = Column(String, default="efectivo")  # 'diamantes', 'efectivo', 'pago_movil', 'pase'
     payment_reference = Column(EncryptedString, nullable=True)
     fare_amount = Column(Float, default=3.0)  # Tarifa base en USD / equivalente
     points_rewarded = Column(Integer, default=15)
@@ -146,14 +153,14 @@ class Review(Base):
 
 
 class WalletTransaction(Base):
-    """Movimiento de la billetera de diamantes. El saldo del usuario se actualiza
+    """Movimiento de la billetera de iones. El saldo del usuario se actualiza
     en la misma transacción de base de datos que crea este registro."""
     __tablename__ = "wallet_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    # recarga, retiro, envio, recepcion, donacion (con diamantes), donacion_pm (por Pago Móvil),
-    # pago_viaje, cobro_viaje, taller, reembolso
+    # recarga, retiro, envio, recepcion, donacion (con iones), donacion_pm (por Pago Móvil),
+    # pago_viaje, cobro_viaje, taller, reembolso, bono_bienvenida, combo, pase_viaje
     kind = Column(String, nullable=False)
     amount_cents = Column(Integer, nullable=False)  # Positivo entra, negativo sale
     # pendiente (en revisión o retenido), aprobado, rechazado
@@ -170,7 +177,7 @@ class WalletTransaction(Base):
 
 
 class WorkshopReward(Base):
-    """Servicios del taller aliado que los conductores canjean con diamantes."""
+    """Servicios del taller aliado que los conductores canjean con iones."""
     __tablename__ = "workshop_rewards"
 
     id = Column(Integer, primary_key=True, index=True)

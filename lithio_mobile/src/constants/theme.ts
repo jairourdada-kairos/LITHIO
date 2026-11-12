@@ -25,9 +25,9 @@ const dark = {
   cardBg: 'rgba(24, 38, 41, 0.92)',  // CAMBIA AQUÍ el color de fondo de las tarjetas
   cardBorder: 'rgba(190, 240, 232, 0.07)', // Canto del cristal
   cardElevated: 'rgba(33, 50, 53, 0.94)',
-  primary: '#45D6C5',         // Turquesa eléctrico: pasajero, acción principal — CAMBIA AQUÍ el color principal (turquesa): botones, íconos y textos resaltados del pasajero
+  primary: '#063df1',         // Turquesa eléctrico: pasajero, acción principal — CAMBIA AQUÍ el color principal (turquesa): botones, íconos y textos resaltados del pasajero
   onPrimary: '#0E2A27',       // Texto sobre turquesa
-  secondary: '#FF765E',       // Coral: conductor, protones — CAMBIA AQUÍ el color secundario (coral): lo del conductor
+  secondary: '#0206fd',       // Coral: conductor, protones — CAMBIA AQUÍ el color secundario (coral): lo del conductor
   onSecondary: '#3A140B',
   onAccent: '#0B1416', // Texto sobre cualquier color de relleno (éxito, error, oro, acentos)
   gold: '#FFC857',            // Fe (hierro de recompensa) — CAMBIA AQUÍ el dorado de la Fe

@@ -1,3 +1,25 @@
+"""LITHIO: servidor (backend). Este archivo arranca la app y contiene las rutas principales.
+
+=========================== MAPA PARA EDITAR ===========================
+Busca con Ctrl+Shift+F la palabra AQUÍ: cada punto editable está comentado.
+
+  QUÉ QUIERES CAMBIAR                         ARCHIVO
+  Colores y tamaño de letra de la app         app/tema_app.py          (se ve al instante)
+  Preguntas de la Reacción del día            app/quiz_questions.py    (añadir, editar, eliminar)
+  Fe que da la pregunta del día               app/routers/quiz.py      (FE_REWARD)
+  Fe por viaje y por reseña                   app/links_service.py     (RIDE_FE, REVIEW_FE)
+  Precios de la tienda de Fe                  app/routers/fe_store.py  (COUPON_PRICES, VOUCHER_COST)
+  Límites de la billetera (iones)         app/wallet_service.py
+  Carreras, instituciones y áreas             app/validation.py        (CAREERS, WORK_AREAS)
+  Rutas y precios de los viajes               panel web /dashboard     (o ROUTE_CATALOG en app/seed.py)
+  Colores y letras del panel web              ../lithio_dashboard/style.css
+
+CÓMO SE VE EL CAMBIO
+  - tema_app.py: guarda el archivo y recarga la app (F5 en la web; cerrar y abrir en el teléfono).
+  - Los demás archivos .py: guarda y haz doble clic en reiniciar_servidor.bat (tarda unos segundos).
+  - style.css y páginas .html: guarda y recarga el navegador con Ctrl+F5.
+========================================================================
+"""
 from . import config  # Carga el .env antes que cualquier otro módulo de la app
 from .rate_limit import rate_limit
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
@@ -5,7 +27,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, contains_eager, joinedload
 from typing import List
@@ -16,9 +38,10 @@ import asyncio
 import os
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timezone
 
 from . import crypto
+from . import validation
 from .validation import normalize_phone
 from .database import engine, get_db, Base, SessionLocal
 from .models import User, DriverProfile, Ride, Review, Route, Coupon
@@ -149,7 +172,17 @@ if os.path.isdir(dashboard_dir):
 # Versión web de la app para pasajeros y conductores (iPhone, computadoras), compilada
 # con scripts/exportar_web.ps1. Va en la misma dirección que la API: un solo link.
 web_app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "lithio_mobile", "dist-web"))
-app.mount("/app", StaticFiles(directory=web_app_dir, html=True, check_dir=False), name="web_app")
+class _FreshWebApp(StaticFiles):
+    """Sirve la web de la app pidiendo al navegador que revise si hay versión nueva (sin esto, muestra la vieja)."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if not path.startswith("_expo/static"):  # los archivos con hash en el nombre sí se pueden guardar
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+app.mount("/app", _FreshWebApp(directory=web_app_dir, html=True, check_dir=False), name="web_app")
 
 # Página de descarga del APK con la guía de instalación. El .apk no va en git:
 # lo baja de Expo scripts/actualizar_descarga.ps1 (también al final de generar_apk).
@@ -230,7 +263,12 @@ async def verify_whatsapp_webhook(request: Request):
     """Endpoint de verificacion que Meta llama al guardar el webhook."""
     params = request.query_params
     verify_token = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "")
-    if params.get("hub.mode") == "subscribe" and params.get("hub.verify_token") == verify_token:
+    # Sin token configurado no se acepta nada (un token vacío igualaría a un parámetro vacío).
+    if (
+        verify_token
+        and params.get("hub.mode") == "subscribe"
+        and hmac.compare_digest(params.get("hub.verify_token", ""), verify_token)
+    ):
         return PlainTextResponse(params.get("hub.challenge", ""))
     raise HTTPException(status_code=403, detail="Token de verificacion invalido")
 
@@ -458,7 +496,8 @@ def get_preset_routes(db: Session = Depends(get_db)):
                 "fare_usd": route.fare_usd,
                 "estimated_minutes": route.estimated_minutes,
                 "popular": route.popular,
-                "tag": route.tag
+                "tag": route.tag,
+                "scope": route.scope or "externa"
             }
             for route in routes
         ]
@@ -470,7 +509,8 @@ def get_preset_routes(db: Session = Depends(get_db)):
             "fare_usd": 1.50,
             "estimated_minutes": 8,
             "popular": True,
-            "tag": "Ruta corta estudiantil"
+            "tag": "Ruta corta estudiantil",
+            "scope": "interna"
         },
         {
             "origin": "UNC",
@@ -486,7 +526,8 @@ def get_preset_routes(db: Session = Depends(get_db)):
             "fare_usd": 2.00,
             "estimated_minutes": 10,
             "popular": True,
-            "tag": "Conexión IVIC"
+            "tag": "Conexión IVIC",
+            "scope": "interna"
         },
         {
             "origin": "BIBLIOTECA",
@@ -521,7 +562,7 @@ def get_preset_routes(db: Session = Depends(get_db)):
         created.append(item)
     db.commit()
     return [
-        {**item, "id": index + 1}
+        {"scope": "externa", **item, "id": index + 1}
         for index, item in enumerate(created)
     ]
 
@@ -540,7 +581,8 @@ def create_route_admin(data: AdminRouteIn, db: Session = Depends(get_db)):
         fare_usd=float(payload.get("fare_usd", 2.5)),
         estimated_minutes=int(payload.get("estimated_minutes", 10)),
         popular=bool(payload.get("popular", True)),
-        tag=payload.get("tag")
+        tag=payload.get("tag"),
+        scope=payload.get("scope", "externa")
     )
     db.add(route)
     db.commit()
@@ -552,7 +594,8 @@ def create_route_admin(data: AdminRouteIn, db: Session = Depends(get_db)):
         "fare_usd": route.fare_usd,
         "estimated_minutes": route.estimated_minutes,
         "popular": route.popular,
-        "tag": route.tag
+        "tag": route.tag,
+        "scope": route.scope
     }
 
 
@@ -576,6 +619,8 @@ def update_route_admin(route_id: int, data: AdminRouteUpdate, db: Session = Depe
         route.estimated_minutes = int(payload["estimated_minutes"])
     if "popular" in payload:
         route.popular = bool(payload["popular"])
+    if payload.get("scope"):
+        route.scope = payload["scope"]
 
     db.commit()
     db.refresh(route)
@@ -586,7 +631,8 @@ def update_route_admin(route_id: int, data: AdminRouteUpdate, db: Session = Depe
         "fare_usd": route.fare_usd,
         "estimated_minutes": route.estimated_minutes,
         "popular": route.popular,
-        "tag": route.tag
+        "tag": route.tag,
+        "scope": route.scope
     }
 
 
@@ -800,6 +846,12 @@ def switch_user_role(
 # -------------------------------------------------------------
 # REGISTRO DE NUEVOS USUARIOS (PASAJERO Y CONDUCTOR)
 # -------------------------------------------------------------
+@app.get("/api/registration/options")
+def registration_options():
+    """Listas del registro: universidades, carreras, instituciones y áreas de trabajo."""
+    return validation.registration_options()
+
+
 def ensure_cedula_available(db: Session, cedula: str, owner_id: int | None = None) -> str:
     """Devuelve el índice ciego de la cédula o 409 si ya pertenece a otra cuenta."""
     cedula_hash = crypto.blind_index(cedula)
@@ -816,6 +868,9 @@ def fill_missing_identity(user: User, data: PassengerRegisterRequest | DriverReg
         user.cedula = data.cedula
     user.career = user.career or data.career
     user.semester = user.semester or data.semester
+    user.occupation = user.occupation or data.occupation
+    user.institution = user.institution or data.institution
+    user.work_area = user.work_area or data.work_area
 
 
 def require_verified_email_to_link(existing: User, identity: FirebaseIdentity):
@@ -883,6 +938,9 @@ def register_passenger(
         cedula_hash=cedula_hash,
         career=data.career,
         semester=data.semester,
+        occupation=data.occupation,
+        institution=data.institution,
+        work_area=data.work_area,
         role="pasajero",
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
@@ -891,6 +949,8 @@ def register_passenger(
         xp_level="Pasajero Novato"
     )
     db.add(new_user)
+    db.flush()  # Obtener el ID para registrar el bono de bienvenida
+    wallet_service.grant_welcome_bonus(db, new_user)
     return commit_registration(db, new_user, data.accepted_terms_version)
 
 
@@ -938,6 +998,9 @@ async def register_driver(
         cedula_hash=cedula_hash,
         career=data.career,
         semester=data.semester,
+        occupation=data.occupation,
+        institution=data.institution,
+        work_area=data.work_area,
         role="conductor",
         avatar_url=data.avatar_url,
         firebase_uid=identity.uid,
@@ -947,6 +1010,7 @@ async def register_driver(
     )
     db.add(new_user)
     db.flush()  # Obtener el ID antes del commit
+    wallet_service.grant_welcome_bonus(db, new_user)
 
     driver_profile = DriverProfile(
         user_id=new_user.id,
@@ -1064,20 +1128,27 @@ async def request_ride(
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
     if driver.id == passenger.id:
         raise HTTPException(status_code=400, detail="No puedes solicitar un viaje a tu propia cuenta.")
-    if ride_data.payment_method not in {"efectivo", "pago_movil", "diamantes"}:
+    if ride_data.payment_method not in {"diamantes", "efectivo", "pago_movil", "pase"}:
         raise HTTPException(
             status_code=400,
-            detail="Método de pago no válido. Usa efectivo, Pago Móvil o diamantes.",
+            detail="Método de pago no válido. Usa iones, efectivo, Pago Móvil o un pase de combo.",
         )
     if not is_approved(driver.driver_profile):
         raise HTTPException(status_code=404, detail="Pasajero o conductor no válido")
     # La tarifa sale del catálogo de rutas, nunca de lo que envía el teléfono:
-    # si no, cualquiera podría pedir un viaje a $0.01 o pagarlo casi sin diamantes.
+    # si no, cualquiera podría pedir un viaje a $0.01 o pagarlo casi sin iones.
     route = (
         db.query(Route)
         .filter(Route.origin == ride_data.origin, Route.destination == ride_data.destination)
         .first()
     )
+    if not route:
+        # El pasajero puede invertir la ruta (BIBLIOTECA → UNC): misma tarifa y alcance que la registrada.
+        route = (
+            db.query(Route)
+            .filter(Route.origin == ride_data.destination, Route.destination == ride_data.origin)
+            .first()
+        )
     if not route:
         raise HTTPException(status_code=400, detail="Esa ruta no está disponible. Elige una de la lista.")
     fare = round(float(route.fare_usd), 2)
@@ -1089,14 +1160,22 @@ async def request_ride(
         if not coupon:
             raise HTTPException(status_code=400, detail="Ese cupón no está disponible.")
         fare = round(fare * (100 - coupon.percent) / 100, 2)
+    if ride_data.payment_method == "pase":
+        # Los pases de combo solo valen en rutas internas y no se combinan con cupones.
+        if (route.scope or "externa") != "interna":
+            raise HTTPException(status_code=400, detail="Los pases de combo solo sirven en rutas internas (dentro del IVIC).")
+        if coupon:
+            raise HTTPException(status_code=400, detail="Un pase de combo no se combina con cupones.")
+        if (passenger.ride_passes or 0) < 1:
+            raise HTTPException(status_code=400, detail="No tienes pases de viaje. Compra un combo en la Tienda Fe.")
     # round() y no to_cents(): con un cupón del 100 % la tarifa es 0 y to_cents la rechaza con otro mensaje.
     if ride_data.payment_method == "diamantes" and round(fare * 100) < wallet_service.MIN_RIDE_PAYMENT_CENTS:
         raise HTTPException(
             status_code=400,
-            detail="El mínimo para pagar con diamantes es ◆ 0.50. Elige efectivo o Pago Móvil para este viaje.",
+            detail="El mínimo para pagar con iones es Li⁺ 0.50. Elige efectivo o Pago Móvil para este viaje.",
         )
     if ride_data.payment_method == "diamantes" and (passenger.diamonds_cents or 0) < wallet_service.to_cents(fare):
-        raise HTTPException(status_code=400, detail="No tienes diamantes suficientes para este viaje. Recarga tu billetera.")
+        raise HTTPException(status_code=400, detail="No tienes iones suficientes para este viaje. Recarga tu billetera.")
     if ride_data.is_scheduled:
         try:
             scheduled_at = datetime.strptime(ride_data.scheduled_time or "", "%Y-%m-%d %H:%M")
@@ -1132,6 +1211,8 @@ async def request_ride(
     if new_ride.payment_method == "diamantes":
         # La tarifa queda retenida y se cobra al completar el viaje.
         wallet_service.hold_ride_payment(db, wallet_service.lock_user(db, passenger.id), new_ride)
+    elif new_ride.payment_method == "pase":
+        wallet_service.hold_ride_pass(db, wallet_service.lock_user(db, passenger.id), new_ride)
     db.commit()
     db.refresh(new_ride)
 
@@ -1165,6 +1246,8 @@ async def request_ride(
     resp.passenger_name = passenger.name
     resp.driver_name = driver.name
     resp.whatsapp_status = whatsapp_status
+    # El pasajero puede llamar a su conductor desde que pide el viaje.
+    resp.counterpart_phone = driver.phone
     driver_profile = driver.driver_profile
     if ride_data.payment_method == "pago_movil" and driver_profile:
         resp.driver_mobile_payment_number = driver_profile.mobile_payment_number
@@ -1183,10 +1266,13 @@ def get_pending_rides_for_driver(
     """Viajes pendientes por aceptar para este conductor"""
     if current_user.id != driver_id:
         raise HTTPException(status_code=403, detail="Solo el conductor asignado puede ver estas solicitudes.")
-    rides = db.query(Ride).filter(
-        Ride.driver_id == driver_id, 
-        Ride.status == "solicitado"
-    ).order_by(Ride.id).all()
+    rides = (
+        db.query(Ride)
+        .options(joinedload(Ride.passenger), joinedload(Ride.driver))
+        .filter(Ride.driver_id == driver_id, Ride.status == "solicitado")
+        .order_by(Ride.id)
+        .all()
+    )
     # Beneficio del Argón (Z=18): sus solicitudes aparecen primero.
     rides.sort(key=lambda r: user_z(r.passenger) < PRIORITY_LEVEL)
     results = []
@@ -1218,8 +1304,10 @@ def get_active_ride_for_user(
     res = RideResponse.model_validate(ride)
     res.passenger_name = ride.passenger.name
     res.driver_name = ride.driver.name
-    # Con el viaje aceptado, cada uno ve el teléfono del otro para poder llamarlo.
-    if ride.status in CONTACT_RIDE_STATUSES:
+    # Con el viaje aceptado, cada uno ve el teléfono del otro para poder llamarlo. El pasajero
+    # ve el del conductor desde que pide el viaje; el conductor, el del pasajero solo al aceptar.
+    is_passenger = current_user.id == ride.passenger_id
+    if ride.status in CONTACT_RIDE_STATUSES or (ride.status == "solicitado" and is_passenger):
         counterpart = ride.driver if current_user.id == ride.passenger_id else ride.passenger
         res.counterpart_phone = counterpart.phone if counterpart else None
     if current_user.id == ride.passenger_id and ride.status in {"aceptado", "en_camino", "en_curso"}:
@@ -1361,7 +1449,9 @@ async def update_ride_status(
     Actualiza el estado del viaje:
     'aceptado' -> 'en_camino' -> 'en_curso' -> 'completado' o 'cancelado'
     """
-    ride = db.query(Ride).filter(Ride.id == ride_id).first()
+    # Bloquea la fila (PostgreSQL): dos peticiones simultáneas no pueden completar
+    # el mismo viaje y pagar el Fe o los iones dos veces.
+    ride = db.query(Ride).filter(Ride.id == ride_id).with_for_update().first()
     if not ride:
         raise HTTPException(status_code=404, detail="Viaje no encontrado")
 
@@ -1373,7 +1463,7 @@ async def update_ride_status(
     if update.status == "cancelado" and current_user.id not in {ride.passenger_id, ride.driver_id}:
         raise HTTPException(status_code=403, detail="Solo los participantes pueden cancelar este viaje.")
     # Con el pasajero a bordo, solo el conductor puede cancelar: así nadie viaja y
-    # luego cancela para recuperar los diamantes retenidos.
+    # luego cancela para recuperar los iones retenidos.
     if update.status == "cancelado" and ride.status == "en_curso" and current_user.id != ride.driver_id:
         raise HTTPException(
             status_code=400,
@@ -1413,7 +1503,9 @@ async def update_ride_status(
 
     # Si se completa el viaje, pasajero y conductor ganan el Fe del viaje
     if update.status == "completado" and old_status != "completado":
-        start_of_day = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        # El día cuenta desde la medianoche de Venezuela (UTC-4); la base guarda UTC sin zona.
+        local_midnight = datetime.now(VENEZUELA_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_day = local_midnight.astimezone(timezone.utc).replace(tzinfo=None)
         rewarded_today = db.query(Ride.id).filter(
             Ride.id != ride.id,
             Ride.passenger_id == ride.passenger_id,
@@ -1511,12 +1603,16 @@ async def create_review(
         award_fe(current_user, fe)
 
     driver_profile = db.query(DriverProfile).filter(DriverProfile.user_id == ride.driver_id).first()
-    if driver_profile:
-        db.flush()  # La sesión no hace autoflush: así el promedio incluye esta reseña.
-        ratings =[r.rating for r in db.query(Review).filter(Review.driver_id == ride.driver_id).all()]
-        driver_profile.rating_avg = round(sum(ratings) / len(ratings), 2)
-
-    db.commit()
+    try:
+        if driver_profile:
+            db.flush()  # La sesión no hace autoflush: así el promedio incluye esta reseña.
+            average = db.query(func.avg(Review.rating)).filter(Review.driver_id == ride.driver_id).scalar()
+            driver_profile.rating_avg = round(float(average), 2)
+        db.commit()
+    except IntegrityError:
+        # Dos calificaciones simultáneas del mismo viaje (ride_id es único).
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Este viaje ya fue calificado") from None
     db.refresh(new_review)
 
     stars = "★" * new_review.rating

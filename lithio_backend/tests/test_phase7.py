@@ -426,8 +426,12 @@ def test_only_verified_gmail_accounts_can_enter(client, monkeypatch):
 def test_cancel_rules_and_phone_contact_during_ride(client):
     ride = make_ride(client)
     path = f"/api/rides/{ride['id']}/status"
-    # Antes de aceptarse no se comparte el teléfono.
-    assert client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()["counterpart_phone"] is None
+    # El pasajero puede llamar al conductor desde que pide el viaje (también en la respuesta al pedirlo)...
+    assert ride["counterpart_phone"] == "driver-phone"
+    assert client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()["counterpart_phone"] == "driver-phone"
+    # ...pero el conductor no ve el teléfono del pasajero hasta aceptar.
+    pending = client.get("/api/rides/driver/1/pending", headers=auth_headers(1)).json()
+    assert all(not item.get("counterpart_phone") for item in pending)
 
     client.put(path, json={"status": "aceptado"}, headers=auth_headers(1))
     passenger_view = client.get("/api/rides/active/4?role=pasajero", headers=auth_headers(4)).json()

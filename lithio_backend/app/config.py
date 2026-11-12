@@ -25,6 +25,13 @@ BEHIND_PROXY = os.getenv("BEHIND_PROXY", "").strip().lower() == "true"
 
 API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "").strip().lower() == "true"
 
+# Binance Pay de LITHIO para RECARGAR diamantes: el correo, teléfono o Pay ID de la cuenta que recibe.
+# Se define en el .env (BINANCE_PAY_ID). Vacío = la app no ofrece Binance Pay.
+BINANCE_PAY_ID = os.getenv("BINANCE_PAY_ID", "").strip()
+# Enlace que abre Binance en el teléfono. Si tienes tu enlace personal de "Recibir" de Binance Pay
+# (app.binance.com/qr/...), ponlo en BINANCE_PAY_URL y llevará directo a pagarte.
+BINANCE_PAY_URL = os.getenv("BINANCE_PAY_URL", "https://app.binance.com/").strip()
+
 
 def _normalize_database_url(url: str) -> str:
     # Railway y Heroku entregan "postgres://", que SQLAlchemy 2 ya no acepta.

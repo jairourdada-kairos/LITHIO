@@ -12,6 +12,62 @@ MOBILE_PREFIXES = {"412", "414", "416", "422", "424", "426"}
 
 SEMESTER_OPTIONS = [str(number) for number in range(1, 13)] + ["Egresado", "Personal / Docente"]
 
+# --- REGISTRO: ESTUDIANTE O TRABAJADOR ---
+# Para sumar otra universidad o institución (UCV, etc.) basta agregarla aquí: la
+# app pide estas listas a GET /api/registration/options, sin sacar otra versión.
+OCCUPATIONS = ("estudiante", "trabajador")
+STUDENT_SEMESTERS = [str(number) for number in range(1, 13)] + ["Egresado"]
+
+# Carreras de pregrado por institución (solo estudiantes).
+# AQUÍ se AÑADE una carrera (nueva línea entre comillas, terminada en coma), se EDITA su
+# nombre o se ELIMINA (borra la línea). Después: reiniciar_servidor.bat.
+CAREERS = {
+    "UNC": [
+        "Ingeniería en Inteligencia Artificial",
+        "Ingeniería en Ciberseguridad",
+        "Ingeniería en Robótica y Automatización",
+        "Ingeniería en Electromedicina",
+        "Ingeniería en Biomateriales",
+        "Ingeniería en Petroquímica",
+        "Ingeniería Química",
+        "Licenciatura en Ciencia de los Datos",
+        "Licenciatura en Ciencias de la Computación",
+        "Licenciatura en Nanotecnología",
+        "Licenciatura en Biotecnología",
+        "Licenciatura en Ciencia Molecular",
+        "Licenciatura en Física Nuclear",
+        "Licenciatura en Biología y Química Computacional",
+        "Licenciatura en Oceanología",
+        "Licenciatura en Física",
+        "Licenciatura en Matemáticas",
+        "Licenciatura en Filosofía",
+    ],
+}
+
+# Áreas de trabajo por institución (solo trabajadores). La UNC no tiene comedor.
+# AQUÍ se AÑADEN, EDITAN o ELIMINAN áreas: cada una va entre comillas y separada por coma.
+WORK_AREAS = {
+    "UNC": ["Administración", "Dirección", "Docencia", "Seguridad", "Limpieza", "Mantenimiento"],
+    "IVIC": ["Administración", "Dirección", "Investigación", "Seguridad", "Limpieza", "Mantenimiento", "Comedor"],
+}
+
+
+def registration_options() -> dict:
+    """Listas que la app muestra en el registro."""
+    return {
+        "student": {"institutions": list(CAREERS), "careers": CAREERS, "semesters": STUDENT_SEMESTERS},
+        "worker": {"institutions": list(WORK_AREAS), "areas": WORK_AREAS},
+    }
+
+
+def pick_option(value: str | None, options, message: str) -> str:
+    """Devuelve la opción de la lista que coincide (sin distinguir mayúsculas) o lanza ValueError."""
+    cleaned = " ".join((value or "").split())
+    for option in options:
+        if cleaned.casefold() == option.casefold():
+            return option
+    raise ValueError(message)
+
 _NAME_ALLOWED_PUNCTUATION = {" ", "'", "-", "´", "’"}
 
 

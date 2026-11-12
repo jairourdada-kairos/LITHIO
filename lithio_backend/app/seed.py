@@ -4,6 +4,10 @@ from .links_service import RIDE_FE, assign_friend_code, award_fe
 from sqlalchemy import inspect, text
 from .crypto import encrypt, is_encrypted
 
+# RUTAS INICIALES. AQUÍ se pueden EDITAR (origen, destino, precio en dólares y minutos),
+# AÑADIR (copia un bloque de { hasta },) o ELIMINAR (borra el bloque).
+# OJO: esta lista solo se carga cuando la base de datos no tiene rutas. Con la app ya en
+# uso, las rutas y sus precios se cambian desde el panel web (/dashboard), sin tocar código.
 ROUTE_CATALOG = [
     {
         "origin": "UNC",
@@ -11,7 +15,8 @@ ROUTE_CATALOG = [
         "fare_usd": 1.50,
         "estimated_minutes": 8,
         "popular": True,
-        "tag": "Ruta corta estudiantil"
+        "tag": "Ruta corta estudiantil",
+        "scope": "interna"
     },
     {
         "origin": "UNC",
@@ -19,7 +24,8 @@ ROUTE_CATALOG = [
         "fare_usd": 2.50,
         "estimated_minutes": 12,
         "popular": True,
-        "tag": "Ruta principal"
+        "tag": "Ruta principal",
+        "scope": "externa"
     },
     {
         "origin": "UNC",
@@ -27,7 +33,8 @@ ROUTE_CATALOG = [
         "fare_usd": 2.00,
         "estimated_minutes": 10,
         "popular": True,
-        "tag": "Conexión IVIC"
+        "tag": "Conexión IVIC",
+        "scope": "interna"
     },
     {
         "origin": "BIBLIOTECA",
@@ -35,7 +42,8 @@ ROUTE_CATALOG = [
         "fare_usd": 2.50,
         "estimated_minutes": 12,
         "popular": True,
-        "tag": "Ruta bibliotecaria"
+        "tag": "Ruta bibliotecaria",
+        "scope": "externa"
     },
     {
         "origin": "UNC",
@@ -43,7 +51,8 @@ ROUTE_CATALOG = [
         "fare_usd": 6.00,
         "estimated_minutes": 35,
         "popular": True,
-        "tag": "Bajada a Caracas"
+        "tag": "Bajada a Caracas",
+        "scope": "externa"
     },
     {
         "origin": "BIBLIOTECA",
@@ -51,7 +60,8 @@ ROUTE_CATALOG = [
         "fare_usd": 6.50,
         "estimated_minutes": 38,
         "popular": False,
-        "tag": "Ruta referencia"
+        "tag": "Ruta referencia",
+        "scope": "externa"
     }
 ]
 
@@ -84,7 +94,11 @@ ADDED_COLUMNS = {
         "phone_hash": "VARCHAR(64)",
         "career": "VARCHAR",
         "semester": "VARCHAR",
+        "occupation": "VARCHAR",
+        "institution": "VARCHAR",
+        "work_area": "VARCHAR",
         "diamonds_cents": "INTEGER NOT NULL DEFAULT 0",
+        "ride_passes": "INTEGER NOT NULL DEFAULT 0",
         "fe_lifetime": "INTEGER NOT NULL DEFAULT 0",
         "friend_code": "VARCHAR(12)",
         "active_session_id": "VARCHAR(64)",
@@ -103,6 +117,9 @@ ADDED_COLUMNS = {
     },
     "wallet_transactions": {
         "receipt_file": "VARCHAR",
+    },
+    "routes": {
+        "scope": "VARCHAR NOT NULL DEFAULT 'externa'",
     },
     "driver_profiles": {
         "last_demand_push_at": "TIMESTAMP",
@@ -136,15 +153,29 @@ ENCRYPTED_COLUMNS = {
 
 def ensure_columns(db):
     inspector = inspect(db.get_bind())
+    scope_added = False
     for table, columns in ADDED_COLUMNS.items():
         existing = {column["name"] for column in inspector.get_columns(table)}
         for column, column_type in columns.items():
             if column not in existing:
                 db.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}"))
+                if (table, column) == ("routes", "scope"):
+                    scope_added = True
+    if scope_added:
+        # Rutas existentes: solo estas dos quedan dentro del IVIC.
+        db.commit()
+        db.execute(text(
+            "UPDATE routes SET scope = 'interna' WHERE origin = 'UNC' "
+            "AND destination IN ('BIBLIOTECA', 'RESTO DEL IVIC')"
+        ))
+        db.commit()
     if "cedula_hash" not in {index["name"] for index in inspector.get_indexes("users")}:
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_cedula_hash ON users (cedula_hash)"))
     db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_friend_code ON users (friend_code)"))
     db.execute(text("CREATE INDEX IF NOT EXISTS ix_users_phone_hash ON users (phone_hash)"))
+    # Viajes: se consultan por pasajero, conductor y estado en casi cada pantalla.
+    db.execute(text("CREATE INDEX IF NOT EXISTS ix_rides_passenger_status ON rides (passenger_id, status)"))
+    db.execute(text("CREATE INDEX IF NOT EXISTS ix_rides_driver_status ON rides (driver_id, status)"))
     db.commit()
 
 

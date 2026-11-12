@@ -1,6 +1,18 @@
 """Preguntas de la Reacción del día sobre las carreras de la Universidad Nacional de las Ciencias (UNC).
 
 Cada pregunta es (pregunta, tres opciones, índice de la correcta, dato curioso).
+
+CÓMO EDITAR ESTE ARCHIVO (después guarda y ejecuta reiniciar_servidor.bat):
+- EDITAR una pregunta: cambia el texto entre comillas.
+- AÑADIR una pregunta: copia un bloque completo, desde "(" hasta ")," y pégalo
+  debajo, dentro de la misma lista. Ejemplo:
+      ("¿Cuál es la capital de Venezuela?",
+       ["Caracas", "Maracaibo", "Valencia"], 0,
+       "Caracas fue fundada en 1567."),
+- ELIMINAR una pregunta: borra su bloque completo, desde "(" hasta "),".
+- El número después de las opciones dice cuál es la correcta, contando desde 0:
+  0 = la primera, 1 = la segunda, 2 = la tercera.
+- Siempre deben ser tres opciones, y cada bloque termina en coma.
 Los temas salen de las carreras de pregrado que la UNC publica en su sitio:
 Nanotecnología, Inteligencia Artificial, Ciberseguridad, Oceanología, Ciencia de Datos y Filosofía.
 """

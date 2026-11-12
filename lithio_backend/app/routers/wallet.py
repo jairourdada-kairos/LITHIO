@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from .. import wallet_service as wallet
 from ..admin_alerts import alert_admins
 from ..auth import admin_users, get_current_user, is_admin, require_admin
-from ..config import EVIDENCE_DIR
+from ..config import BINANCE_PAY_ID, BINANCE_PAY_URL, EVIDENCE_DIR
 from ..database import get_db
 from ..drivers import require_approved_driver
 from ..links_service import are_linked
@@ -46,6 +46,9 @@ KIND_LABELS = {
     "pago_viaje": "Pago de viaje",
     "cobro_viaje": "Cobro de viaje",
     "taller": "Canje en el taller",
+    "bono_bienvenida": "Bono de bienvenida",
+    "combo": "Combo de viajes",
+    "pase_viaje": "Pase de viaje",
 }
 
 
@@ -68,6 +71,8 @@ class AmountIn(BaseModel):
 
 class TopupIn(AmountIn):
     reference: str = Field(min_length=4, max_length=30)
+    # Por dónde se pagó la recarga: Pago Móvil del administrador o Binance Pay de LITHIO.
+    method: Literal["pago_movil", "binance_pay"] = "pago_movil"
 
 
 class DonationIn(AmountIn):
@@ -123,8 +128,15 @@ def pago_movil_destination(db: Session) -> Optional[dict]:
     return None
 
 
+def binance_pay_destination() -> Optional[dict]:
+    """Binance Pay donde se pagan las recargas (BINANCE_PAY_ID del .env); None si no está configurado."""
+    if not BINANCE_PAY_ID:
+        return None
+    return {"pay_id": BINANCE_PAY_ID, "url": BINANCE_PAY_URL}
+
+
 def fund_stats(db: Session) -> dict:
-    # Las donaciones con diamantes se guardan en negativo; las de Pago Móvil, en positivo.
+    # Las donaciones con iones se guardan en negativo; las de Pago Móvil, en positivo.
     donated = db.query(func.coalesce(func.sum(func.abs(WalletTransaction.amount_cents)), 0)).filter(
         WalletTransaction.kind.in_(["donacion", "donacion_pm"]), WalletTransaction.status == "aprobado"
     ).scalar()
@@ -138,7 +150,8 @@ def fund_stats(db: Session) -> dict:
 def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     transactions = (
         db.query(WalletTransaction)
-        .filter(WalletTransaction.user_id == user.id)
+        # Los pases de combo no mueven diamantes: no van en el historial de la billetera.
+        .filter(WalletTransaction.user_id == user.id, WalletTransaction.kind != "pase_viaje")
         .order_by(WalletTransaction.id.desc())
         .limit(40)
         .all()
@@ -150,6 +163,8 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
         "transactions": [serialize(db, tx) for tx in transactions],
         "fund": fund_stats(db),
         "pago_movil": pago_movil_destination(db),
+        "binance_pay": binance_pay_destination(),
+        "ride_passes": user.ride_passes or 0,
     }
 
 
@@ -157,15 +172,18 @@ def get_wallet(user: User = Depends(get_current_user), db: Session = Depends(get
 async def request_topup(data: TopupIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TOPUP_CENTS:
-        raise HTTPException(status_code=400, detail="La recarga máxima es de ◆ 500.")
+        raise HTTPException(status_code=400, detail="La recarga máxima es de Li⁺ 500.")
+    if data.method == "binance_pay" and not binance_pay_destination():
+        raise HTTPException(status_code=400, detail="La recarga por Binance Pay no está disponible. Usa Pago Móvil.")
+    method_label = "Binance Pay" if data.method == "binance_pay" else "Pago Móvil"
     tx = wallet.record(
         db, user, "recarga", cents, status="pendiente",
-        reference=data.reference.strip(), note="Pago Móvil en revisión",
+        reference=data.reference.strip(), note=f"{method_label} en revisión",
     )
     db.commit()
     await alert_admins(
         db, "recarga", "Recarga por aprobar",
-        f"{user.name} pidió una recarga de ◆ {data.amount:.2f} (ref. {data.reference.strip()}).", tx_id=tx.id,
+        f"{user.name} pidió una recarga de Li⁺ {data.amount:.2f} por {method_label} (ref. {data.reference.strip()}).", tx_id=tx.id,
     )
     return serialize(db, tx)
 
@@ -174,16 +192,18 @@ async def request_topup(data: TopupIn, user: User = Depends(get_current_user), d
 async def transfer(data: TransferIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TRANSFER_CENTS:
-        raise HTTPException(status_code=400, detail="El envío máximo es de ◆ 50.")
+        raise HTTPException(status_code=400, detail="El envío máximo es de Li⁺ 50.")
     recipient = db.query(User).filter(func.upper(User.friend_code) == data.to_code.strip().upper()).first()
     # Misma respuesta si el código no existe o no es un enlace: no se puede usar para adivinar códigos.
     if not recipient or recipient.id == user.id or not are_linked(db, user.id, recipient.id):
-        raise HTTPException(status_code=404, detail="No encontramos un enlace con ese código. Solo puedes enviar diamantes a tus enlaces.")
+        raise HTTPException(status_code=404, detail="No encontramos un enlace con ese código. Solo puedes enviar iones a tus enlaces.")
+    # Se bloquea en orden de id (dos envíos cruzados no se traban entre sí) y el límite
+    # diario se revisa con el bloqueo puesto: envíos simultáneos no pueden saltárselo.
+    first, second = sorted((user.id, recipient.id))
+    locked = {first: wallet.lock_user(db, first), second: wallet.lock_user(db, second)}
+    sender, receiver = locked[user.id], locked[recipient.id]
     if wallet.outgoing_today_cents(db, user.id) + cents > wallet.MAX_DAILY_OUTGOING_CENTS:
-        raise HTTPException(status_code=400, detail="Superas el límite diario de ◆ 100 en envíos y donaciones.")
-
-    sender = wallet.lock_user(db, user.id)
-    receiver = wallet.lock_user(db, recipient.id)
+        raise HTTPException(status_code=400, detail="Superas el límite diario de Li⁺ 100 en envíos y donaciones.")
     sent = wallet.record(db, sender, "envio", -cents, counterpart_id=receiver.id, note=data.note)
     wallet.record(db, receiver, "recepcion", cents, counterpart_id=sender.id, note=data.note)
     db.commit()
@@ -192,8 +212,8 @@ async def transfer(data: TransferIn, user: User = Depends(get_current_user), db:
         user_id=receiver.id,
     )
     push_service.notify(
-        db, receiver.id, f"Recibiste ◆ {wallet.as_diamonds(cents):.2f}",
-        f"{sender.name} te envió diamantes." + (f" «{data.note}»" if data.note else ""),
+        db, receiver.id, f"Recibiste Li⁺ {wallet.as_diamonds(cents):.2f}",
+        f"{sender.name} te envió iones." + (f" «{data.note}»" if data.note else ""),
         {"type": "WALLET_UPDATED"},
     )
     return serialize(db, sent)
@@ -206,7 +226,7 @@ async def donate(data: DonationIn, user: User = Depends(get_current_user), db: S
         if not data.reference:
             raise HTTPException(status_code=400, detail="Escribe la referencia del Pago Móvil.")
         if cents > wallet.MAX_TOPUP_CENTS:
-            raise HTTPException(status_code=400, detail="La donación máxima por Pago Móvil es de ◆ 500.")
+            raise HTTPException(status_code=400, detail="La donación máxima por Pago Móvil es de Li⁺ 500.")
         # No suma al saldo de quien dona: va al Fondo Solidario cuando el administrador la confirma.
         tx = WalletTransaction(
             user_id=user.id, kind="donacion_pm", amount_cents=cents, status="pendiente",
@@ -216,12 +236,12 @@ async def donate(data: DonationIn, user: User = Depends(get_current_user), db: S
         db.commit()
         await alert_admins(
             db, "donacion_pm", "Donación por confirmar",
-            f"{user.name} donó ◆ {data.amount:.2f} por Pago Móvil (ref. {data.reference.strip()}).", tx_id=tx.id,
+            f"{user.name} donó Li⁺ {data.amount:.2f} por Pago Móvil (ref. {data.reference.strip()}).", tx_id=tx.id,
         )
         return serialize(db, tx)
-    if wallet.outgoing_today_cents(db, user.id) + cents > wallet.MAX_DAILY_OUTGOING_CENTS:
-        raise HTTPException(status_code=400, detail="Superas el límite diario de ◆ 100 en envíos y donaciones.")
     donor = wallet.lock_user(db, user.id)
+    if wallet.outgoing_today_cents(db, user.id) + cents > wallet.MAX_DAILY_OUTGOING_CENTS:
+        raise HTTPException(status_code=400, detail="Superas el límite diario de Li⁺ 100 en envíos y donaciones.")
     tx = wallet.record(db, donor, "donacion", -cents, note="Fondo Solidario LITHIO")
     db.commit()
     return serialize(db, tx)
@@ -236,7 +256,7 @@ async def request_withdrawal(data: WithdrawalIn, user: User = Depends(get_curren
         reference=data.destination.strip(), note="Retiro en revisión",
     )
     db.commit()
-    await alert_admins(db, "retiro", "Retiro por pagar", f"{user.name} pidió retirar ◆ {data.amount:.2f}.", tx_id=tx.id)
+    await alert_admins(db, "retiro", "Retiro por pagar", f"{user.name} pidió retirar Li⁺ {data.amount:.2f}.", tx_id=tx.id)
     return serialize(db, tx)
 
 
@@ -358,7 +378,7 @@ async def review_transaction(tx_id: int, data: ReviewIn, db: Session = Depends(g
         user_id=tx.user_id,
     )
     label = {"recarga": "Recarga", "donacion_pm": "Donación", "retiro": "Retiro", "taller": "Canje del taller"}[tx.kind]
-    amount = f"◆ {abs(wallet.as_diamonds(tx.amount_cents)):.2f}"
+    amount = f"Li⁺ {abs(wallet.as_diamonds(tx.amount_cents)):.2f}"
     if tx.status == "aprobado":
         push_service.notify(db, tx.user_id, f"{label} aprobado", f"Tu {label.lower()} de {amount} fue aprobado.", {"type": "WALLET_UPDATED"})
     else:
@@ -371,13 +391,13 @@ async def review_transaction(tx_id: int, data: ReviewIn, db: Session = Depends(g
 
 @router.post("/admin/wallet/credit", status_code=201, dependencies=[Depends(require_admin)], response_model=TransactionOut)
 async def credit_diamonds(data: CreditIn, db: Session = Depends(get_db)):
-    """Acredita diamantes a mano (p. ej. un Pago Móvil recibido sin solicitud en la app)."""
+    """Acredita iones a mano (p. ej. un Pago Móvil recibido sin solicitud en la app)."""
     target = db.query(User).filter(func.upper(User.friend_code) == data.friend_code.strip().upper()).first()
     if not target:
         raise HTTPException(status_code=404, detail="No hay ningún usuario con ese código.")
     cents = wallet.to_cents(data.amount)
     if cents > wallet.MAX_TOPUP_CENTS:
-        raise HTTPException(status_code=400, detail="El máximo por acreditación es de ◆ 500.")
+        raise HTTPException(status_code=400, detail="El máximo por acreditación es de Li⁺ 500.")
     tx = wallet.record(
         db, wallet.lock_user(db, target.id), "recarga", cents,
         note=(data.note or "").strip() or "Acreditado por el administrador",
@@ -387,7 +407,7 @@ async def credit_diamonds(data: CreditIn, db: Session = Depends(get_db)):
         {"type": "WALLET_UPDATED", "reason": "recarga", "status": "aprobado", "amount": data.amount}, user_id=target.id
     )
     push_service.notify(
-        db, target.id, f"Recibiste ◆ {data.amount:.2f}", "El administrador acreditó diamantes en tu billetera.",
+        db, target.id, f"Recibiste Li⁺ {data.amount:.2f}", "El administrador acreditó iones en tu billetera.",
         {"type": "WALLET_UPDATED"},
     )
     return serialize(db, tx)
