@@ -4,11 +4,11 @@
  * Una sola fuente para todas las llamadas. La IP de la PC cambia según la red
  * (casa, universidad), así que en desarrollo no se guarda fija:
  *
- * - APK instalado: lee la dirección pública vigente de Firebase (config/server,
- *   la publica iniciar_publico.bat en cada arranque) y recuerda la última.
+ * - APK instalado: lee la dirección pública vigente de Firebase (config/server)
+ *   y recuerda la última.
  * - Web publicada (scripts/exportar_web.ps1): la sirve el mismo servidor en
  *   /app, así que la API está en la misma dirección que la página.
- * - EXPO_PUBLIC_API_URL con https (túnel de Cloudflare o servidor en la nube):
+ * - EXPO_PUBLIC_API_URL con https (servidor en la nube):
  *   se usa tal cual.
  * - Web en desarrollo: el servidor está en la misma máquina que sirve la
  *   página, en el puerto 8000.
@@ -53,14 +53,14 @@ export let WS_BASE = API_BASE.replace(/^http/, 'ws');
 
 /**
  * La dirección que viene de Firebase (o de la memoria del teléfono) recibe el token de sesión:
- * solo se acepta https en los dominios donde LITHIO corre (túnel de Cloudflare, Railway) o el configurado.
+ * solo se acepta https en los dominios donde LITHIO corre (Railway) o el configurado.
  */
 function isTrustedServer(url: string): boolean {
   try {
     const { protocol, hostname } = new URL(url);
     if (protocol !== 'https:') return false;
     const own = configured.startsWith('https://') ? new URL(configured).hostname : null;
-    return hostname.endsWith('.trycloudflare.com') || hostname.endsWith('.up.railway.app') || hostname === own;
+    return hostname.endsWith('.up.railway.app') || hostname === own;
   } catch {
     return false;
   }

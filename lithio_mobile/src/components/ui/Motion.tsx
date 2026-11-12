@@ -3,8 +3,6 @@
  *
  *  - MotoTrack: pista con una moto que va y viene (o se queda en `progress`).
  *  - CountUp: número que sube contando hasta su valor.
- *  - GrowBar: barra que crece de 0 a su porcentaje.
- *  - Float: sube y baja suavemente (iones, íconos).
  *  - Orbiter: puntito que gira en círculo (electrón).
  *
  * Todas respetan "reducir movimiento" del teléfono: sin animar, muestran el valor final.
@@ -98,30 +96,6 @@ export function CountUp({ value, decimals = 0, style, duration = 900 }: { value:
   }, [value, duration, reduced]);
 
   return <Text style={style}>{shown.toFixed(decimals)}</Text>;
-}
-
-/** Barra que crece de 0 a `pct` (0 a 100). */
-export function GrowBar({ pct, color = theme.colors.primary, height = 6, style }: { pct: number; color?: string; height?: number; style?: StyleProp<ViewStyle> }) {
-  const reduced = useReducedMotion();
-  const [width, setWidth] = useState(0);
-  const w = useSharedValue(0);
-  const target = (Math.max(0, Math.min(pct, 100)) / 100) * width;
-
-  useEffect(() => {
-    w.set(reduced ? target : withDelay(150, withTiming(target, { duration: 1100, easing: Easing.out(Easing.cubic) })));
-  }, [target, reduced, w]);
-
-  const fill = useAnimatedStyle(() => ({ width: w.get() }));
-  return (
-    <View
-      style={[styles.bar, { height, borderRadius: height / 2 }, style]}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-      accessibilityRole="progressbar"
-      accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }}
-    >
-      <Animated.View style={[{ height, borderRadius: height / 2, backgroundColor: color, backgroundImage: theme.fx.gloss }, fill]} />
-    </View>
-  );
 }
 
 /** Aparece subiendo un poco y con fundido; `index` escalona las tarjetas de una pantalla (50 ms cada una). */
@@ -237,21 +211,6 @@ export function Breathe({ active = true, children, style }: { active?: boolean; 
   return <Animated.View style={[style, a]}>{children}</Animated.View>;
 }
 
-/** Sube y baja suavemente (para iones e íconos). */
-export function Float({ children, distance = 4, style }: { children: React.ReactNode; distance?: number; style?: StyleProp<ViewStyle> }) {
-  const reduced = useReducedMotion();
-  const y = useSharedValue(0);
-
-  useEffect(() => {
-    if (reduced) return;
-    y.set(withRepeat(withSequence(withTiming(-distance, { duration: 1200, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.quad) })), -1, false));
-    return () => cancelAnimation(y);
-  }, [distance, reduced, y]);
-
-  const a = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
-  return <Animated.View style={[style, a]}>{children}</Animated.View>;
-}
-
 /** Puntito (electrón) que gira alrededor del centro de un cuadro de `size`. */
 export function Orbiter({ size, color = theme.colors.gold, period = 6000 }: { size: number; color?: string; period?: number }) {
   const reduced = useReducedMotion();
@@ -300,10 +259,6 @@ const styles = themed(() => ({
     width: 12,
     height: 12,
     borderRadius: 6,
-  },
-  bar: {
-    overflow: 'hidden',
-    backgroundColor: theme.colors.glassBorder,
   },
   sheenWrap: {
     position: 'absolute',

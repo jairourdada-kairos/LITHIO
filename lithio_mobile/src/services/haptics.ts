@@ -53,9 +53,3 @@ export const hapticSuccess = () =>
   android
     ? buzz([0, 35, 70, 35])
     : quiet(haptics?.notificationAsync(haptics.NotificationFeedbackType.Success));
-
-/** Algo falló o falta un dato. */
-export const hapticWarning = () =>
-  android
-    ? buzz([0, 60, 90, 60])
-    : quiet(haptics?.notificationAsync(haptics.NotificationFeedbackType.Warning));

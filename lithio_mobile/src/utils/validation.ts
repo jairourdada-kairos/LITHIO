@@ -6,12 +6,6 @@
  * Si cambias una regla aquí, cámbiala también allá.
  */
 
-export const SEMESTER_OPTIONS = [
-  ...Array.from({ length: 12 }, (_, index) => String(index + 1)),
-  'Egresado',
-  'Personal / Docente',
-];
-
 export type CedulaNationality = 'V' | 'E';
 
 // Movilnet (0416, 0426), Movistar (0414, 0424), Digitel (0412, 0422).
@@ -56,18 +50,6 @@ export function validateGmail(value: string): string | undefined {
   const domain = value.trim().toLowerCase().split('@').pop() ?? '';
   if (!GMAIL_DOMAINS.includes(domain)) return 'Usa tu correo de Gmail (termina en @gmail.com)';
   return undefined;
-}
-
-export function validateCareer(value: string): string | undefined {
-  const cleaned = collapseSpaces(value);
-  if (!cleaned) return 'La carrera es obligatoria';
-  if (cleaned.length < 3 || cleaned.length > 80) return 'Escribe el nombre de tu carrera (3 a 80 caracteres)';
-  if (!/\p{L}/u.test(cleaned)) return 'La carrera no es válida';
-  return undefined;
-}
-
-export function validateSemester(value: string): string | undefined {
-  return SEMESTER_OPTIONS.includes(value) ? undefined : 'Selecciona tu semestre';
 }
 
 /** '0412-1234567' -> '4121234567' (10 dígitos) o null si no es un celular venezolano. */
