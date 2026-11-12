@@ -7,7 +7,8 @@
 **/.pytest_cache
 **/*.db
 **/node_modules
-lithio_mobile
+lithio_mobile/*
+!lithio_mobile/dist-web
 app
 .git
 .claude

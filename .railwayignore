@@ -1,7 +1,10 @@
 # Lo que NO se sube a Railway con `railway up` (además de lo del .gitignore).
-# La imagen solo necesita lithio_backend/ y lithio_dashboard/.
-lithio_mobile/
-app/
+# La imagen necesita lithio_backend/, lithio_dashboard/, lithio_descarga/ y la web
+# exportada (lithio_mobile/dist-web, que el .gitignore excluye y aquí se vuelve a incluir).
+lithio_mobile/*
+!lithio_mobile/dist-web/
+!lithio_mobile/dist-web/**
+/app/
 .claude/
 lithio_skills.zip
 **/venv/

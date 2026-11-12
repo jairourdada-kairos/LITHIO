@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY lithio_backend/app ./app
 COPY lithio_dashboard /srv/lithio_dashboard
+# Web de la app (/app) y página de descarga (/descargar). Antes de desplegar se
+# exporta la web con publicar_actualizacion o exportar_web.
+COPY lithio_mobile/dist-web /srv/lithio_mobile/dist-web
+COPY lithio_descarga /srv/lithio_descarga
 
 RUN useradd --create-home lithio && chown -R lithio /srv
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
