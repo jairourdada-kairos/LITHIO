@@ -43,6 +43,6 @@ Write-Host ''
 & (Join-Path $PSScriptRoot 'actualizar_descarga.ps1')
 
 Write-Host ''
-Write-Host 'LISTO: el APK nuevo ya esta en <direccion de iniciar_publico>/descargar' -ForegroundColor Green
+Write-Host 'LISTO: el APK nuevo esta en lithio_descarga. Despliega la nube para publicarlo: npx @railway/cli up --service lithio-api --detach' -ForegroundColor Green
 Write-Host 'Comparte ese link: la pagina explica como instalarlo y que hacer con los avisos de Android.'
-Write-Host 'Recuerda: el APK funciona mientras iniciar_publico.bat este abierto en esta PC.'
+Write-Host 'Pagina de descarga: https://lithio-api-production.up.railway.app/descargar (el APK usa el servidor de la nube, 24/7).'
